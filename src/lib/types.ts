@@ -79,8 +79,16 @@ export interface BYOKConfig {
   anthropicApiKey?: string;
   openaiApiKey?: string;
   ollamaEndpoint?: string;
+  /** Any OpenAI-compatible server's base URL, e.g. "http://localhost:8080/v1" (TOOL-6). */
+  compatibleBaseUrl?: string;
+  compatibleApiKey?: string;
   preferredModel?: string;
+  /** Unset: the first provider set up is used (same order as the backend). */
+  activeProvider?: ByokProvider;
 }
+
+/** Protocols BYOK speaks; servers and models are the user's data (matches Rust ByokProvider). */
+export type ByokProvider = "gemini" | "claude" | "openai" | "compatible" | "ollama";
 
 export interface AppSettings {
   defaultTrack: TrackType;
