@@ -2,6 +2,7 @@
   "name": "@omni/extension",
   "displayName": "OmniOrchestrator",
   "version": "0.1.0",
+  "publisher": "omniorchestrator",
   "private": true,
   "description": "OmniOrchestrator editor extension: the human channel for approvals, handoff and status.",
   "license": "Apache-2.0",
@@ -9,14 +10,39 @@
   "engines": {
     "vscode": "^1.90.0"
   },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "workspaceContains:.agents/project.json",
+    "workspaceContains:.agents-link"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "omni.review",
+        "title": "OmniOrchestrator: Review the current phase"
+      },
+      {
+        "command": "omni.approvePhase",
+        "title": "OmniOrchestrator: Approve phase"
+      },
+      {
+        "command": "omni.requestChanges",
+        "title": "OmniOrchestrator: Request changes"
+      }
+    ]
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node build.mjs",
     "test": "vitest run"
   },
   "dependencies": {
     "@omni/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.90.0",
+    "esbuild": "0.28.2"
   }
 }
