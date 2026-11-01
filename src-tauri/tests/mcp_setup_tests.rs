@@ -106,3 +106,173 @@ fn a_file_with_no_server_list_yet_gets_one_in_the_default_format() {
     let parsed: Value = serde_json::from_str(&text).unwrap();
     assert_eq!(parsed["theme"], json!("dark"));
 }
+
+// --- Choosing the file, writing it safely, and the server command (D5, slice 3).
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use tauri_app_lib::commands::adapters::{parse_adapters, Adapter, AdapterFile};
+use tauri_app_lib::commands::mcp_setup::{resolve_server_command, setup_tool, ServerCommand};
+use tauri_app_lib::commands::tool_discovery::{DiscoveredTool, ToolCategory};
+
+fn temp(name: &str) -> PathBuf {
+    let d = std::env::temp_dir().join(format!("omni-mcp-setup-{}-{}", name, std::process::id()));
+    let _ = fs::remove_dir_all(&d);
+    fs::create_dir_all(&d).unwrap();
+    d
+}
+fn server() -> ServerCommand {
+    ServerCommand { command: "/opt/node/bin/node".into(), args: vec!["/opt/omni/dist/main.js".into()] }
+}
+fn nebula(mcp_config: Option<&Path>, capability: Option<u8>) -> DiscoveredTool {
+    DiscoveredTool {
+        id: "nebula".into(),
+        name: "Nebula".into(),
+        category: ToolCategory::Editor,
+        capability,
+        mcp_config: mcp_config.map(|p| p.to_string_lossy().into_owned()),
+        ..Default::default()
+    }
+}
+fn adapter(mcp: &str) -> Adapter {
+    let text = format!(
+        r#"{{"formatVersion":1,"id":"nebula","name":"Nebula","matches":["nebula"],"mcp":{},
+            "sources":[{{"url":"https://nebula.example/docs","checked":"2026-11-01","covers":["mcp"]}}]}}"#,
+        mcp
+    );
+    let (mut adapters, issues) = parse_adapters(&[AdapterFile { name: "nebula.json".into(), text }]);
+    assert!(issues.is_empty(), "{:?}", issues);
+    adapters.remove(0)
+}
+fn read_json(path: &Path) -> Value {
+    serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap()
+}
+
+#[test]
+fn the_discovered_config_gets_our_entry_and_a_one_time_backup() {
+    let home = temp("found");
+    let config = home.join(".nebula").join("mcp.json");
+    fs::create_dir_all(config.parent().unwrap()).unwrap();
+    let original = r#"{ "mcpServers": { "theirs": { "command": "x" } } }"#;
+    fs::write(&config, original).unwrap();
+
+    let result = setup_tool(&nebula(Some(&config), Some(3)), None, &home, None, &server()).unwrap();
+    assert_eq!(result.status, MergeStatus::Added);
+    assert_eq!(Path::new(&result.config_path), config);
+    let json = read_json(&config);
+    assert_eq!(json["mcpServers"]["theirs"], json!({ "command": "x" }));
+    assert_eq!(json["mcpServers"]["omni-orchestrator"], json!({ "command": "/opt/node/bin/node", "args": ["/opt/omni/dist/main.js"] }));
+    let backup = PathBuf::from(result.backup_path.clone().expect("a backup of the original"));
+    assert_eq!(fs::read_to_string(&backup).unwrap(), original);
+
+    // A second run with a new server path updates our entry and keeps the original backup.
+    let moved = ServerCommand { command: "/opt/node/bin/node".into(), args: vec!["/new/main.js".into()] };
+    let again = setup_tool(&nebula(Some(&config), Some(3)), None, &home, None, &moved).unwrap();
+    assert_eq!(again.status, MergeStatus::Updated);
+    assert_eq!(fs::read_to_string(&backup).unwrap(), original);
+    let _ = fs::remove_dir_all(home);
+}
+
+#[test]
+fn nothing_is_written_when_our_entry_is_already_there() {
+    let home = temp("same");
+    let config = home.join("mcp.json");
+    setup_tool(&nebula(Some(&config), Some(3)), None, &home, None, &server()).unwrap();
+    let before = fs::read_to_string(&config).unwrap();
+    let result = setup_tool(&nebula(Some(&config), Some(3)), None, &home, None, &server()).unwrap();
+    assert_eq!(result.status, MergeStatus::Unchanged);
+    assert!(result.backup_path.is_none());
+    assert_eq!(fs::read_to_string(&config).unwrap(), before);
+    let _ = fs::remove_dir_all(home);
+}
+
+#[test]
+fn a_project_uses_the_adapters_project_config_and_names_the_project() {
+    let home = temp("project-home");
+    let project = temp("project");
+    let a = adapter(r#"{"format":"servers","projectConfig":".nebula/mcp.json"}"#);
+    let result = setup_tool(&nebula(None, Some(3)), Some(&a), &home, Some(&project), &server()).unwrap();
+    let config = project.join(".nebula").join("mcp.json");
+    assert_eq!(Path::new(&result.config_path), config);
+    assert_eq!(result.status, MergeStatus::Created);
+    assert!(result.backup_path.is_none(), "a new file needs no backup");
+    let args = &read_json(&config)["servers"]["omni-orchestrator"]["args"];
+    assert_eq!(args, &json!(["/opt/omni/dist/main.js", "--project", project.to_string_lossy()]));
+    let _ = fs::remove_dir_all(home);
+    let _ = fs::remove_dir_all(project);
+}
+
+#[test]
+fn the_adapters_user_config_is_used_when_discovery_found_none() {
+    let home = temp("user");
+    fs::create_dir_all(home.join(".nebula")).unwrap();
+    fs::write(home.join(".nebula").join("settings.json"), r#"{ "theme": "dark" }"#).unwrap();
+    let a = adapter(r#"{"format":"mcpServers","userConfig":["~/.nebula/missing.json","~/.nebula/settings.json"]}"#);
+    let result = setup_tool(&nebula(None, Some(3)), Some(&a), &home, None, &server()).unwrap();
+    assert_eq!(Path::new(&result.config_path), home.join(".nebula").join("settings.json"));
+    assert_eq!(read_json(&home.join(".nebula").join("settings.json"))["theme"], json!("dark"));
+    let _ = fs::remove_dir_all(home);
+}
+
+#[test]
+fn a_tool_without_mcp_or_without_a_known_config_is_refused_with_the_manual_entry() {
+    let home = temp("refuse");
+    let config = home.join("mcp.json");
+    let err = setup_tool(&nebula(Some(&config), Some(2)), None, &home, None, &server()).unwrap_err();
+    assert!(err.contains("no MCP support"), "{}", err);
+    assert!(!config.exists(), "nothing is written for a tool without MCP");
+    let err = setup_tool(&nebula(None, Some(3)), None, &home, None, &server()).unwrap_err();
+    assert!(err.contains("omni-orchestrator") && err.contains("/opt/omni/dist/main.js"), "the entry is included: {}", err);
+    let _ = fs::remove_dir_all(home);
+}
+
+#[test]
+fn a_file_it_cannot_edit_is_left_exactly_as_it_was() {
+    let home = temp("jsonc");
+    let config = home.join("mcp.json");
+    let original = "{\n  // keep me\n  \"mcpServers\": {}\n}\n";
+    fs::write(&config, original).unwrap();
+    let err = setup_tool(&nebula(Some(&config), Some(3)), None, &home, None, &server()).unwrap_err();
+    assert!(err.contains("comments") && err.contains("omni-orchestrator"), "{}", err);
+    assert_eq!(fs::read_to_string(&config).unwrap(), original);
+    assert_eq!(fs::read_dir(&home).unwrap().count(), 1, "no backup or temp file left behind");
+    let _ = fs::remove_dir_all(home);
+}
+
+#[test]
+fn unsafe_adapter_config_paths_are_refused_when_adapters_are_read() {
+    for mcp in [r#"{"format":"servers","projectConfig":"../outside.json"}"#, r#"{"format":"servers","userConfig":["~/../etc/x.json"]}"#] {
+        let text = format!(
+            r#"{{"formatVersion":1,"id":"nebula","name":"Nebula","matches":["nebula"],"mcp":{},"sources":[{{"url":"https://n.example","checked":"2026-11-01","covers":["mcp"]}}]}}"#,
+            mcp
+        );
+        let (adapters, issues) = parse_adapters(&[AdapterFile { name: "nebula.json".into(), text }]);
+        assert!(adapters.is_empty() && issues.len() == 1, "{}", mcp);
+    }
+}
+
+#[test]
+fn the_server_command_is_found_on_this_machine_or_explained() {
+    let dir = temp("server");
+    let node_dir = dir.join("bin");
+    fs::create_dir_all(&node_dir).unwrap();
+    let node = node_dir.join(if cfg!(windows) { "node.exe" } else { "node" });
+    fs::write(&node, "").unwrap();
+    let main = dir.join("main.js");
+
+    let err = resolve_server_command(None, &main, &[node_dir.clone()]).unwrap_err();
+    assert!(err.contains("build"), "{}", err);
+    fs::write(&main, "").unwrap();
+    let cmd = resolve_server_command(None, &main, &[node_dir.clone()]).unwrap();
+    assert_eq!(cmd.command, node.to_string_lossy());
+    assert_eq!(cmd.args, vec![main.to_string_lossy().to_string()]);
+
+    let err = resolve_server_command(None, &main, &[]).unwrap_err();
+    assert!(err.contains("Node"), "{}", err);
+
+    let other = dir.join("other-main.js");
+    fs::write(&other, "").unwrap();
+    let cmd = resolve_server_command(Some(other.to_string_lossy().to_string()), &main, &[node_dir]).unwrap();
+    assert_eq!(cmd.args, vec![other.to_string_lossy().to_string()]);
+    let _ = fs::remove_dir_all(dir);
+}

@@ -7,6 +7,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::commands::mcp_setup::McpFormat;
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Adapter {
@@ -17,6 +19,19 @@ pub struct Adapter {
     /// Project-relative files the tool reads instructions from, besides AGENTS.md.
     #[serde(default)]
     pub instruction_files: Vec<String>,
+    /// Where the tool keeps its MCP servers, if known (used by automatic MCP setup, D5).
+    pub mcp: Option<AdapterMcp>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdapterMcp {
+    pub format: McpFormat,
+    /// "~/..." paths; the first that exists wins (tools move them between versions).
+    #[serde(default)]
+    pub user_config: Vec<String>,
+    /// Project-relative config file.
+    pub project_config: Option<String>,
 }
 
 /// One adapter file: its file name and raw text.
@@ -65,6 +80,16 @@ pub fn parse_adapters(files: &[AdapterFile]) -> (Vec<Adapter>, Vec<AdapterIssue>
         if let Some(bad) = adapter.instruction_files.iter().find(|p| !is_safe_relative_path(p)) {
             report(format!("instruction file \"{}\" must be a path inside the project", bad));
             continue;
+        }
+        if let Some(mcp) = &adapter.mcp {
+            if let Some(bad) = mcp.project_config.iter().find(|p| !is_safe_relative_path(p)) {
+                report(format!("MCP project config \"{}\" must be a path inside the project", bad));
+                continue;
+            }
+            if let Some(bad) = mcp.user_config.iter().find(|p| !p.strip_prefix("~/").is_some_and(is_safe_relative_path)) {
+                report(format!("MCP user config \"{}\" must be a path in the home folder starting with ~/", bad));
+                continue;
+            }
         }
         if let Some(taken) = adapter.matches.iter().find(|id| claimed.contains_key(*id)) {
             report(format!("tool id \"{}\" is already covered by adapter \"{}\"", taken, claimed[taken]));
