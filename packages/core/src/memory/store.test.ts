@@ -112,6 +112,51 @@ describe("appendEvent", () => {
     expect(eventLines()).toHaveLength(1);
   });
 
+  it("runs a side effect inside the lock only when the guard passes, before the event is written", async () => {
+    const store = await created();
+    const order: string[] = [];
+    const blocked = await store.appendEvent(
+      { type: "phase_started", actor: agent, payload: { phase: "idea-review" } },
+      () => [{ path: "", message: "no" }],
+      async () => {
+        order.push("effect-on-blocked");
+      },
+    );
+    expect(blocked.ok).toBe(false);
+    const allowed = await store.appendEvent(
+      { type: "phase_started", actor: agent, payload: { phase: "idea-review" } },
+      () => [],
+      async () => {
+        order.push(`effect with ${eventLines().length} lines`);
+      },
+    );
+    expect(allowed.ok).toBe(true);
+    expect(order).toEqual(["effect with 1 lines"]);
+    expect(eventLines()).toHaveLength(2);
+  });
+
+  it("writes nothing when the side effect fails", async () => {
+    const store = await created();
+    const result = await store.appendEvent(
+      { type: "phase_started", actor: agent, payload: { phase: "idea-review" } },
+      () => [],
+      async () => {
+        throw new Error("disk full");
+      },
+    );
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.issues[0].message).toMatch(/disk full/);
+    expect(eventLines()).toHaveLength(1);
+  });
+
+  it("writes and reads files inside .agents atomically, refusing paths that leave it", async () => {
+    const store = await created();
+    await store.writeFile("design-notes/T-1.json", "{}\n");
+    expect(await store.readFile("design-notes/T-1.json")).toBe("{}\n");
+    await expect(store.writeFile("../outside.txt", "x")).rejects.toThrow(/inside \.agents/);
+    await expect(store.writeFile("/abs.txt", "x")).rejects.toThrow(/inside \.agents/);
+  });
+
   it("redacts secrets before writing and reports how many", async () => {
     const store = await created();
     const secret = "sk" + "-proj-" + "aB3dE5gH7jK9mN1pQ2rS4tU6vW8xY0zAbCdEfGh";

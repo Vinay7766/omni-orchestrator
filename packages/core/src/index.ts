@@ -18,6 +18,8 @@ export type { CommitChecker, GitLookup, RefResult, RefStatus } from "./memory/re
 export { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./engine/phases.js";
 export type { PhaseAction, PhaseContext, PhaseResult, CheckResult } from "./engine/phases.js";
 export type { EventGuard } from "./memory/store.js";
+export { TaskEngine, checkTaskAction, designNotePath } from "./engine/tasks.js";
+export type { TaskAction, TaskResult } from "./engine/tasks.js";
 
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES } from "./generated/contract.js";
 export type * from "./generated/types.js";

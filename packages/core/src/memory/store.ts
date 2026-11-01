@@ -4,6 +4,11 @@ import { redactJson, redactText } from "../redact.js";
 import { validateMemoryFile, type ValidationIssue } from "../validate.js";
 import type { MemoryFs } from "./fs.js";
 import { applyEvent, initialState, rebuild } from "./reduce.js";
+import { parentDir } from "./paths.js";
+import * as generated from "../generated/validators.js";
+
+// The schema's own rule for a relative path that cannot escape its base folder.
+const isMemoryRelativePath = generated.commonRelPath as unknown as (value: unknown) => boolean;
 
 export interface StoreOptions {
   /** How long to wait for another writer's lock before giving up (default 10 s). */
@@ -125,8 +130,10 @@ export class MemoryStore {
    * @param guard optional rule check run inside the lock against the current state and
    *   events; if it returns issues nothing is written. Use it for any "only if" rule so the
    *   check and the write are one atomic step (no check-then-act race between tools).
+   * @param effect optional work (for example writing a design note) run inside the lock after
+   *   the guard passes and before the event is appended. If it throws, the event is not written.
    */
-  async appendEvent(input: EventInput, guard?: EventGuard): Promise<AppendResult> {
+  async appendEvent(input: EventInput, guard?: EventGuard, effect?: () => Promise<void>): Promise<AppendResult> {
     const { value: clean, findings } = redactJson({ payload: input.payload, refs: input.refs });
     const event: Event = {
       formatVersion: 1,
@@ -150,6 +157,14 @@ export class MemoryStore {
         const next = applyEvent(state, event);
         const checked = validateMemoryFile("state", next);
         if (!checked.ok) return { ok: false as const, issues: checked.issues };
+        if (effect) {
+          try {
+            await effect();
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            return { ok: false as const, issues: [issue(`could not complete the change, nothing was recorded: ${reason}`)] };
+          }
+        }
         await this.fs.appendText(this.path("events.jsonl"), JSON.stringify(event) + "\n");
         await this.writeState(next);
         return { ok: true as const, event, redactions: findings.length };
@@ -179,6 +194,31 @@ export class MemoryStore {
       else issues.push({ line: index + 1, message: result.issues.map((i) => `${i.path} ${i.message}`).join("; ") });
     });
     return { events, issues };
+  }
+
+  /**
+   * Writes a file inside .agents/ (for example design-notes/T-1.json) via a temporary file and
+   * rename. `name` must be a relative path that stays inside .agents/.
+   */
+  async writeFile(name: string, content: string): Promise<void> {
+    const target = this.insidePath(name);
+    const folder = parentDir(target);
+    if (folder) await this.fs.mkdir(folder);
+    const temp = this.path(`.write.${newId("tmp")}`);
+    await this.fs.writeText(temp, content);
+    await this.fs.rename(temp, target);
+  }
+
+  /** Reads a file inside .agents/, or null if it does not exist. */
+  readFile(name: string): Promise<string | null> {
+    return this.fs.readText(this.insidePath(name));
+  }
+
+  private insidePath(name: string): string {
+    if (!isMemoryRelativePath(name)) {
+      throw new Error(`"${name}" must be a relative path inside .agents (no "..", no absolute paths, forward slashes)`);
+    }
+    return this.path(name);
   }
 
   /** The current state: the stored snapshot, or a rebuild if it is missing or invalid. */
