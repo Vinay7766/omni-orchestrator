@@ -5,6 +5,8 @@ export const MEMORY_FORMAT_VERSION = 1;
 export const MEMORY_DIR = ".agents";
 
 export { validateMemoryFile } from "./validate.js";
+export { redactText, redactJson } from "./redact.js";
+export type { TextFinding, JsonFinding } from "./redact.js";
 export type { SchemaName, ValidationIssue, ValidationResult } from "./validate.js";
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS } from "./generated/contract.js";
 export type * from "./generated/types.js";
