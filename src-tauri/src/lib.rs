@@ -8,6 +8,7 @@ use commands::skill_manager::*;
 use commands::sync_launcher::*;
 use commands::byok_engine::*;
 use commands::memory_fs::*;
+use commands::tool_discovery::discover_tools;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,7 +40,9 @@ pub fn run() {
             memfs_mkdir,
             memfs_rename,
             memfs_remove,
-            memfs_list
+            memfs_list,
+            // Category-based tool discovery (no fixed tool list)
+            discover_tools
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
