@@ -267,7 +267,7 @@ Green locally does not mean green in CI. Your working copy carries things a CI r
    ```
 
 3. Run CI's steps exactly, starting from the install from the lockfile (`npm ci`, `cargo build --locked`, `pip install -r requirements.txt`, ...).
-4. Clean up: `cd - && git worktree remove ../ci-check`.
+4. Clean up: `cd - && git worktree remove ../ci-check`. On Windows this can fail with "Filename too long" (deep `node_modules` paths): delete the folder with `rm -rf ../ci-check` (or `rmdir /s /q`), then run `git worktree prune`.
 
 **If CI fails anyway:** stop, reproduce the failure locally under CI's conditions before fixing it (see `debugging-and-error-recovery`), fix the cause, confirm it both in the clean checkout and in your working copy, and write down what was missed so the next check covers it.
 
