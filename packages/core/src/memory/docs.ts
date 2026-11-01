@@ -9,6 +9,7 @@ import type { MemoryStore } from "./store.js";
 
 const RECENT_DECISIONS = 5;
 const RECENT_EVENTS = 10;
+const RECENT_COMPLETED = 5;
 
 type Payload = Record<string, unknown>;
 const payloadOf = (e: Event) => e.payload as Payload;
@@ -72,6 +73,21 @@ export function renderSummary(project: Project, state: State, events: Event[]): 
     out.push("", `${done} of ${state.tasks.length} tasks done.`);
   }
   out.push("");
+
+  // HON-4: test results are what the tool reported; the server does not re-run them (v0.1).
+  const completed = ofType(events, "task_completed").slice(-RECENT_COMPLETED).reverse();
+  out.push("## Recently completed", "");
+  out.push(
+    ...(completed.length
+      ? completed.map((e) => {
+          const p = payloadOf(e);
+          const tests = (p.tests ?? {}) as Payload;
+          const title = state.tasks.find((t) => t.id === p.taskId)?.title;
+          return `- ${line(p.taskId)}${title ? ` ${line(title)}` : ""}: ${line(p.summary)}. Tests: \`${line(tests.command)}\` exit ${String(tests.exitCode)}, reported by ${line(e.actor.tool)} (not re-run)`;
+        })
+      : ["None yet."]),
+    "",
+  );
 
   const approved = (FLOWS[project.flow] as readonly string[]).filter((p) => state.phases[p]?.status === "approved");
   const documents = approved.flatMap((phase) => {

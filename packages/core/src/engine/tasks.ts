@@ -13,7 +13,7 @@ export type TaskAction =
   | { kind: "create"; taskId: string; title: string; requirements?: string[] }
   | { kind: "design"; taskId: string }
   | { kind: "trivial"; taskId: string; reason: string }
-  | { kind: "start"; taskId: string }
+  | { kind: "start"; taskId: string; declaredSkills?: string[]; acknowledgedSkills?: string[] }
   | { kind: "complete"; taskId: string; summary: string; skillsUsed: SkillUse[]; tests: TestEvidence; refs: Refs }
   | { kind: "reopen"; taskId: string; reason: string };
 
@@ -62,7 +62,13 @@ export function checkTaskAction(state: State, events: Event[], action: TaskActio
       if (task.status === "todo") {
         return problem(`task ${task.id} has no design note. Call submit_design_note first (or mark it trivial with a reason).`);
       }
-      return task.status === "designed" ? { ok: true } : problem(`task "${task.id}" is already ${task.status}`);
+      if (task.status !== "designed") return problem(`task "${task.id}" is already ${task.status}`);
+      // SKL-4: work starts only after every declared skill has been read and acknowledged.
+      const acknowledged = new Set(action.acknowledgedSkills ?? []);
+      const missing = (action.declaredSkills ?? []).filter((id) => !acknowledged.has(id));
+      return missing.length === 0
+        ? { ok: true }
+        : problem(`read and acknowledge every declared skill before starting task "${task.id}"; not yet acknowledged: ${missing.join(", ")}`);
     }
     case "complete": {
       if (task.status !== "in_progress") return problem(`task "${task.id}" is ${task.status}, not in progress`);
@@ -75,6 +81,13 @@ export function checkTaskAction(state: State, events: Event[], action: TaskActio
       }
       if (!(action.refs.files?.length || action.refs.commits?.length)) {
         return problem(`list the files or commits touched by task "${task.id}" (refs.files / refs.commits)`);
+      }
+      // SKL-8: each skill declared when the task (last) started needs its own evidence.
+      const started = events[startedAt]?.payload as { declaredSkills?: string[] } | undefined;
+      const used = new Set(action.skillsUsed.map((s) => s.skill));
+      const withoutEvidence = (started?.declaredSkills ?? []).filter((id) => !used.has(id));
+      if (withoutEvidence.length > 0) {
+        return problem(`give evidence for every declared skill of task "${task.id}"; missing: ${withoutEvidence.join(", ")}`);
       }
       if (action.tests.exitCode !== 0) {
         return problem(
@@ -106,7 +119,11 @@ function toEventInput(action: TaskAction, actor: Actor): EventInput {
     case "trivial":
       return { type: "task_marked_trivial", actor, payload: { taskId: action.taskId, reason: action.reason } };
     case "start":
-      return { type: "task_started", actor, payload: { taskId: action.taskId } };
+      return {
+        type: "task_started",
+        actor,
+        payload: { taskId: action.taskId, ...(action.declaredSkills ? { declaredSkills: action.declaredSkills } : {}) },
+      };
     case "complete":
       return {
         type: "task_completed",
@@ -145,8 +162,16 @@ export class TaskEngine {
     return this.act(actor, { kind: "trivial", taskId, reason });
   }
 
-  start(actor: Actor, taskId: string): Promise<TaskResult> {
-    return this.act(actor, { kind: "start", taskId });
+  /**
+   * Starts a designed task. `skills.declared` are the task's declared skills (SKL-4); each must
+   * be in `skills.acknowledged`. They are recorded, and completion needs evidence for each.
+   */
+  start(actor: Actor, taskId: string, skills?: { declared: string[]; acknowledged: string[] }): Promise<TaskResult> {
+    return this.act(actor, {
+      kind: "start",
+      taskId,
+      ...(skills ? { declaredSkills: [...new Set(skills.declared)], acknowledgedSkills: skills.acknowledged } : {}),
+    });
   }
 
   complete(

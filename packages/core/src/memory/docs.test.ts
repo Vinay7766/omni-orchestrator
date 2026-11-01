@@ -64,6 +64,32 @@ describe("renderSummary", () => {
     expect(md).toMatch(/\| T-2 \| Fix typo \| designed \|/);
   });
 
+  it("lists recently completed tasks with their tests, marked as reported by the tool (HON-4)", async () => {
+    await new PhaseEngine(store).start(agent, "idea-review");
+    const tasks = new TaskEngine(store);
+    for (let i = 1; i <= 6; i++) {
+      const taskId = `T-${i}`;
+      await tasks.create(agent, { taskId, title: `Task ${i}` });
+      await tasks.markTrivial(agent, taskId, "small");
+      await tasks.start(agent, taskId);
+      await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [".agents/summary.md"] } });
+      const done = await tasks.complete(agent, {
+        taskId,
+        summary: `Did ${i}`,
+        skillsUsed: [{ skill: "made-up-skill", evidence: "red then green" }],
+        tests: { command: `npm test -- part${i}`, exitCode: 0, outputTail: "ok" },
+        refs: { files: ["src/a.ts"] },
+      });
+      expect(done.ok).toBe(true);
+    }
+    const { project, state, events } = await render();
+    const recent = renderSummary(project, state, events).split("## Recently completed")[1]?.split("\n## ")[0] ?? "";
+    expect(recent).toContain(`T-6 Task 6: Did 6. Tests: \`npm test -- part6\` exit 0, reported by ${agent.tool} (not re-run)`);
+    expect(recent).toContain("T-2 Task 2");
+    expect(recent).not.toContain("T-1 Task 1");
+    expect(recent.indexOf("T-6")).toBeLessThan(recent.indexOf("T-2"));
+  });
+
   it("keeps the summary short: 5 latest decisions and 10 latest events", async () => {
     for (let i = 1; i <= 8; i++) await record("decision_recorded", { title: `Decision ${i}`, decision: "d", reason: "r" });
     for (let i = 1; i <= 15; i++) await record("lesson_recorded", { lesson: `Lesson ${i}` });

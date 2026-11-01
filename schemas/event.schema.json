@@ -271,7 +271,7 @@
       "then": {
         "properties": {
           "payload": {
-            "$ref": "#/$defs/taskOnly"
+            "$ref": "#/$defs/taskStarted"
           }
         },
         "type": "object"
@@ -513,7 +513,7 @@
         }
       }
     },
-    "taskOnly": {
+    "taskStarted": {
       "type": "object",
       "required": [
         "taskId"
@@ -522,6 +522,13 @@
       "properties": {
         "taskId": {
           "$ref": "urn:omni:schema:common#/$defs/id"
+        },
+        "declaredSkills": {
+          "description": "Skills declared for this task when it started, each acknowledged by the agent (SKL-4). Completion needs evidence for each (SKL-8). Absent in logs written before this field existed. Duplicates are removed by the task engine.",
+          "type": "array",
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/id"
+          }
         }
       }
     },

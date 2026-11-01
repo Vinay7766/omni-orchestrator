@@ -204,3 +204,58 @@ describe("reopening and phase discipline", () => {
     expect(msg(result)).toMatch(/no task "T-404"/);
   });
 });
+
+describe("declared skills (SKL-4, SKL-8)", () => {
+  const declared = ["made-up-tdd", "made-up-review"];
+
+  it("refuses to start until every declared skill is acknowledged, naming the missing ones", async () => {
+    await designedTask();
+    const result = await tasks.start(agent, "T-1", { declared, acknowledged: ["made-up-tdd"] });
+    expect(result.ok).toBe(false);
+    expect(msg(result)).toMatch(/acknowledge.*made-up-review/);
+    expect(msg(result)).not.toMatch(/made-up-tdd/);
+    expect(await status("T-1")).toBe("designed");
+  });
+
+  it("starts once all are acknowledged and records the declared skills", async () => {
+    await designedTask();
+    const result = await tasks.start(agent, "T-1", { declared, acknowledged: [...declared, "extra-one"] });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.event.payload).toEqual({ taskId: "T-1", declaredSkills: declared });
+  });
+
+  it("refuses completion when a declared skill has no evidence, naming it", async () => {
+    await designedTask();
+    await tasks.start(agent, "T-1", { declared, acknowledged: declared });
+    await memoryUpdate();
+    const result = await complete("T-1", { skillsUsed: [{ skill: "made-up-tdd", evidence: "red run before the code" }] });
+    expect(result.ok).toBe(false);
+    expect(msg(result)).toMatch(/evidence.*made-up-review/);
+    expect(await status("T-1")).toBe("in_progress");
+  });
+
+  it("completes when every declared skill has evidence, extra skills allowed", async () => {
+    await designedTask();
+    await tasks.start(agent, "T-1", { declared, acknowledged: declared });
+    await memoryUpdate();
+    const evidence = [...declared, "extra-one"].map((skill) => ({ skill, evidence: `how ${skill} was followed` }));
+    expect((await complete("T-1", { skillsUsed: evidence })).ok).toBe(true);
+  });
+
+  it("uses the skills declared at the latest start after a reopen", async () => {
+    await designedTask();
+    await tasks.start(agent, "T-1", { declared, acknowledged: declared });
+    await tasks.reopen(agent, "T-1", "approach was wrong");
+    await tasks.markTrivial(agent, "T-1", "now a one-line change");
+    await tasks.start(agent, "T-1", { declared: ["made-up-tdd"], acknowledged: ["made-up-tdd"] });
+    await memoryUpdate();
+    expect((await complete("T-1", { skillsUsed: [{ skill: "made-up-tdd", evidence: "red then green" }] })).ok).toBe(true);
+  });
+
+  it("keeps working for tasks started without declared skills (older logs)", async () => {
+    await designedTask();
+    expect((await tasks.start(agent, "T-1")).ok).toBe(true);
+    await memoryUpdate();
+    expect((await complete("T-1")).ok).toBe(true);
+  });
+});

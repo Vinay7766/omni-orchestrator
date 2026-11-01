@@ -441,10 +441,14 @@ export interface EventChangesRequested {
 }
 /**
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
- * via the `definition` "event_taskOnly".
+ * via the `definition` "event_taskStarted".
  */
-export interface EventTaskOnly {
+export interface EventTaskStarted {
   taskId: CommonId;
+  /**
+   * Skills declared for this task when it started, each acknowledged by the agent (SKL-4). Completion needs evidence for each (SKL-8). Absent in logs written before this field existed. Duplicates are removed by the task engine.
+   */
+  declaredSkills?: CommonId[];
 }
 /**
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema

@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0002",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "task_started",
+  "actor": { "kind": "agent", "tool": "some-future-ai-tool" },
+  "payload": { "taskId": "T-12", "declaredSkills": ["test-driven-development", "code-review-and-quality"] }
+}
