@@ -7,6 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod";
 import { buildContext, type ContextDeps } from "./context.js";
 import { getPhaseSkills, submitPhase } from "./phase-tools.js";
+import { createTasks, markTaskTrivial, submitDesignNote } from "./task-tools.js";
 import type { Event } from "@omni/core";
 import { SERVER_INFO } from "./info.js";
 
@@ -140,6 +141,71 @@ export function createServer(deps: ContextDeps): McpServer {
       toolResult("submit_phase", () => submitPhase(deps, agentActor(server, model), input)),
   );
 
+  server.registerTool(
+    "create_tasks",
+    {
+      title: "Create build tasks",
+      description:
+        "Create the build tasks from the approved architecture, in order. The whole list is checked first: if any task is " +
+        "rejected (repeated or existing id, phase under review), none are created.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        tasks: z
+          .array(
+            z.object({
+              taskId: z.string().regex(/^[A-Za-z0-9._:-]{1,200}$/).describe("Short id, e.g. T-1."),
+              title: z.string().min(1).max(300),
+              requirements: z.array(z.string().min(1)).optional().describe("Requirement ids this task delivers."),
+            }),
+          )
+          .min(1),
+      },
+      outputSchema: { created: z.array(z.string()) },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ projectPath, tasks }) =>
+      toolResult("create_tasks", () => createTasks(deps, agentActor(server), { projectPath, tasks })),
+  );
+
+  server.registerTool(
+    "submit_design_note",
+    {
+      title: "Submit a task's design note",
+      description:
+        "Attach the design note a coding task needs before it can start (solution-design). Fields: formatVersion 1, " +
+        "taskId, problem, constraints[], approaches[{name, idea, complexity, risks}] (two or more, or singleApproachReason), " +
+        "chosen, reason, switchIf, edgeCases[], generalisationCheck, assumptions[]. Invalid notes are rejected with the " +
+        "problems listed and nothing saved.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        note: z.record(z.string(), z.unknown()).describe("The design note (validated against the design-note schema)."),
+      },
+      outputSchema: { taskId: z.string(), status: z.literal("designed"), notePath: z.string() },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ projectPath, note }) =>
+      toolResult("submit_design_note", () => submitDesignNote(deps, agentActor(server), { projectPath, note })),
+  );
+
+  server.registerTool(
+    "mark_task_trivial",
+    {
+      title: "Mark a task trivial",
+      description:
+        "For a genuinely trivial task (a rename, a typo, a config value), record why it needs no design note so it can start. " +
+        "Only a task that has no design yet can be marked trivial.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        taskId: z.string().min(1),
+        reason: z.string().min(1).describe("Why no design note is needed."),
+      },
+      outputSchema: { taskId: z.string(), status: z.literal("designed") },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ projectPath, taskId, reason }) =>
+      toolResult("mark_task_trivial", () => markTaskTrivial(deps, agentActor(server), { projectPath, taskId, reason })),
+  );
+
   return server;
 }
 
@@ -147,7 +213,7 @@ export function createServer(deps: ContextDeps): McpServer {
  * Whoever calls through MCP is an agent, named by the client's own clientInfo. Nothing a client
  * sends can make it a person, so approval stays with the user (GATE-2).
  */
-function agentActor(server: McpServer, model: string | undefined): Event["actor"] {
+function agentActor(server: McpServer, model?: string): Event["actor"] {
   const name = server.server.getClientVersion()?.name?.trim().slice(0, 200);
   return { kind: "agent", tool: name || "unnamed-mcp-client", ...(model ? { model } : {}) };
 }

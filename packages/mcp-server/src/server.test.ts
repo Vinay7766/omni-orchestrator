@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await connect(root);
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    expect(names).toEqual(["get_context", "get_phase_skills", "submit_phase"]);
+    expect(names).toEqual(["get_context", "get_phase_skills", "submit_phase", "create_tasks", "submit_design_note", "mark_task_trivial"]);
     expect(names.filter((n) => /approve|request_changes|review/i.test(n))).toEqual([]);
     for (const name of ["get_context", "get_phase_skills"]) {
       const tool = tools.find((t) => t.name === name)!;
@@ -119,6 +119,16 @@ describe("MCP server", () => {
       });
       expect(result.isError, JSON.stringify(skillsUsed)).toBe(true);
     }
+  });
+
+  it("creates tasks and takes a design note through MCP", async () => {
+    await connect(root);
+    const created = await client.callTool({ name: "create_tasks", arguments: { tasks: [{ taskId: "T-2", title: "Screens" }] } });
+    expect(created.structuredContent).toEqual({ created: ["T-2"] });
+    const bad = await client.callTool({ name: "submit_design_note", arguments: { note: { taskId: "T-2" } } });
+    expect(bad.isError).toBe(true);
+    const trivial = await client.callTool({ name: "mark_task_trivial", arguments: { taskId: "T-2", reason: "Rename only" } });
+    expect(trivial.structuredContent).toEqual({ taskId: "T-2", status: "designed" });
   });
 
   it("returns a tool error for a skill outside the phase", async () => {
