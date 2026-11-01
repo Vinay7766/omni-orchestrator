@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:skill-catalog",
+  "title": "SkillCatalog",
+  "description": "skills/catalog.json: metadata for every bundled skill. Content lives in skills/<id>/SKILL.md. Read by the Rust build (embedded in the app) and the TypeScript core.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "description", "category", "attribution", "enabled", "isCustom", "license", "phases", "domains"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "maxLength": 100, "description": "Also the folder name under skills/." },
+      "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+      "description": { "type": "string", "minLength": 20 },
+      "category": { "enum": ["engineering", "architecture", "testing", "security", "strategy", "marketing", "research", "custom"] },
+      "attribution": {
+        "type": "object",
+        "required": ["name", "sourceUrl", "verified"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "role": { "type": "string" },
+          "sourceUrl": { "type": "string", "pattern": "^https://" },
+          "verified": { "type": "boolean" }
+        }
+      },
+      "enabled": { "type": "boolean" },
+      "isCustom": { "type": "boolean" },
+      "license": { "type": "string", "minLength": 1, "description": "SPDX id, or \"unverified\" until checked." },
+      "phases": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "type": "string", "anyOf": [{ "$ref": "urn:omni:schema:common#/$defs/phaseId" }, { "const": "all" }] }
+      },
+      "domains": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } }
+    }
+  }
+}

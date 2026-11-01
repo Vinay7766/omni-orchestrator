@@ -125,6 +125,14 @@ fn rust_types_reject_invalid_enum_values() {
 }
 
 #[test]
+fn the_real_skill_catalog_matches_its_schema() {
+    let catalog = read_json(&schemas_dir().join("..").join("skills").join("catalog.json"));
+    let validator = validator_for("skill-catalog");
+    let errors: Vec<String> = validator.iter_errors(&catalog).take(5).map(|e| e.to_string()).collect();
+    assert!(errors.is_empty(), "skills/catalog.json does not match the skill-catalog schema: {:?}", errors);
+}
+
+#[test]
 fn event_type_enum_matches_the_schema_exactly() {
     let schema = read_json(&schemas_dir().join("event.schema.json"));
     let mut in_schema: Vec<String> = schema["properties"]["type"]["enum"]

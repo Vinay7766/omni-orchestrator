@@ -56,6 +56,52 @@ export type CommonFlow = "build" | "pitch";
  */
 export type CommonPhaseId = string;
 /**
+ * skills/catalog.json: metadata for every bundled skill. Content lives in skills/<id>/SKILL.md. Read by the Rust build (embedded in the app) and the TypeScript core.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "SkillCatalog".
+ */
+export type SkillCatalog = {
+  /**
+   * Also the folder name under skills/.
+   */
+  id: string;
+  name: string;
+  description: string;
+  category:
+    | "engineering"
+    | "architecture"
+    | "testing"
+    | "security"
+    | "strategy"
+    | "marketing"
+    | "research"
+    | "custom";
+  attribution: {
+    name: string;
+    role?: string;
+    sourceUrl: string;
+    verified: boolean;
+  };
+  enabled: boolean;
+  isCustom: boolean;
+  /**
+   * SPDX id, or "unverified" until checked.
+   */
+  license: string;
+  /**
+   * @minItems 1
+   */
+  phases: [
+    (CommonPhaseId | "all") & string & (CommonPhaseId | "all") & string,
+    ...((CommonPhaseId | "all") & string & (CommonPhaseId | "all") & string)[]
+  ];
+  /**
+   * @minItems 1
+   */
+  domains: [string, ...string[]];
+}[];
+/**
  * Path relative to the project root, forward slashes, never absolute, never leaving the project.
  */
 export type CommonRelPath1 = string;
@@ -68,6 +114,7 @@ export interface MemoryFileTypes {
   "design-note": DesignNote;
   event: Event;
   project: Project;
+  "skill-catalog": SkillCatalog;
   "skills-config": SkillsConfig;
   state: State;
 }

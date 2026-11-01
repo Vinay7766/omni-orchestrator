@@ -1,0 +1,23 @@
+[
+  {
+    "id": "made-up-skill",
+    "name": "made-up-skill",
+    "description": "A skill that exists only in this test fixture.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Someone",
+      "sourceUrl": "http://example.com",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "build",
+      "review"
+    ],
+    "domains": [
+      "testing"
+    ]
+  }
+]
