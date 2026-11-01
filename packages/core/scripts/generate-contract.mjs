@@ -48,6 +48,12 @@ function buildValidators(schemas, fileNames) {
   const ajv = new Ajv2020({ allErrors: true, strict: true, code: { source: true, esm: true } });
   for (const { schema } of schemas) ajv.addSchema(schema);
   const refs = Object.fromEntries(fileNames.map((n) => [exportName(n), `${URN}${n}`]));
+  // Shared definitions get validators too (exported as common<Name>), so code can check a
+  // single value, such as a path or commit SHA, with exactly the schema's rule.
+  const common = schemas.find((s) => s.name === "common");
+  for (const def of Object.keys(common?.schema.$defs ?? {})) {
+    refs[`common${pascal(def)}`] = `${URN}common#/$defs/${def}`;
+  }
   const code = standaloneCode(ajv, refs).replaceAll('require("ajv/dist/runtime/ucs2length").default', "__ucs2length");
   const leftover = code.match(/require\("[^"]+"\)/g);
   if (leftover) {

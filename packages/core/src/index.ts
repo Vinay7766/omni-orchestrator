@@ -12,6 +12,8 @@ export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
 export { findProject, LINK_FILE } from "./memory/discover.js";
 export type { FindProjectResult } from "./memory/discover.js";
 export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/paths.js";
+export { checkRefs } from "./memory/refs.js";
+export type { CommitChecker, GitLookup, RefResult, RefStatus } from "./memory/refs.js";
 
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS } from "./generated/contract.js";
 export type * from "./generated/types.js";
