@@ -7,6 +7,7 @@ use commands::tool_detector::*;
 use commands::skill_manager::*;
 use commands::sync_launcher::*;
 use commands::byok_engine::*;
+use commands::memory_fs::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,7 +29,17 @@ pub fn run() {
             launch_and_build,
             prepare_project_staging,
             execute_strategic_teardown,
-            update_skill_content
+            update_skill_content,
+            // Project memory file access for @omni/core in the web view (path policy in memory_fs.rs)
+            memfs_read_text,
+            memfs_write_text,
+            memfs_append_text,
+            memfs_create_exclusive,
+            memfs_exists,
+            memfs_mkdir,
+            memfs_rename,
+            memfs_remove,
+            memfs_list
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
