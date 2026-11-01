@@ -21,7 +21,7 @@
             "type": "array",
             "minItems": 1,
             "uniqueItems": true,
-            "items": { "anyOf": [{ "$ref": "urn:omni:schema:common#/$defs/phaseId" }, { "const": "all" }] }
+            "items": { "type": "string", "anyOf": [{ "$ref": "urn:omni:schema:common#/$defs/phaseId" }, { "const": "all" }] }
           }
         }
       }

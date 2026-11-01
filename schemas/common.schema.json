@@ -5,7 +5,11 @@
   "$defs": {
     "formatVersion": { "type": "integer", "const": 1, "description": "Version of this file format. Changes are additive; a breaking change increments this." },
     "id": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$" },
-    "timestamp": { "type": "string", "format": "date-time", "description": "RFC 3339 timestamp with timezone." },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "RFC 3339 timestamp with timezone. A pattern rather than format: date-time so every validator checks it identically (calendar validity such as Feb 30 is checked in code where it matters)."
+    },
     "phaseId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "A phase id from schemas/phases.json (checked in code; schemas cannot read that list)." },
     "relPath": {
       "type": "string",

@@ -3,7 +3,6 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 
 // The contract lives at the repository root, shared with the Rust app.
 const schemasDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "schemas");
@@ -11,7 +10,6 @@ const fixturesDir = join(schemasDir, "fixtures");
 
 function loadValidator() {
   const ajv = new Ajv2020({ allErrors: true, strict: true });
-  addFormats(ajv);
   for (const file of readdirSync(schemasDir).filter((f) => f.endsWith(".schema.json"))) {
     ajv.addSchema(JSON.parse(readFileSync(join(schemasDir, file), "utf8")));
   }
