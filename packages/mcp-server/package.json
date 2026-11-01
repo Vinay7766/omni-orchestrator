@@ -6,6 +6,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "omni-orchestrator-mcp": "./dist/main.js"
+  },
   "files": [
     "dist"
   ],
@@ -14,6 +17,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@omni/core": "0.1.0"
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@omni/core": "0.1.0",
+    "zod": "4.6.7"
   }
 }
