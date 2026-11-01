@@ -276,3 +276,84 @@ fn the_server_command_is_found_on_this_machine_or_explained() {
     assert_eq!(cmd.args, vec![other.to_string_lossy().to_string()]);
     let _ = fs::remove_dir_all(dir);
 }
+
+/// Real-machine check (D5 acceptance), run on request only:
+/// OMNI_VERIFY_PROJECT=<throwaway project> cargo test --test mcp_setup_tests real_machine -- --ignored --nocapture
+/// Uses real discovery and the shipped adapters, but writes only PROJECT-level configs inside the
+/// given project; a tool whose only known config is a per-user file is reported and skipped.
+#[test]
+#[ignore]
+fn real_machine_project_setup() {
+    use tauri_app_lib::commands::adapters::{adapter_for, bundled_adapters};
+    use tauri_app_lib::commands::tool_discovery::{discover, SystemView};
+
+    let project = PathBuf::from(std::env::var("OMNI_VERIFY_PROJECT").expect("set OMNI_VERIFY_PROJECT to a throwaway project"));
+    assert!(project.join(".agents").join("project.json").is_file(), "not an OmniOrchestrator project");
+    let view = SystemView::from_environment();
+    let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("main.js");
+    let server = resolve_server_command(None, &built, &view.path_dirs).expect("server command");
+    let (adapters, _) = bundled_adapters();
+    let home = project.join("no-home-writes"); // user configs are never chosen below
+    for tool in discover(&view).iter().filter(|t| t.capability == Some(3)) {
+        let adapter = adapter_for(&tool.id, &adapters);
+        let has_project_config = adapter.and_then(|a| a.mcp.as_ref()).and_then(|m| m.project_config.as_ref()).is_some();
+        if !has_project_config {
+            println!("SKIP  {:<16} no project-level config known (would use a per-user file)", tool.id);
+            continue;
+        }
+        match setup_tool(tool, adapter, &home, Some(&project), &server) {
+            Ok(r) => println!("OK    {:<16} {:?} {}", tool.id, r.status, r.config_path),
+            Err(e) => println!("ERROR {:<16} {}", tool.id, e.lines().next().unwrap_or("")),
+        }
+    }
+}
+
+/// Real-world files, without touching them (D5 acceptance), run on request only:
+/// OMNI_VERIFY_COPIES=<folder of COPIES of real MCP configs> cargo test --test mcp_setup_tests real_config_copies -- --ignored --nocapture
+/// Merges our entry into each copy and checks that every original key and server survived.
+/// Prints counts only, never contents (these files can hold keys).
+#[test]
+#[ignore]
+fn real_config_copies_keep_everything() {
+    let dir = PathBuf::from(std::env::var("OMNI_VERIFY_COPIES").expect("set OMNI_VERIFY_COPIES"));
+    let mut names: Vec<_> = fs::read_dir(&dir).unwrap().map(|e| e.unwrap().path()).collect();
+    names.sort();
+    for path in names {
+        let original = fs::read_to_string(&path).unwrap();
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        if original.trim().is_empty() {
+            let (_, status, _) = merge_mcp_entry(Some(&original), None, "omni-orchestrator", &entry()).unwrap();
+            println!("EMPTY   {:<28} {:?} (an empty file has nothing to keep)", name, status);
+            continue;
+        }
+        match merge_mcp_entry(Some(&original), None, "omni-orchestrator", &entry()) {
+            Err(why) => println!("REFUSED {:<28} {}", name, why),
+            Ok((text, status, format)) => {
+                let before: Value = serde_json::from_str(&original).unwrap();
+                let after: Value = serde_json::from_str(&text).unwrap();
+                let (b, a) = (before.as_object().unwrap(), after.as_object().unwrap());
+                let mut lost = 0;
+                for (key, value) in b {
+                    if key == format.key() {
+                        for (server, cfg) in value.as_object().unwrap() {
+                            if server != "omni-orchestrator" && after[key].get(server) != Some(cfg) {
+                                lost += 1;
+                            }
+                        }
+                    } else if a.get(key) != Some(value) {
+                        lost += 1;
+                    }
+                }
+                let order_kept = b.keys().collect::<Vec<_>>() == a.keys().filter(|k| b.contains_key(*k)).collect::<Vec<_>>();
+                let servers = before.get(format.key()).and_then(|s| s.as_object()).map(|s| s.len()).unwrap_or(0);
+                println!(
+                    "{:<7} {:<28} {:?} keys={} servers_before={} lost={} order_kept={}",
+                    if lost == 0 && order_kept { "OK" } else { "LOSS" },
+                    name, status, b.len(), servers, lost, order_kept
+                );
+                assert_eq!(lost, 0, "{}", name);
+                assert!(order_kept, "{}", name);
+            }
+        }
+    }
+}
