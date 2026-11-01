@@ -5,6 +5,7 @@ import {
   MemoryStore,
   resolvePhaseSkills,
   validateMemoryFile,
+  type CommitChecker,
   type MemoryFs,
   type ResolvedSkill,
   type SkillSource,
@@ -15,6 +16,8 @@ export interface ToolDeps {
   skills: SkillSource;
   /** Where the server was started; the default place to look for the project. */
   startDir: string;
+  /** Checks that referenced commits exist (git in Node). Without it, commits are reported unverified. */
+  commits?: CommitChecker;
 }
 
 export type OpenResult =

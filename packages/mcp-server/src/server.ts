@@ -7,7 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod";
 import { buildContext, type ContextDeps } from "./context.js";
 import { getPhaseSkills, submitPhase } from "./phase-tools.js";
-import { createTasks, markTaskTrivial, submitDesignNote } from "./task-tools.js";
+import { completeTask, createTasks, markTaskTrivial, startTask, submitDesignNote } from "./task-tools.js";
 import type { Event } from "@omni/core";
 import { SERVER_INFO } from "./info.js";
 
@@ -204,6 +204,72 @@ export function createServer(deps: ContextDeps): McpServer {
     },
     async ({ projectPath, taskId, reason }) =>
       toolResult("mark_task_trivial", () => markTaskTrivial(deps, agentActor(server), { projectPath, taskId, reason })),
+  );
+
+  server.registerTool(
+    "start_task",
+    {
+      title: "Start a task",
+      description:
+        "Start a designed task. The first call returns the task's declared skills in full and does not start it: read and " +
+        "follow them, then call again with acknowledgedSkills listing every one. Completing the task later needs evidence " +
+        "for each declared skill.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        taskId: z.string().min(1),
+        acknowledgedSkills: z.array(z.string().min(1)).optional().describe("Ids of the declared skills you have read and will follow."),
+      },
+      outputSchema: {
+        taskId: z.string(),
+        started: z.boolean(),
+        declaredSkills: z.array(z.object({ id: z.string(), name: z.string(), content: z.string().optional() })),
+        message: z.string(),
+        warnings: z.array(z.string()),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ projectPath, taskId, acknowledgedSkills }) =>
+      toolResult("start_task", () =>
+        startTask(deps, agentActor(server), { projectPath, taskId, ...(acknowledgedSkills ? { acknowledgedSkills } : {}) }),
+      ),
+  );
+
+  server.registerTool(
+    "complete_task",
+    {
+      title: "Complete a task",
+      description:
+        "Complete an in-progress task with: a summary; every skill used with evidence (each declared skill needs some); the " +
+        "test command you actually ran with its exit code and the last lines of output (recorded as reported by you; a " +
+        "failing run keeps the task in progress); the files and commits you touched; and the memory files you updated. " +
+        "Everything is checked before anything is saved.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        taskId: z.string().min(1),
+        summary: z.string().min(1),
+        skillsUsed: z.array(z.object({ skill: z.string().min(1), evidence: z.string().min(1) })).min(1),
+        tests: z.object({
+          command: z.string().min(1).describe("The exact command you ran."),
+          exitCode: z.number().int(),
+          outputTail: z.string().describe("The last lines of its output."),
+        }),
+        refs: z.object({ files: z.array(projectFile).optional(), commits: z.array(z.string().min(1)).optional() }),
+        memoryUpdate: z
+          .object({ files: z.array(projectFile).min(1) })
+          .optional()
+          .describe("Memory files updated for this task. Needed unless the memory update was already recorded."),
+        model: z.string().min(1).max(200).optional(),
+      },
+      outputSchema: {
+        taskId: z.string(),
+        status: z.literal("done"),
+        eventId: z.string(),
+        testsNote: z.string(),
+        warnings: z.array(z.string()),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ model, ...input }) => toolResult("complete_task", () => completeTask(deps, agentActor(server, model), input)),
   );
 
   return server;

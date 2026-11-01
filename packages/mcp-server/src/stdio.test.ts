@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -48,6 +48,38 @@ describe("stdio server", () => {
       // The real catalog maps skills to the build phase (A4 guarantees every phase has some).
       expect(ctx.skills.some((s) => s.reason === "phase")).toBe(true);
       expect(ctx.warnings.filter((w) => /catalog/i.test(w))).toEqual([]);
+    } finally {
+      await client.close();
+    }
+  }, 60_000);
+
+  it("checks cited commits against the project's git repository", async () => {
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    writeFileSync(join(root, "src", "parser.ts"), "export {};\n");
+    const client = new Client({ name: "made-up-client", version: "0.0.1" });
+    await client.connect(
+      new StdioClientTransport({ command: process.execPath, args: [join(pkgDir, "dist", "main.js")], cwd: root, stderr: "pipe" }),
+    );
+    try {
+      const call = async (name: string, args: Record<string, unknown>) => {
+        const result = await client.callTool({ name, arguments: args });
+        return { result, text: (result.content as { text: string }[])[0]?.text ?? "" };
+      };
+      await call("create_tasks", { tasks: [{ taskId: "T-1", title: "Parser" }] });
+      await call("mark_task_trivial", { taskId: "T-1", reason: "small" });
+      const first = await call("start_task", { taskId: "T-1" });
+      const declared = (first.result.structuredContent as { declaredSkills: { id: string }[] }).declaredSkills.map((s) => s.id);
+      await call("start_task", { taskId: "T-1", acknowledgedSkills: declared });
+      const done = await call("complete_task", {
+        taskId: "T-1",
+        summary: "Parser",
+        skillsUsed: declared.map((skill) => ({ skill, evidence: "followed" })),
+        tests: { command: "npm test", exitCode: 0, outputTail: "ok" },
+        refs: { files: ["src/parser.ts"], commits: ["abcdef1"] },
+        memoryUpdate: { files: ["src/parser.ts"] },
+      });
+      expect(done.result.isError).toBe(true);
+      expect(done.text).toMatch(/abcdef1: missing/);
     } finally {
       await client.close();
     }

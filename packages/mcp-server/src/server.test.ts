@@ -67,7 +67,16 @@ describe("MCP server", () => {
     await connect(root);
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    expect(names).toEqual(["get_context", "get_phase_skills", "submit_phase", "create_tasks", "submit_design_note", "mark_task_trivial"]);
+    expect(names).toEqual([
+      "get_context",
+      "get_phase_skills",
+      "submit_phase",
+      "create_tasks",
+      "submit_design_note",
+      "mark_task_trivial",
+      "start_task",
+      "complete_task",
+    ]);
     expect(names.filter((n) => /approve|request_changes|review/i.test(n))).toEqual([]);
     for (const name of ["get_context", "get_phase_skills"]) {
       const tool = tools.find((t) => t.name === name)!;
@@ -129,6 +138,18 @@ describe("MCP server", () => {
     expect(bad.isError).toBe(true);
     const trivial = await client.callTool({ name: "mark_task_trivial", arguments: { taskId: "T-2", reason: "Rename only" } });
     expect(trivial.structuredContent).toEqual({ taskId: "T-2", status: "designed" });
+  });
+
+  it("start_task first hands over the declared skills, through MCP", async () => {
+    await connect(root);
+    await client.callTool({ name: "create_tasks", arguments: { tasks: [{ taskId: "T-2", title: "Screens" }] } });
+    await client.callTool({ name: "mark_task_trivial", arguments: { taskId: "T-2", reason: "Rename only" } });
+    const first = await client.callTool({ name: "start_task", arguments: { taskId: "T-2" } });
+    expect(first.structuredContent).toMatchObject({ started: false, declaredSkills: [{ id: "build-well", content: expect.stringContaining("Do it well") }] });
+    const second = await client.callTool({ name: "start_task", arguments: { taskId: "T-2", acknowledgedSkills: ["build-well"] } });
+    expect(second.structuredContent).toMatchObject({ started: true });
+    const incomplete = await client.callTool({ name: "complete_task", arguments: { taskId: "T-2", summary: "x" } });
+    expect(incomplete.isError).toBe(true);
   });
 
   it("returns a tool error for a skill outside the phase", async () => {
