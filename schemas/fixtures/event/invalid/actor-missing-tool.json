@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "phase_started",
+  "actor": {
+    "kind": "agent"
+  },
+  "payload": {
+    "phase": "prd"
+  }
+}

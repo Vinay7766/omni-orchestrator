@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "phase_submitted",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "phase": "prd",
+    "documents": [
+      "docs/PRD.md"
+    ],
+    "skillsUsed": [
+      {
+        "skill": "spec-driven-development",
+        "evidence": "PRD sections per skill template"
+      }
+    ],
+    "understandingCheck": "docs/understanding-check.md"
+  }
+}

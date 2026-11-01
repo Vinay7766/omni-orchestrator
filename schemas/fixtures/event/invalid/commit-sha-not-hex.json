@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "decision_recorded",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "title": "t",
+    "decision": "d",
+    "reason": "r"
+  },
+  "refs": {
+    "commits": [
+      "not-a-sha"
+    ]
+  }
+}

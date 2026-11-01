@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:common",
+  "title": "Shared definitions for project memory files",
+  "$defs": {
+    "formatVersion": { "type": "integer", "const": 1, "description": "Version of this file format. Changes are additive; a breaking change increments this." },
+    "id": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$" },
+    "timestamp": { "type": "string", "format": "date-time", "description": "RFC 3339 timestamp with timezone." },
+    "phaseId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "A phase id from schemas/phases.json (checked in code; schemas cannot read that list)." },
+    "relPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path relative to the project root, forward slashes, never absolute, never leaving the project.",
+      "pattern": "^[^/\\\\:][^\\\\:]*$",
+      "not": { "pattern": "(^|/)\\.\\.(/|$)" }
+    },
+    "commitSha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "nonEmptyText": { "type": "string", "minLength": 1 },
+    "flow": { "enum": ["build", "pitch"] },
+    "actor": {
+      "type": "object",
+      "description": "Who caused an event. Tool and model are free text: no fixed tool or model list.",
+      "required": ["kind", "tool"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["agent", "human"] },
+        "tool": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "model": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "skillUse": {
+      "type": "object",
+      "description": "A skill the agent followed, with evidence (SKL-8). A name alone is not enough.",
+      "required": ["skill", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "skill": { "$ref": "#/$defs/id" },
+        "evidence": { "$ref": "#/$defs/nonEmptyText" }
+      }
+    },
+    "testEvidence": {
+      "type": "object",
+      "description": "Proof that tests actually ran (HON-4).",
+      "required": ["command", "exitCode", "outputTail"],
+      "additionalProperties": false,
+      "properties": {
+        "command": { "$ref": "#/$defs/nonEmptyText" },
+        "exitCode": { "type": "integer" },
+        "outputTail": { "type": "string", "maxLength": 20000 }
+      }
+    }
+  }
+}

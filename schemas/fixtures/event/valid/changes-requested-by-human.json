@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "changes_requested",
+  "actor": {
+    "kind": "human",
+    "tool": "omni-desktop"
+  },
+  "payload": {
+    "phase": "prd",
+    "notes": "Add the tool discovery requirement"
+  }
+}

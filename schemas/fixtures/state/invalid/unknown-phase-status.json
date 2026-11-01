@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "flow": "build",
+  "currentPhase": "build",
+  "phases": {
+    "build": {
+      "status": "almost_done"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T-1",
+      "title": "Set up memory store",
+      "status": "designed",
+      "designNote": ".agents/design-notes/T-1.json"
+    },
+    {
+      "id": "T-2",
+      "title": "Fix typo",
+      "status": "done",
+      "trivialReason": "one-word text change"
+    }
+  ],
+  "lastEventId": "evt-0042"
+}

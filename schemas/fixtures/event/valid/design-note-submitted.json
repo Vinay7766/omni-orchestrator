@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "design_note_submitted",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "taskId": "T-12",
+    "notePath": ".agents/design-notes/T-12.json"
+  }
+}

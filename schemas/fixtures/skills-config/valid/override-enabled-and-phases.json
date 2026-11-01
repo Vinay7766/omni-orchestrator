@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "skills": {
+    "test-driven-development": {
+      "enabled": false
+    },
+    "solution-design": {
+      "phases": [
+        "build",
+        "review"
+      ]
+    },
+    "token-budget-advisor": {
+      "phases": [
+        "all"
+      ]
+    }
+  }
+}

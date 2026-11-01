@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "tools_selected",
+  "actor": {
+    "kind": "human",
+    "tool": "omni-desktop"
+  },
+  "payload": {
+    "tools": [
+      {
+        "id": "made-up-editor",
+        "name": "Made Up Editor",
+        "capabilityLevel": 2,
+        "models": [
+          "model-x"
+        ]
+      }
+    ]
+  }
+}

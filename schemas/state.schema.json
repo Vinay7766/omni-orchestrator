@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:state",
+  "title": "State",
+  "description": ".agents/state.json: current snapshot rebuilt from events.jsonl. Never the source of truth; safe to delete and rebuild.",
+  "type": "object",
+  "required": ["formatVersion", "flow", "currentPhase", "phases", "tasks", "lastEventId"],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": { "$ref": "urn:omni:schema:common#/$defs/formatVersion" },
+    "flow": { "$ref": "urn:omni:schema:common#/$defs/flow" },
+    "currentPhase": { "anyOf": [{ "$ref": "urn:omni:schema:common#/$defs/phaseId" }, { "type": "null" }] },
+    "phases": {
+      "type": "object",
+      "propertyNames": { "$ref": "urn:omni:schema:common#/$defs/phaseId" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "additionalProperties": false,
+        "properties": {
+          "status": { "enum": ["not_started", "in_progress", "awaiting_review", "changes_requested", "approved"] },
+          "submittedAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" },
+          "decidedAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "urn:omni:schema:common#/$defs/id" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "status": { "enum": ["todo", "designed", "in_progress", "done"] },
+          "designNote": { "$ref": "urn:omni:schema:common#/$defs/relPath" },
+          "trivialReason": { "$ref": "urn:omni:schema:common#/$defs/nonEmptyText" },
+          "assignedTool": { "$ref": "urn:omni:schema:common#/$defs/id" }
+        }
+      }
+    },
+    "lastEventId": { "anyOf": [{ "$ref": "urn:omni:schema:common#/$defs/id" }, { "type": "null" }] }
+  }
+}

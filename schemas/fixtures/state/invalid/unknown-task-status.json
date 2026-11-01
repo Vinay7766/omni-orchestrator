@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "flow": "build",
+  "currentPhase": "build",
+  "phases": {
+    "idea-review": {
+      "status": "approved",
+      "submittedAt": "2026-11-01T10:00:00Z",
+      "decidedAt": "2026-11-01T10:00:00Z"
+    },
+    "build": {
+      "status": "in_progress"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T-1",
+      "title": "x",
+      "status": "blocked"
+    }
+  ],
+  "lastEventId": "evt-0042"
+}

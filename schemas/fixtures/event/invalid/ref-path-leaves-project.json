@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "memory_updated",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "files": [
+      "docs/../../outside.md"
+    ]
+  }
+}

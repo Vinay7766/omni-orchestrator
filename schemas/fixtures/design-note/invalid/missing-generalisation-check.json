@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "taskId": "T-1",
+  "problem": "Append events safely from several tools at once",
+  "constraints": [
+    "several processes may write",
+    "files must stay hand-editable"
+  ],
+  "approaches": [
+    {
+      "name": "lock-file",
+      "idea": "exclusive lock file around append",
+      "complexity": "O(1) per append",
+      "risks": "stale lock after crash"
+    },
+    {
+      "name": "sqlite",
+      "idea": "store events in SQLite",
+      "complexity": "O(log n)",
+      "risks": "not hand-editable"
+    }
+  ],
+  "chosen": "lock-file",
+  "reason": "keeps files editable (MEM-5)",
+  "switchIf": "lock contention measured above 50 ms",
+  "edgeCases": [
+    "crash while holding lock",
+    "two writers at the same millisecond"
+  ],
+  "assumptions": []
+}

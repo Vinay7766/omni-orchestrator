@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "task_completed",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "taskId": "T-12",
+    "summary": "Done",
+    "skillsUsed": [
+      {
+        "skill": "test-driven-development",
+        "evidence": "failing run recorded in events evt-0040 before code"
+      }
+    ]
+  }
+}

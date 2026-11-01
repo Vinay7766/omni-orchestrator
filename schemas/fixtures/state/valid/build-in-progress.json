@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "flow": "build",
+  "currentPhase": "build",
+  "phases": {
+    "idea-review": {
+      "status": "approved",
+      "submittedAt": "2026-11-01T10:00:00Z",
+      "decidedAt": "2026-11-01T10:00:00Z"
+    },
+    "build": {
+      "status": "in_progress"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T-1",
+      "title": "Set up memory store",
+      "status": "designed",
+      "designNote": ".agents/design-notes/T-1.json"
+    },
+    {
+      "id": "T-2",
+      "title": "Fix typo",
+      "status": "done",
+      "trivialReason": "one-word text change"
+    }
+  ],
+  "lastEventId": "evt-0042"
+}

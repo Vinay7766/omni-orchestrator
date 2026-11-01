@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-01T10:00:00Z",
+  "type": "task_completed",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "taskId": "T-12",
+    "summary": "Added redaction rules",
+    "skillsUsed": [
+      {
+        "skill": "test-driven-development",
+        "evidence": "failing run recorded in events evt-0040 before code"
+      }
+    ],
+    "tests": {
+      "command": "npm test",
+      "exitCode": 0,
+      "outputTail": "Tests 12 passed (12)"
+    }
+  },
+  "refs": {
+    "files": [
+      "packages/core/src/redact.ts"
+    ],
+    "commits": [
+      "a1b2c3d"
+    ]
+  }
+}

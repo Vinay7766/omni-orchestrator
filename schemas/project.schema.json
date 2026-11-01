@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:project",
+  "title": "Project",
+  "description": ".agents/project.json: identity and settings of one project.",
+  "type": "object",
+  "required": ["formatVersion", "id", "name", "createdAt", "mode", "flow"],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": { "$ref": "urn:omni:schema:common#/$defs/formatVersion" },
+    "id": { "$ref": "urn:omni:schema:common#/$defs/id" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "createdAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" },
+    "mode": { "enum": ["full", "simple"], "description": "simple = one tool, plain-language errors (NTU-2)." },
+    "flow": { "$ref": "urn:omni:schema:common#/$defs/flow" }
+  }
+}

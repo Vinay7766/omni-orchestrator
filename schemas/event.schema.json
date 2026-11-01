@@ -1,0 +1,697 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:event",
+  "title": "Event",
+  "description": "One line of .agents/events.jsonl. The append-only event log is the source of truth; state.json is rebuilt from it.",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "id",
+    "time",
+    "type",
+    "actor",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": {
+      "$ref": "urn:omni:schema:common#/$defs/formatVersion"
+    },
+    "id": {
+      "$ref": "urn:omni:schema:common#/$defs/id"
+    },
+    "time": {
+      "$ref": "urn:omni:schema:common#/$defs/timestamp"
+    },
+    "type": {
+      "enum": [
+        "project_created",
+        "tools_selected",
+        "phase_started",
+        "phase_submitted",
+        "phase_approved",
+        "changes_requested",
+        "task_created",
+        "design_note_submitted",
+        "task_marked_trivial",
+        "task_started",
+        "task_completed",
+        "task_reopened",
+        "decision_recorded",
+        "problem_recorded",
+        "lesson_recorded",
+        "memory_updated"
+      ]
+    },
+    "actor": {
+      "$ref": "urn:omni:schema:common#/$defs/actor"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Files and commits this event concerns (MEM-4).",
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/relPath"
+          }
+        },
+        "commits": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/commitSha"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "project_created"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/projectCreated"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "tools_selected"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/toolsSelected"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "phase_started"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/phaseOnly"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "phase_submitted"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/phaseSubmitted"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "phase_approved",
+              "changes_requested"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "description": "Only a human can approve a phase or request changes (GATE-2).",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "human"
+              }
+            }
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "phase_approved"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/phaseOnly"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "changes_requested"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/changesRequested"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "task_created"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/taskCreated"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "design_note_submitted"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/designNoteSubmitted"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "task_marked_trivial"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/taskWithReason"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "task_started"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/taskOnly"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "task_completed"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/taskCompleted"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "task_reopened"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/taskWithReason"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "decision_recorded"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/decisionRecorded"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "problem_recorded"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/problemRecorded"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lesson_recorded"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/lessonRecorded"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "memory_updated"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/memoryUpdated"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ],
+  "$defs": {
+    "projectCreated": {
+      "type": "object",
+      "required": [
+        "name",
+        "flow"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "flow": {
+          "$ref": "urn:omni:schema:common#/$defs/flow"
+        }
+      }
+    },
+    "toolsSelected": {
+      "type": "object",
+      "required": [
+        "tools"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "capabilityLevel"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "urn:omni:schema:common#/$defs/id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "capabilityLevel": {
+                "enum": [
+                  1,
+                  2,
+                  3
+                ],
+                "description": "3 = MCP, 2 = reads instruction files, 1 = chat only."
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "phaseOnly": {
+      "type": "object",
+      "required": [
+        "phase"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "urn:omni:schema:common#/$defs/phaseId"
+        }
+      }
+    },
+    "phaseSubmitted": {
+      "type": "object",
+      "required": [
+        "phase",
+        "documents",
+        "skillsUsed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "urn:omni:schema:common#/$defs/phaseId"
+        },
+        "documents": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/relPath"
+          }
+        },
+        "skillsUsed": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/skillUse"
+          }
+        },
+        "understandingCheck": {
+          "$ref": "urn:omni:schema:common#/$defs/relPath",
+          "description": "Path to the confirmed Understanding check. Required for planning phases (UND-1); which phases count as planning is checked in code."
+        }
+      }
+    },
+    "changesRequested": {
+      "type": "object",
+      "required": [
+        "phase",
+        "notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "urn:omni:schema:common#/$defs/phaseId"
+        },
+        "notes": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        }
+      }
+    },
+    "taskOnly": {
+      "type": "object",
+      "required": [
+        "taskId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": {
+          "$ref": "urn:omni:schema:common#/$defs/id"
+        }
+      }
+    },
+    "taskCreated": {
+      "type": "object",
+      "required": [
+        "taskId",
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": {
+          "$ref": "urn:omni:schema:common#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "designNoteSubmitted": {
+      "type": "object",
+      "required": [
+        "taskId",
+        "notePath"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": {
+          "$ref": "urn:omni:schema:common#/$defs/id"
+        },
+        "notePath": {
+          "$ref": "urn:omni:schema:common#/$defs/relPath"
+        }
+      }
+    },
+    "taskWithReason": {
+      "type": "object",
+      "required": [
+        "taskId",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": {
+          "$ref": "urn:omni:schema:common#/$defs/id"
+        },
+        "reason": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        }
+      }
+    },
+    "taskCompleted": {
+      "type": "object",
+      "required": [
+        "taskId",
+        "summary",
+        "skillsUsed",
+        "tests"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "taskId": {
+          "$ref": "urn:omni:schema:common#/$defs/id"
+        },
+        "summary": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "skillsUsed": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/skillUse"
+          }
+        },
+        "tests": {
+          "$ref": "urn:omni:schema:common#/$defs/testEvidence"
+        }
+      }
+    },
+    "decisionRecorded": {
+      "type": "object",
+      "required": [
+        "title",
+        "decision",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "decision": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "reason": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "problemRecorded": {
+      "type": "object",
+      "required": [
+        "title",
+        "details",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "details": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved",
+            "wont_fix"
+          ]
+        }
+      }
+    },
+    "lessonRecorded": {
+      "type": "object",
+      "required": [
+        "lesson"
+      ],
+      "additionalProperties": false,
+      "description": "A correction the user made to the AI's understanding (UND-5).",
+      "properties": {
+        "lesson": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        },
+        "context": {
+          "type": "string"
+        }
+      }
+    },
+    "memoryUpdated": {
+      "type": "object",
+      "required": [
+        "files"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "urn:omni:schema:common#/$defs/relPath"
+          }
+        }
+      }
+    }
+  }
+}
