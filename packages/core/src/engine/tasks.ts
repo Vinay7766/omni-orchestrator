@@ -2,7 +2,7 @@ import type { Event, State, DesignNote } from "../generated/types.js";
 import type { MemoryStore, EventInput } from "../memory/store.js";
 import { redactJson } from "../redact.js";
 import { validateMemoryFile, type ValidationIssue } from "../validate.js";
-import type { CheckResult } from "./phases.js";
+import { refreshAfter, type CheckResult } from "./phases.js";
 
 type Actor = Event["actor"];
 type SkillUse = { skill: string; evidence: string };
@@ -119,7 +119,7 @@ function toEventInput(action: TaskAction, actor: Actor): EventInput {
   }
 }
 
-export type TaskResult = { ok: true; event: Event } | { ok: false; issues: ValidationIssue[] };
+export type TaskResult = { ok: true; event: Event; warning?: string } | { ok: false; issues: ValidationIssue[] };
 
 /** Applies task actions to a project's memory, enforcing the rules atomically. */
 export class TaskEngine {
@@ -164,7 +164,7 @@ export class TaskEngine {
     // Early check for a clear message, then the same check inside the lock (atomic).
     const early = checkTaskAction(await this.store.readState(), (await this.store.readEvents()).events, action);
     if (!early.ok) return early;
-    return this.store.appendEvent(
+    const result = await this.store.appendEvent(
       toEventInput(action, actor),
       (state, events) => {
         const atomic = checkTaskAction(state, events, action);
@@ -172,5 +172,6 @@ export class TaskEngine {
       },
       effect,
     );
+    return refreshAfter(this.store, result);
   }
 }

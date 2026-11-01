@@ -175,6 +175,11 @@ export class MemoryStore {
     }
   }
 
+  /** The project's identity and settings (project.json). */
+  readProject(): Project {
+    return this.project;
+  }
+
   /** Every valid event in order; broken or invalid lines are reported, not fatal. */
   async readEvents(): Promise<{ events: Event[]; issues: LineIssue[] }> {
     const text = (await this.fs.readText(this.path("events.jsonl"))) ?? "";

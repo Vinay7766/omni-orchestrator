@@ -9,6 +9,7 @@ export { MemoryStore } from "./memory/store.js";
 export type { StoreOptions, StoreResult, EventInput, AppendResult, LineIssue } from "./memory/store.js";
 export type { MemoryFs } from "./memory/fs.js";
 export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
+export { renderSummary, renderDecisions, renderProblems, renderLessons, refreshMemoryDocs } from "./memory/docs.js";
 export { findProject, LINK_FILE } from "./memory/discover.js";
 export type { FindProjectResult } from "./memory/discover.js";
 export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/paths.js";

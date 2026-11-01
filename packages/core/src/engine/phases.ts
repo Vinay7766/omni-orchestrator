@@ -2,6 +2,7 @@ import { FLOWS, PLANNING_PHASES } from "../generated/contract.js";
 import type { Event, State } from "../generated/types.js";
 import type { MemoryStore, EventInput } from "../memory/store.js";
 import type { ValidationIssue } from "../validate.js";
+import { refreshMemoryDocs } from "../memory/docs.js";
 
 /** Asked at the end of every phase (GATE-2). Tools show it to the user with the documents. */
 export const REVIEW_QUESTION = "Have you reviewed this? Any doubts, questions, changes or add-ons?";
@@ -114,8 +115,27 @@ export function nextPhase(flow: string, state: State, flows: Flows = FLOWS): str
 }
 
 export type PhaseResult =
-  | { ok: true; event: Event; /** Present after a submit: ask the user this. */ reviewQuestion?: string }
+  | {
+      ok: true;
+      event: Event;
+      /** Present after a submit: ask the user this. */
+      reviewQuestion?: string;
+      /** Set if the action was recorded but the memory documents could not be refreshed. */
+      warning?: string;
+    }
   | { ok: false; issues: ValidationIssue[] };
+
+/** Refreshes summary.md and friends; never undoes an action that was already recorded. */
+export async function refreshAfter<R extends { ok: boolean }>(store: MemoryStore, result: R): Promise<R & { warning?: string }> {
+  if (!result.ok) return result;
+  try {
+    await refreshMemoryDocs(store);
+    return result;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return { ...result, warning: `recorded, but the memory documents could not be refreshed: ${reason}` };
+  }
+}
 
 /** Applies phase actions to a project's memory, enforcing the rules atomically. */
 export class PhaseEngine {
@@ -163,9 +183,10 @@ export class PhaseEngine {
     const early = checkPhaseAction(context(await this.store.readState(), (await this.store.readEvents()).events), action, actor);
     if (!early.ok) return early;
     // The same check again inside the lock makes check-and-write atomic.
-    return this.store.appendEvent(toEventInput(action, actor), (state, events) => {
+    const result = await this.store.appendEvent(toEventInput(action, actor), (state, events) => {
       const atomic = checkPhaseAction(context(state, events), action, actor);
       return atomic.ok ? [] : atomic.issues;
     });
+    return refreshAfter(this.store, result);
   }
 }
