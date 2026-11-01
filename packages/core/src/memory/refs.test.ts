@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { checkRefs, type CommitChecker } from "./refs.js";
+import { normalizePath } from "./paths.js";
 import { createNodeFs } from "./node-fs.js";
 import { createGitCommitChecker, interpretGitResult } from "./node-git.js";
 
@@ -102,6 +103,34 @@ describe("checkRefs: commits with real git", () => {
   it("marks commits unverified when no commit checker is available (for example in the web view)", async () => {
     const { results } = await checkRefs(fs, repo, { commits: [sha] });
     expect(results[0].status).toBe("unverified");
+  });
+});
+
+describe("checkRefs: which repository was used", () => {
+  it("reports the repository and that it is the project itself", async () => {
+    const result = await checkRefs(fs, repo, { commits: [sha] }, createGitCommitChecker());
+    expect(result.repository?.root).toBe(normalizePath(repo));
+    expect(result.repository?.aboveProject).toBe(false);
+  });
+
+  it("flags a repository in a parent folder (a monorepo, or a home folder kept in git)", async () => {
+    const sub = join(repo, "packages", "app");
+    mkdirSync(sub, { recursive: true });
+    const result = await checkRefs(fs, sub, { commits: [sha] }, createGitCommitChecker());
+    expect(result.repository?.root).toBe(normalizePath(repo));
+    expect(result.repository?.aboveProject).toBe(true);
+    expect(result.repository?.message).toMatch(/parent folder/);
+  });
+
+  it("reports no repository when the folder is not in one", async () => {
+    const isolated = createGitCommitChecker({ ceilingDirectories: [dirname(notRepo)] });
+    const result = await checkRefs(fs, notRepo, { commits: [sha] }, isolated);
+    expect(result.repository?.root).toBeNull();
+  });
+
+  it("omits repository details when no commits are checked or no checker can tell", async () => {
+    expect((await checkRefs(fs, repo, { files: ["docs/PRD.md"] }, createGitCommitChecker())).repository).toBeUndefined();
+    expect((await checkRefs(fs, repo, { commits: [sha] })).repository).toBeUndefined();
   });
 });
 

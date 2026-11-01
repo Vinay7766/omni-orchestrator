@@ -14,7 +14,7 @@ export { findProject, LINK_FILE } from "./memory/discover.js";
 export type { FindProjectResult } from "./memory/discover.js";
 export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/paths.js";
 export { checkRefs } from "./memory/refs.js";
-export type { CommitChecker, GitLookup, RefResult, RefStatus } from "./memory/refs.js";
+export type { CommitChecker, GitLookup, RefResult, RefStatus, RepositoryInfo } from "./memory/refs.js";
 
 export { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./engine/phases.js";
 export type { PhaseAction, PhaseContext, PhaseResult, CheckResult } from "./engine/phases.js";

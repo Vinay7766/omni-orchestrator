@@ -16,6 +16,23 @@ export type GitLookup = "yes" | "no" | "ambiguous" | "not-a-repository" | "unava
  */
 export interface CommitChecker {
   exists(projectRoot: string, sha: string): Promise<GitLookup>;
+  /** Root folder of the repository commits are checked against, or null if there is none. */
+  repositoryRoot?(projectRoot: string): Promise<string | null>;
+}
+
+/** Which repository commits were checked against, so a wrong one is visible. */
+export interface RepositoryInfo {
+  root: string | null;
+  /** True when the repository lives in a parent folder of the project. */
+  aboveProject: boolean;
+  message?: string;
+}
+
+/** Windows drive paths compare case-insensitively; others exactly. */
+function samePath(a: string, b: string): boolean {
+  const x = normalizePath(a);
+  const y = normalizePath(b);
+  return /^[A-Za-z]:\//.test(x) ? x.toLowerCase() === y.toLowerCase() : x === y;
 }
 
 export type RefStatus = "ok" | "missing" | "outside-project" | "invalid" | "ambiguous" | "unverified";
@@ -40,7 +57,7 @@ export async function checkRefs(
   projectRoot: string,
   refs: { files?: string[]; commits?: string[] },
   commits?: CommitChecker,
-): Promise<{ ok: boolean; results: RefResult[] }> {
+): Promise<{ ok: boolean; results: RefResult[]; repository?: RepositoryInfo }> {
   const root = normalizePath(projectRoot);
   const results: RefResult[] = [];
 
@@ -81,5 +98,18 @@ export async function checkRefs(
     );
   }
 
-  return { ok: !results.some((r) => FAILING.has(r.status)), results };
+  let repository: RepositoryInfo | undefined;
+  if ((refs.commits?.length ?? 0) > 0 && commits?.repositoryRoot) {
+    const top = await commits.repositoryRoot(root);
+    const aboveProject = top !== null && !samePath(top, root);
+    repository = {
+      root: top === null ? null : normalizePath(top),
+      aboveProject,
+      ...(aboveProject
+        ? { message: `commits were checked against the repository in a parent folder (${normalizePath(top!)}); fine for a monorepo, but make sure it is the right one` }
+        : {}),
+    };
+  }
+
+  return { ok: !results.some((r) => FAILING.has(r.status)), results, ...(repository ? { repository } : {}) };
 }

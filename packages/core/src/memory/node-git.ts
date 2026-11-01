@@ -33,6 +33,13 @@ export function createGitCommitChecker(
     ? { ...process.env, GIT_CEILING_DIRECTORIES: options.ceilingDirectories.join(process.platform === "win32" ? ";" : ":") }
     : undefined;
   return {
+    repositoryRoot(projectRoot) {
+      return new Promise<string | null>((resolve) => {
+        execFile(gitPath, ["rev-parse", "--show-toplevel"], { cwd: projectRoot, timeout, windowsHide: true, env }, (error, stdout) => {
+          resolve(error ? null : String(stdout).trim() || null);
+        });
+      });
+    },
     exists(projectRoot, sha) {
       return new Promise<GitLookup>((resolve) => {
         execFile(
