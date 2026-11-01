@@ -18,6 +18,13 @@ pub struct BYOKConfig {
     pub openai_api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ollama_endpoint: Option<String>,
+    /// Any OpenAI-compatible server (local runner, gateway, other provider): its base URL,
+    /// e.g. "http://localhost:8080/v1". TOOL-6: no list of such servers in code.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compatible_base_url: Option<String>,
+    /// Key for that server, if it needs one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compatible_api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preferred_model: Option<String>,
 }

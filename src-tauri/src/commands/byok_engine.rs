@@ -21,7 +21,7 @@ pub struct TeardownResponse {
     pub cold_outreach_sequence: String,
     pub strategic_growth_levers: Vec<String>,
     pub author_attributions: Vec<String>,
-    pub source: String, // "gemini" | "claude" | "openai" | "ollama" | "offline"
+    pub source: String, // "gemini" | "claude" | "openai" | "compatible" | "ollama" | "offline"
 }
 
 // ── Gemini API shapes ──────────────────────────────────────────
@@ -98,13 +98,16 @@ struct ClaudeContent {
     content_type: String,
 }
 
-// ── OpenAI API shapes ──────────────────────────────────────────
+// ── OpenAI-compatible API shapes ───────────────────────────────
+// Source: github.com/openai/openai-openapi openapi.yaml (v2.3.0), createChatCompletion:
+// required `model` and `messages`; reply text at choices[].message.content (nullable).
+// No token-limit field: OpenAI marks `max_tokens` deprecated for `max_completion_tokens`,
+// while Ollama's compatible API accepts only `max_tokens` (docs.ollama.com/api/openai-compatibility).
 
 #[derive(Serialize)]
 struct OpenAiRequest {
     model: String,
     messages: Vec<OpenAiMessage>,
-    max_completion_tokens: u32,
 }
 
 #[derive(Serialize)]
@@ -180,6 +183,14 @@ impl ByokEngine {
         if let Some(key) = configured(&req.byok.openai_api_key) {
             match self.call_openai(key, &prompt, &req.byok) {
                 Ok(report) => return Ok(build_response(name, report, "openai")),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        if let Some(base) = configured(&req.byok.compatible_base_url) {
+            let key = configured(&req.byok.compatible_api_key);
+            match self.call_compatible(base, key, &prompt, &req.byok) {
+                Ok(report) => return Ok(build_response(name, report, "compatible")),
                 Err(e) => errors.push(e),
             }
         }
@@ -298,37 +309,16 @@ impl ByokEngine {
 
     fn call_openai(&self, api_key: &str, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
         let model = configured(&config.preferred_model).unwrap_or("gpt-4o-mini");
+        chat_openai_compatible(OPENAI_BASE_URL, Some(api_key), model, prompt)
+    }
 
-        let body = OpenAiRequest {
-            model: model.to_string(),
-            messages: vec![OpenAiMessage {
-                role: "user".to_string(),
-                content: prompt.to_string(),
-            }],
-            max_completion_tokens: 2048,
-        };
+    // ── Any OpenAI-compatible endpoint (TOOL-6) ───────────────
 
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| e.to_string())?;
-
-        let resp = client
-            .post("https://api.openai.com/v1/chat/completions")
-            .bearer_auth(api_key)
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .map_err(|e| format!("OpenAI request failed: {}", e))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body_text = resp.text().unwrap_or_default();
-            return Err(format!("OpenAI API error {}: {}", status, body_text));
-        }
-
-        let body_text = resp.text().map_err(|e| format!("OpenAI read error: {}", e))?;
-        parse_openai_response(&body_text)
+    fn call_compatible(&self, base: &str, api_key: Option<&str>, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
+        let model = configured(&config.preferred_model).ok_or_else(|| {
+            "Choose a model for your OpenAI-compatible endpoint (type the model name in BYOK settings).".to_string()
+        })?;
+        chat_openai_compatible(base, api_key, model, prompt)
     }
 
     // ── Ollama (local) ────────────────────────────────────────
@@ -471,6 +461,64 @@ Be specific, data-driven where possible, and actionable. Use the Yan Liu product
 /// Returns the trimmed value when it is set and non-blank.
 fn configured(value: &Option<String>) -> Option<&str> {
     value.as_deref().map(str::trim).filter(|v| !v.is_empty())
+}
+
+/// OpenAI itself is one OpenAI-compatible endpoint.
+const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
+
+/// Checks a user-entered endpoint base URL before anything is sent to it. A key may travel over
+/// plain http only to this machine; addresses carrying a user name or password are refused.
+pub fn endpoint_base(base: &str, has_key: bool) -> Result<reqwest::Url, String> {
+    let url = reqwest::Url::parse(base.trim())
+        .map_err(|_| format!("Endpoint address \"{}\" is not a valid URL.", base.trim()))?;
+    if url.scheme() != "http" && url.scheme() != "https" {
+        return Err("Endpoint address must start with http:// or https://.".to_string());
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err("Endpoint address must not contain a user name or password; put the key in the API key field.".to_string());
+    }
+    let host = url.host_str().unwrap_or("").trim_matches(|c| c == '[' || c == ']');
+    let loopback = host.eq_ignore_ascii_case("localhost")
+        || host.parse::<std::net::IpAddr>().is_ok_and(|ip| ip.is_loopback());
+    if has_key && url.scheme() == "http" && !loopback {
+        return Err(format!(
+            "Endpoint {} uses http, which would send your API key unencrypted; use https for an endpoint on another machine.",
+            url.host_str().unwrap_or("")
+        ));
+    }
+    Ok(url)
+}
+
+/// One chat completion against an OpenAI-compatible server at `base` (e.g. ".../v1").
+fn chat_openai_compatible(base: &str, api_key: Option<&str>, model: &str, prompt: &str) -> Result<String, String> {
+    let url = endpoint_base(base, api_key.is_some())?;
+    let host = url.host_str().unwrap_or("").to_string();
+    let endpoint = format!("{}/chat/completions", url.as_str().trim_end_matches('/'));
+    let body = OpenAiRequest {
+        model: model.to_string(),
+        messages: vec![OpenAiMessage { role: "user".to_string(), content: prompt.to_string() }],
+    };
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(120)) // local runners can be slow
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut request = client.post(&endpoint).header("Content-Type", "application/json").json(&body);
+    if let Some(key) = api_key {
+        request = request.bearer_auth(key);
+    }
+    // The key is only ever in a header; scrub it from any text a server echoes back anyway.
+    let scrub = |text: String| match api_key {
+        Some(key) if !key.is_empty() => text.replace(key, "[key]"),
+        _ => text,
+    };
+    let resp = request.send().map_err(|e| scrub(format!("Endpoint {} request failed: {}", host, e)))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body_text = resp.text().unwrap_or_default();
+        return Err(scrub(format!("Endpoint {} error {}: {}", host, status, body_text)));
+    }
+    let body_text = resp.text().map_err(|e| format!("Endpoint {} read error: {}", host, e))?;
+    parse_openai_response(&body_text).map_err(scrub)
 }
 
 /// Extracts the assistant text from an OpenAI Chat Completions response body.
