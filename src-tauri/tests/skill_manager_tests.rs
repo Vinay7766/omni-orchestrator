@@ -165,6 +165,33 @@ fn test_every_domain_is_covered_by_at_least_one_skill() {
 }
 
 #[test]
+fn test_understand_intent_runs_in_every_planning_phase_and_review() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_understand_intent_test"));
+    let skills = manager.get_default_skills();
+    let skill = skills.iter().find(|s| s.id == "understand-intent").expect("understand-intent missing");
+
+    for phase in ["idea-review", "research", "prd", "architecture", "review"] {
+        assert!(skill.phases.iter().any(|p| p == phase), "understand-intent not mapped to {}", phase);
+    }
+    assert!(skill.content.contains("Understanding check"), "skill must define the understanding-check output");
+}
+
+#[test]
+fn test_solution_design_requires_a_generalisation_check() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_generalisation_test"));
+    let skills = manager.get_default_skills();
+    let skill = skills.iter().find(|s| s.id == "solution-design").expect("solution-design missing");
+
+    assert!(skill.content.contains("Generalisation check"), "solution-design must include the generalisation check step");
+    // The step text also contains "Generalisation check:", so match the template's
+    // placeholder line specifically.
+    assert!(
+        skill.content.contains("\nGeneralisation check: <"),
+        "the design-note template must include a 'Generalisation check: <...>' field"
+    );
+}
+
+#[test]
 fn test_every_licensed_third_party_source_ships_its_license_text() {
     let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_third_party_test"));
     let notices = std::fs::read_to_string(

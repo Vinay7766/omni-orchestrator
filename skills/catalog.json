@@ -1357,5 +1357,32 @@
       "systems-and-hardware",
       "performance"
     ]
+  },
+  {
+    "id": "understand-intent",
+    "name": "understand-intent",
+    "description": "Make sure you understand what the user really means before planning, specifying or building anything - especially the depth behind their words. Use at the start of every planning phase (idea review, research, requirements/PRD, architecture), whenever a request names examples (\"tools like X and Y\", \"for example\", \"etc.\"), describes one scenario that stands for a broader need, or when the user corrects how you understood them. Produces an Understanding check the user confirms, so examples are not mistaken for complete lists and single cases are not mistaken for the whole requirement.",
+    "category": "strategy",
+    "attribution": {
+      "name": "OmniOrchestrator",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/understand-intent",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "idea-description",
+      "idea-review",
+      "research",
+      "prd",
+      "architecture",
+      "review"
+    ],
+    "domains": [
+      "product-discovery",
+      "requirements"
+    ]
   }
 ]

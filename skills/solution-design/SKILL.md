@@ -43,6 +43,12 @@ Do not propose any solution yet.
 5. **Unknowns:** list them. For each, either look it up (code, docs, data) or
    state the assumption you are making and flag it to the user. Never fill a
    gap silently.
+6. **Generalisation check:** does the task mention named examples (tools,
+   models, providers, formats, platforms) or one scenario? If the confirmed
+   requirement is about a whole category or a general need, the design must
+   handle members nobody named, without listing the named ones in code.
+   If you don't know whether a list is complete, ask (the `understand-intent`
+   skill covers how) instead of hard-coding it.
 
 ## Step 2: Look for what already exists
 
@@ -124,6 +130,7 @@ Approaches considered:
 Chosen: <A or B>, because <deciding constraint>
 Switch if: <condition>
 Edge cases tested: <list>
+Generalisation check: <categories handled, how unnamed members are covered, the made-up-member test; or "no named examples">
 Assumptions to confirm: <list, or "none">
 ```
 
@@ -160,6 +167,7 @@ For a small task, this can be four or five lines.
 | "I'll handle edge cases after it works" | Edge cases decide the approach. Plan them in Step 5, before coding. |
 | "The test is failing, so I'll add a special case" | A pile of special cases means the approach is wrong. Go back to Step 3. |
 | "I'll assume the input is always valid" | State the assumption and get it confirmed, or validate the input. |
+| "The user named these three, so I'll support these three" | Named items are usually examples of a category. Design for the category and test with a made-up member, unless the user confirmed the list is complete. |
 | "It's probably O(n log n)" | Derive it or label it as an estimate. |
 
 ## Credits
