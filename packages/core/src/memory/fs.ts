@@ -19,4 +19,6 @@ export interface MemoryFs {
   rename(from: string, to: string): Promise<void>;
   /** Deletes a file; does nothing if it is already gone. */
   remove(path: string): Promise<void>;
+  /** Names of the entries in a directory (not recursive); empty if it does not exist. */
+  list(path: string): Promise<string[]>;
 }

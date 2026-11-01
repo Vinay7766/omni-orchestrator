@@ -66,6 +66,14 @@ export function createNodeFs(): MemoryFs {
         }
       }
     },
+    async list(path) {
+      try {
+        return await fsp.readdir(path);
+      } catch (error) {
+        if (isCode(error, "ENOENT")) return [];
+        throw error;
+      }
+    },
     async remove(path) {
       try {
         await fsp.unlink(path);

@@ -115,14 +115,28 @@ export class MemoryStore {
     if (!project.ok) return project;
 
     const store = new MemoryStore(fs, dir, project.value, withDefaults(options));
-    if ((await store.readStoredState()) === null) {
-      try {
-        await store.withLock(async () => store.writeState(await store.rebuildState()));
-      } catch (error) {
-        return { ok: false, issues: [issue(String(error instanceof Error ? error.message : error))] };
-      }
+    const needsRebuild = (await store.readStoredState()) === null;
+    try {
+      await store.withLock(async () => {
+        await store.removeCrashLeftovers();
+        if (needsRebuild) await store.writeState(await store.rebuildState());
+      });
+    } catch (error) {
+      // Cleanup is best effort; only a needed rebuild makes a busy lock fatal.
+      if (needsRebuild) return { ok: false, issues: [issue(String(error instanceof Error ? error.message : error))] };
     }
     return { ok: true, store };
+  }
+
+  /**
+   * Removes state temp files left by a crash between writing and renaming. Safe only under the
+   * lock, because state is only ever written under the lock. Temp files from writeFile
+   * (".write.*") are left alone: document refreshes run outside the lock and may be mid-write.
+   */
+  private async removeCrashLeftovers(): Promise<void> {
+    for (const name of await this.fs.list(this.dir)) {
+      if (/^\.state\.tmp-[^/\\]+\.json$/.test(name)) await this.fs.remove(this.path(name));
+    }
   }
 
   /** Redacts, validates and appends one event, keeping state.json in step. */

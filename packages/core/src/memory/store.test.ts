@@ -53,6 +53,19 @@ describe("MemoryStore.open", () => {
     expect(opened.ok && (await opened.store.readState()).flow).toBe("build");
   });
 
+  it("removes state temp files left by a crash, and nothing else", async () => {
+    await created();
+    writeFileSync(agentsFile(".state.tmp-crashed-1234.json"), "{}");
+    writeFileSync(agentsFile(".write.tmp-refresh-in-progress"), "x"); // may belong to a live refresh
+    writeFileSync(agentsFile("notes.md"), "mine");
+    const opened = await MemoryStore.open(fs, root);
+    expect(opened.ok).toBe(true);
+    expect(existsSync(agentsFile(".state.tmp-crashed-1234.json"))).toBe(false);
+    expect(existsSync(agentsFile(".write.tmp-refresh-in-progress"))).toBe(true);
+    expect(existsSync(agentsFile("notes.md"))).toBe(true);
+    expect(existsSync(agentsFile("events.jsonl"))).toBe(true);
+  });
+
   it("reports a missing project instead of throwing", async () => {
     const opened = await MemoryStore.open(fs, root);
     expect(opened.ok).toBe(false);
