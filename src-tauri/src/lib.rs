@@ -5,7 +5,6 @@ pub mod commands;
 use commands::storage_cmd::*;
 use commands::tool_detector::*;
 use commands::skill_manager::*;
-use commands::research_engine::*;
 use commands::sync_launcher::*;
 use commands::byok_engine::*;
 
@@ -26,8 +25,6 @@ pub fn run() {
             detect_installed_tools,
             get_skills,
             toggle_skill,
-            search_research_skills,
-            import_research_skill,
             launch_and_build,
             prepare_project_staging,
             execute_strategic_teardown,

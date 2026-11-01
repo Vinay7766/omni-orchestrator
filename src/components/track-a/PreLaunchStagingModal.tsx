@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Skill, ToolId, InstalledTool } from "../../lib/types";
 import { Folder, Layers, Search, Check, RefreshCw, X } from "lucide-react";
-import { GlobalResearchHub } from "../research/GlobalResearchHub";
 
 interface PreLaunchStagingModalProps {
   isOpen: boolean;
@@ -29,7 +28,6 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
   const [activeSkills, setActiveSkills] = useState<Skill[]>(initialSkills);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [isResearchOpen, setIsResearchOpen] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchSuccess, setLaunchSuccess] = useState(false);
 
@@ -164,12 +162,6 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
                     className="bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-1 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
-                <button
-                  onClick={() => setIsResearchOpen(true)}
-                  className="px-2.5 py-1 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors shrink-0"
-                >
-                  + Add from Research
-                </button>
               </div>
             </div>
 
@@ -261,57 +253,6 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
         </div>
       </div>
 
-      {/* Embedded Research Hub */}
-      {isResearchOpen && (
-        <div className="fixed inset-0 z-60 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[85vh]">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-white">Live Research Discovery</h3>
-                <p className="text-xs text-zinc-400">Discover trending community skills to add into this run.</p>
-              </div>
-              <button
-                onClick={() => setIsResearchOpen(false)}
-                className="p-1 text-zinc-400 hover:text-white rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto pr-1">
-              <GlobalResearchHub
-                isStagingMode={true}
-                onImportToLibrary={(skill) => {
-                  setActiveSkills((prev) => [
-                    ...prev,
-                    {
-                      id: skill.id,
-                      name: skill.name,
-                      description: skill.description,
-                      category: "engineering",
-                      attribution: {
-                        name: skill.author,
-                        sourceUrl: skill.sourceUrl,
-                        verified: true,
-                      },
-                      enabled: true,
-                      content: skill.content,
-                      isCustom: true,
-                    },
-                  ]);
-                }}
-              />
-            </div>
-            <div className="border-t border-zinc-800 pt-3 flex justify-end">
-              <button
-                onClick={() => setIsResearchOpen(false)}
-                className="px-4 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

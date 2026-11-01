@@ -14,7 +14,6 @@ import { PreLaunchStagingModal } from "./components/track-a/PreLaunchStagingModa
 import { TeardownViewer } from "./components/track-b/TeardownViewer";
 import { BYOKSettings } from "./components/track-b/BYOKSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { GlobalResearchHub } from "./components/research/GlobalResearchHub";
 import { SkillCard } from "./components/skills/SkillCard";
 import { SkillDetailModal } from "./components/skills/SkillDetailModal";
 import { Terminal, Search, Sliders, X } from "lucide-react";
@@ -29,7 +28,6 @@ export function App() {
   const [showStaging, setShowStaging] = useState(false);
   const [stagingPrompt, setStagingPrompt] = useState("");
   const [currentTeardown, setCurrentTeardown] = useState<TeardownResponse | null>(null);
-  const [showResearchHub, setShowResearchHub] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [selectedSkillForDetail, setSelectedSkillForDetail] = useState<Skill | null>(null);
   const [skillModalMode, setSkillModalMode] = useState<"view" | "edit">("view");
@@ -230,15 +228,6 @@ export function App() {
         {/* Right Actions */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowResearchHub(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5"
-            aria-label="Open Research Hub"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Research Hub</span>
-          </button>
-
-          <button
             onClick={() => setShowSkillsModal(true)}
             className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5"
             aria-label="Open Skill Catalog"
@@ -337,53 +326,6 @@ export function App() {
                 onClose={() => setCurrentTeardown(null)}
               />
             </ErrorBoundary>
-          </div>
-        </div>
-      )}
-
-      {/* Global Live Research Hub Modal */}
-      {showResearchHub && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[85vh]">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <div>
-                <h2 className="text-base font-bold text-white">Live Research Discovery</h2>
-                <p className="text-xs text-zinc-400">
-                  Search trending community skills and frameworks with domain scoping.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowResearchHub(false)}
-                className="p-1 text-zinc-400 hover:text-white rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto pr-1">
-              <ErrorBoundary panelName="Research Hub" onClose={() => setShowResearchHub(false)}>
-              <GlobalResearchHub
-                onImportToLibrary={(skill) => {
-                  setSkills((prev) => [
-                    ...prev,
-                    {
-                      id: skill.id,
-                      name: skill.name,
-                      description: skill.description,
-                      category: "engineering",
-                      attribution: {
-                        name: skill.author,
-                        sourceUrl: skill.sourceUrl,
-                        verified: true,
-                      },
-                      enabled: true,
-                      content: skill.content,
-                      isCustom: true,
-                    },
-                  ]);
-                }}
-              />
-              </ErrorBoundary>
-            </div>
           </div>
         </div>
       )}

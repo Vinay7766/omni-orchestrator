@@ -15,7 +15,6 @@ function mockBackend(overrides: Record<string, () => Promise<unknown>> = {}) {
     detect_installed_tools: () => Promise.resolve([]),
     get_skills: () => Promise.resolve([]),
     get_default_project_path: () => Promise.resolve("C:\\Users\\test\\Projects"),
-    search_research_skills: () => Promise.resolve([]),
     ...overrides,
   };
   mockedInvoke.mockImplementation((cmd: string) =>
@@ -62,17 +61,6 @@ describe("OmniOrchestrator App", () => {
     fireEvent.click(skillsBtn);
 
     expect(screen.getByText(/Engineering Skill Catalog/i)).toBeDefined();
-  });
-
-  it("opens research hub modal when Research button is clicked", async () => {
-    await renderApp();
-
-    const researchBtn = screen.getByRole("button", { name: /Open Research Hub/i });
-    await act(async () => {
-      fireEvent.click(researchBtn);
-    });
-
-    expect(screen.getByText(/Live Research Discovery/i)).toBeDefined();
   });
 
   it("shows the backend error instead of a fabricated brief when Track A fails", async () => {

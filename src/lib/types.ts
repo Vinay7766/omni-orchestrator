@@ -50,23 +50,6 @@ export interface InstalledTool {
   commandSnippet: string;
 }
 
-export interface DiscoveredSkill {
-  id: string;
-  name: string;
-  description: string;
-  sourceUrl: string;
-  author: string;
-  domain: string;
-  starsOrUpvotes?: number;
-  content: string;
-  imported: boolean;
-}
-
-export interface ResearchQuery {
-  domainOrCategory?: string;
-  keyword: string;
-}
-
 export interface BYOKConfig {
   geminiApiKey?: string;
   anthropicApiKey?: string;
