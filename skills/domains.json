@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "description": "Engineering and product domains the skill catalog must cover. This list is meant to grow: add a domain here and the coverage test fails until a skill covers it.",
+  "domains": [
+    {
+      "id": "product-discovery",
+      "description": "Clarifying, describing and reviewing ideas"
+    },
+    {
+      "id": "market-research",
+      "description": "Customers, competitors, evidence"
+    },
+    {
+      "id": "requirements",
+      "description": "Specs, PRDs, quality bars"
+    },
+    {
+      "id": "project-planning",
+      "description": "Task breakdown, sequencing, scope"
+    },
+    {
+      "id": "system-design",
+      "description": "Designing whole systems: components, data flow, scaling, reliability, trade-offs"
+    },
+    {
+      "id": "software-architecture",
+      "description": "Module boundaries, decisions, design within a codebase"
+    },
+    {
+      "id": "api-design",
+      "description": "Interfaces, contracts, protocols"
+    },
+    {
+      "id": "frontend",
+      "description": "Web UI, accessibility, browser behaviour"
+    },
+    {
+      "id": "mobile",
+      "description": "iOS, Android and cross-platform apps"
+    },
+    {
+      "id": "backend",
+      "description": "Server-side services, request handling, background jobs"
+    },
+    {
+      "id": "databases",
+      "description": "Data modelling, schema design, queries, migrations"
+    },
+    {
+      "id": "devops-infrastructure",
+      "description": "Containers, orchestration, infrastructure as code"
+    },
+    {
+      "id": "ci-cd",
+      "description": "Build, test and release automation"
+    },
+    {
+      "id": "cloud",
+      "description": "Cloud platforms and managed services"
+    },
+    {
+      "id": "security",
+      "description": "Threats, hardening, secure coding, audits"
+    },
+    {
+      "id": "testing",
+      "description": "Test strategy and test writing"
+    },
+    {
+      "id": "performance",
+      "description": "Measuring and improving speed and resource use"
+    },
+    {
+      "id": "systems-and-hardware",
+      "description": "Memory, CPU, concurrency, OS and hardware awareness"
+    },
+    {
+      "id": "observability",
+      "description": "Logging, metrics, tracing, alerting"
+    },
+    {
+      "id": "data-and-ml",
+      "description": "Data pipelines, analytics, machine learning"
+    },
+    {
+      "id": "ai-agents",
+      "description": "Building and operating LLM agents and tools"
+    },
+    {
+      "id": "documentation",
+      "description": "Docs, ADRs, READMEs"
+    },
+    {
+      "id": "version-control",
+      "description": "Git workflow, commits, releases"
+    },
+    {
+      "id": "debugging",
+      "description": "Finding and fixing defects"
+    },
+    {
+      "id": "code-quality",
+      "description": "Review, simplification, standards"
+    },
+    {
+      "id": "presentation",
+      "description": "Slide decks and pitch presentations"
+    },
+    {
+      "id": "marketing-outreach",
+      "description": "Cold outreach, lead generation, positioning"
+    }
+  ],
+  "pendingGaps": [
+    "backend",
+    "data-and-ml",
+    "devops-infrastructure",
+    "mobile",
+    "presentation",
+    "system-design",
+    "systems-and-hardware"
+  ],
+  "pendingGapsNote": "Domains not yet covered (task A5). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow."
+}

@@ -109,6 +109,61 @@ fn test_every_phase_has_at_least_one_dedicated_skill() {
     }
 }
 
+/// Domain ids from skills/domains.json (a growable list, not hard-coded here).
+fn all_domain_ids() -> std::collections::BTreeSet<String> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("skills").join("domains.json");
+    let doc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).expect("skills/domains.json"))
+        .expect("domains.json is valid JSON");
+    doc["domains"]
+        .as_array()
+        .expect("domains.json has a domains array")
+        .iter()
+        .map(|d| d["id"].as_str().expect("each domain has a string id").to_string())
+        .collect()
+}
+
+#[test]
+fn test_every_skill_is_tagged_with_known_domains() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_domain_test"));
+    let known = all_domain_ids();
+
+    for skill in manager.get_default_skills() {
+        assert!(!skill.domains.is_empty(), "{} has no domains", skill.id);
+        for domain in &skill.domains {
+            assert!(known.contains(domain), "{} has unknown domain \"{}\"", skill.id, domain);
+        }
+    }
+}
+
+#[test]
+fn test_every_domain_is_covered_by_at_least_one_skill() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_domain_coverage_test"));
+    let skills = manager.get_default_skills();
+
+    let uncovered: std::collections::BTreeSet<String> = all_domain_ids()
+        .into_iter()
+        .filter(|d| !skills.iter().any(|s| s.domains.contains(d)))
+        .collect();
+
+    // Gaps still being filled are listed explicitly; the list must match exactly,
+    // so a new gap fails here and a filled gap must be removed from the list.
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("skills").join("domains.json");
+    let doc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let pending: std::collections::BTreeSet<String> = doc["pendingGaps"]
+        .as_array()
+        .map(|a| a.iter().map(|v| v.as_str().unwrap().to_string()).collect())
+        .unwrap_or_default();
+
+    let new_gaps: Vec<_> = uncovered.difference(&pending).cloned().collect();
+    let filled_but_listed: Vec<_> = pending.difference(&uncovered).cloned().collect();
+    assert!(new_gaps.is_empty(), "domains with no skill: {}", new_gaps.join(", "));
+    assert!(
+        filled_but_listed.is_empty(),
+        "now covered, remove from pendingGaps: {}",
+        filled_but_listed.join(", ")
+    );
+}
+
 #[test]
 fn test_no_skill_description_is_a_leftover_yaml_block_marker() {
     let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_desc_test"));

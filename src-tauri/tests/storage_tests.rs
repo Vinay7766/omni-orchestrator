@@ -35,6 +35,7 @@ fn test_custom_skill_storage_operations() {
         content: "# Test Skill Instructions".to_string(),
         is_custom: true,
         phases: vec!["build".to_string()],
+        domains: vec![],
         license: None,
     };
 

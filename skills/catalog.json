@@ -16,6 +16,9 @@
     "phases": [
       "build",
       "handover"
+    ],
+    "domains": [
+      "cloud"
     ]
   },
   {
@@ -35,6 +38,10 @@
     "phases": [
       "architecture",
       "build"
+    ],
+    "domains": [
+      "api-design",
+      "software-architecture"
     ]
   },
   {
@@ -54,6 +61,10 @@
     "phases": [
       "build",
       "review"
+    ],
+    "domains": [
+      "frontend",
+      "testing"
     ]
   },
   {
@@ -73,6 +84,9 @@
     "phases": [
       "build",
       "handover"
+    ],
+    "domains": [
+      "ci-cd"
     ]
   },
   {
@@ -91,6 +105,9 @@
     "license": "MIT",
     "phases": [
       "review"
+    ],
+    "domains": [
+      "code-quality"
     ]
   },
   {
@@ -110,6 +127,9 @@
     "phases": [
       "build",
       "review"
+    ],
+    "domains": [
+      "code-quality"
     ]
   },
   {
@@ -128,6 +148,9 @@
     "license": "unverified",
     "phases": [
       "outreach"
+    ],
+    "domains": [
+      "marketing-outreach"
     ]
   },
   {
@@ -146,6 +169,9 @@
     "license": "unverified",
     "phases": [
       "research"
+    ],
+    "domains": [
+      "market-research"
     ]
   },
   {
@@ -166,6 +192,10 @@
       "prd",
       "build",
       "review"
+    ],
+    "domains": [
+      "requirements",
+      "code-quality"
     ]
   },
   {
@@ -185,6 +215,9 @@
     "phases": [
       "architecture",
       "build"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -204,6 +237,9 @@
     "phases": [
       "research",
       "outreach"
+    ],
+    "domains": [
+      "market-research"
     ]
   },
   {
@@ -223,6 +259,9 @@
     "phases": [
       "architecture",
       "build"
+    ],
+    "domains": [
+      "databases"
     ]
   },
   {
@@ -241,6 +280,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "debugging"
     ]
   },
   {
@@ -259,6 +301,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "software-architecture"
     ]
   },
   {
@@ -278,6 +323,10 @@
     "phases": [
       "architecture",
       "handover"
+    ],
+    "domains": [
+      "documentation",
+      "software-architecture"
     ]
   },
   {
@@ -297,6 +346,10 @@
     "phases": [
       "architecture",
       "review"
+    ],
+    "domains": [
+      "software-architecture",
+      "code-quality"
     ]
   },
   {
@@ -315,6 +368,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "frontend"
     ]
   },
   {
@@ -333,6 +389,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "version-control"
     ]
   },
   {
@@ -351,6 +410,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "version-control"
     ]
   },
   {
@@ -369,6 +431,9 @@
     "license": "unverified",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -387,6 +452,10 @@
     "license": "unverified",
     "phases": [
       "handover"
+    ],
+    "domains": [
+      "ai-agents",
+      "cloud"
     ]
   },
   {
@@ -405,6 +474,10 @@
     "license": "unverified",
     "phases": [
       "review"
+    ],
+    "domains": [
+      "ai-agents",
+      "testing"
     ]
   },
   {
@@ -423,6 +496,10 @@
     "license": "unverified",
     "phases": [
       "handover"
+    ],
+    "domains": [
+      "ai-agents",
+      "observability"
     ]
   },
   {
@@ -441,6 +518,9 @@
     "license": "unverified",
     "phases": [
       "handover"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -459,6 +539,9 @@
     "license": "unverified",
     "phases": [
       "architecture"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -477,6 +560,9 @@
     "license": "unverified",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -496,6 +582,9 @@
     "phases": [
       "idea-description",
       "presentation"
+    ],
+    "domains": [
+      "product-discovery"
     ]
   },
   {
@@ -515,6 +604,9 @@
     "phases": [
       "idea-description",
       "idea-review"
+    ],
+    "domains": [
+      "product-discovery"
     ]
   },
   {
@@ -533,6 +625,10 @@
     "license": "unverified",
     "phases": [
       "idea-review"
+    ],
+    "domains": [
+      "product-discovery",
+      "market-research"
     ]
   },
   {
@@ -551,6 +647,10 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "project-planning",
+      "code-quality"
     ]
   },
   {
@@ -571,6 +671,10 @@
       "idea-description",
       "idea-review",
       "prd"
+    ],
+    "domains": [
+      "product-discovery",
+      "requirements"
     ]
   },
   {
@@ -589,6 +693,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "api-design"
     ]
   },
   {
@@ -607,6 +714,9 @@
     "license": "unverified",
     "phases": [
       "outreach"
+    ],
+    "domains": [
+      "marketing-outreach"
     ]
   },
   {
@@ -625,6 +735,9 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "code-quality"
     ]
   },
   {
@@ -643,6 +756,10 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "ai-agents",
+      "api-design"
     ]
   },
   {
@@ -662,6 +779,9 @@
     "phases": [
       "build",
       "handover"
+    ],
+    "domains": [
+      "observability"
     ]
   },
   {
@@ -681,6 +801,9 @@
     "phases": [
       "build",
       "review"
+    ],
+    "domains": [
+      "performance"
     ]
   },
   {
@@ -699,6 +822,9 @@
     "license": "MIT",
     "phases": [
       "architecture"
+    ],
+    "domains": [
+      "project-planning"
     ]
   },
   {
@@ -718,6 +844,9 @@
     "phases": [
       "research",
       "presentation"
+    ],
+    "domains": [
+      "market-research"
     ]
   },
   {
@@ -737,6 +866,10 @@
     "phases": [
       "architecture",
       "build"
+    ],
+    "domains": [
+      "ai-agents",
+      "performance"
     ]
   },
   {
@@ -756,6 +889,9 @@
     "phases": [
       "build",
       "review"
+    ],
+    "domains": [
+      "security"
     ]
   },
   {
@@ -774,6 +910,9 @@
     "license": "unverified",
     "phases": [
       "review"
+    ],
+    "domains": [
+      "security"
     ]
   },
   {
@@ -792,6 +931,9 @@
     "license": "MIT",
     "phases": [
       "handover"
+    ],
+    "domains": [
+      "ci-cd"
     ]
   },
   {
@@ -810,6 +952,10 @@
     "license": "MIT",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "code-quality",
+      "documentation"
     ]
   },
   {
@@ -828,6 +974,9 @@
     "license": "MIT",
     "phases": [
       "prd"
+    ],
+    "domains": [
+      "requirements"
     ]
   },
   {
@@ -846,6 +995,9 @@
     "license": "unverified",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "testing"
     ]
   },
   {
@@ -864,6 +1016,9 @@
     "license": "unverified",
     "phases": [
       "all"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -882,6 +1037,9 @@
     "license": "MIT",
     "phases": [
       "handover"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -900,6 +1058,9 @@
     "license": "MIT",
     "phases": [
       "all"
+    ],
+    "domains": [
+      "ai-agents"
     ]
   },
   {
@@ -918,6 +1079,10 @@
     "license": "MIT",
     "phases": [
       "review"
+    ],
+    "domains": [
+      "testing",
+      "code-quality"
     ]
   },
   {
@@ -938,6 +1103,10 @@
       "idea-review",
       "prd",
       "build"
+    ],
+    "domains": [
+      "product-discovery",
+      "project-planning"
     ]
   },
   {
@@ -956,6 +1125,10 @@
     "license": "unverified",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "code-quality",
+      "debugging"
     ]
   },
   {
@@ -976,6 +1149,10 @@
       "idea-description",
       "idea-review",
       "prd"
+    ],
+    "domains": [
+      "product-discovery",
+      "requirements"
     ]
   },
   {
@@ -994,6 +1171,10 @@
     "license": "Apache-2.0",
     "phases": [
       "build"
+    ],
+    "domains": [
+      "software-architecture",
+      "code-quality"
     ]
   }
 ]

@@ -39,6 +39,9 @@ pub struct Skill {
     /// Phase ids from schemas/phases.json, or ["all"] for every phase.
     #[serde(default)]
     pub phases: Vec<String>,
+    /// Domain ids from skills/domains.json.
+    #[serde(default)]
+    pub domains: Vec<String>,
     /// SPDX license id, or "unverified" when not yet checked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub license: Option<String>,
