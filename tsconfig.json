@@ -13,7 +13,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "paths": { "@omni/core": ["./packages/core/src/index.ts"] },
+    "paths": {
+      "@omni/core": ["./packages/core/src/index.ts"],
+      "@omni/core/node": ["./packages/core/src/node.ts"]
+    },
 
     /* Linting */
     "strict": true,
