@@ -219,6 +219,105 @@ fn never_scans_ordinary_folders_in_a_home_folder() {
     assert!(!ids.contains(&"project-x".to_string()), "Documents must not be scanned: {:?}", ids);
 }
 
+mod extensions {
+    use super::*;
+
+    /// A made-up editor "Nebula" (data folder .nebula, user data folder "Nebula") with
+    /// extensions installed under home/.nebula/extensions.
+    fn nebula(name: &str) -> FakeMachine {
+        let m = FakeMachine::new(name);
+        m.editor("Nebula", r#"{ "nameShort": "Nebula", "nameLong": "Nebula Editor", "applicationName": "nebula", "dataFolderName": ".nebula" }"#);
+        m
+    }
+    fn extension(m: &FakeMachine, folder: &str, manifest: &str) {
+        m.write(&format!("home/.nebula/extensions/{}/package.json", folder), manifest);
+    }
+    fn view_with_user_data(m: &FakeMachine) -> SystemView {
+        let mut view = m.view();
+        view.config_roots.push(m.base.join("appdata"));
+        view
+    }
+
+    #[test]
+    fn finds_an_ai_extension_by_what_it_declares() {
+        let m = nebula("ext-chat");
+        extension(&m, "acme.thinker-1.0.0", r#"{ "publisher": "acme", "name": "thinker", "displayName": "Thinker", "contributes": { "chatParticipants": [ { "id": "thinker" } ] } }"#);
+        let tools = discover(&m.view());
+        let ext = find(&tools, "acme-thinker").expect("AI extension not discovered");
+        assert_eq!(ext.category, ToolCategory::EditorExtension);
+        assert_eq!(ext.name, "Thinker");
+        assert_eq!(ext.host_editor.as_deref(), Some("nebula"));
+    }
+
+    #[test]
+    fn finds_an_extension_listed_in_the_ai_category() {
+        let m = nebula("ext-category");
+        extension(&m, "beta.helper-2.0.0", r#"{ "publisher": "beta", "name": "helper", "displayName": "Helper", "categories": ["Programming Languages", "AI"] }"#);
+        assert!(find(&discover(&m.view()), "beta-helper").is_some());
+    }
+
+    #[test]
+    fn ignores_extensions_that_are_not_ai_tools() {
+        let m = nebula("ext-theme");
+        extension(&m, "gamma.colors-1.0.0", r#"{ "publisher": "gamma", "name": "colors", "categories": ["Themes"], "contributes": { "themes": [] } }"#);
+        assert!(find(&discover(&m.view()), "gamma-colors").is_none());
+    }
+
+    #[test]
+    fn an_extension_that_only_offers_tools_or_servers_to_ai_is_not_itself_an_ai_tool() {
+        let m = nebula("ext-offers-tools");
+        extension(&m, "lang.support-3.0.0", r#"{ "publisher": "lang", "name": "support", "categories": ["Programming Languages"], "contributes": { "languageModelTools": [ { "name": "run_tests" } ] } }"#);
+        extension(&m, "delta.bridge-1.0.0", r#"{ "publisher": "delta", "name": "bridge", "contributes": { "mcpServerDefinitionProviders": [ { "id": "bridge" } ] } }"#);
+        let tools = discover(&m.view());
+        assert!(find(&tools, "lang-support").is_none(), "offering tools to AI assistants does not make an extension one");
+        assert!(find(&tools, "delta-bridge").is_none(), "providing MCP servers does not make an extension an AI tool");
+    }
+
+    #[test]
+    fn an_extension_providing_mcp_servers_shows_the_editor_supports_mcp() {
+        let m = nebula("ext-mcp-provider");
+        extension(&m, "delta.bridge-1.0.0", r#"{ "publisher": "delta", "name": "bridge", "contributes": { "mcpServerDefinitionProviders": [ { "id": "bridge" } ] } }"#);
+        let editor = discover(&m.view()).into_iter().find(|t| t.id == "nebula").unwrap();
+        assert_eq!(editor.capability, Some(3));
+        assert!(editor.evidence.iter().any(|e| e.contains("MCP")));
+    }
+
+    #[test]
+    fn an_mcp_settings_file_in_the_extensions_storage_makes_it_mcp_capable() {
+        let m = nebula("ext-storage");
+        extension(&m, "acme.thinker-1.0.0", r#"{ "publisher": "acme", "name": "thinker", "categories": ["AI"] }"#);
+        m.write("appdata/Nebula/User/globalStorage/acme.thinker/settings/thinker_mcp_settings.json", r#"{ "mcpServers": {} }"#);
+        let ext = discover(&view_with_user_data(&m)).into_iter().find(|t| t.id == "acme-thinker").unwrap();
+        assert_eq!(ext.capability, Some(3));
+        assert!(ext.mcp_config.as_deref().unwrap().contains("globalStorage"));
+    }
+
+    #[test]
+    fn resolves_a_localised_display_name() {
+        let m = nebula("ext-nls");
+        extension(&m, "acme.thinker-1.0.0", r#"{ "publisher": "acme", "name": "thinker", "displayName": "%ext.displayName%", "categories": ["Chat"] }"#);
+        m.write("home/.nebula/extensions/acme.thinker-1.0.0/package.nls.json", r#"{ "ext.displayName": "Thinker Assistant" }"#);
+        assert_eq!(find(&discover(&m.view()), "acme-thinker").map(|t| t.name.clone()), Some("Thinker Assistant".to_string()));
+    }
+
+    #[test]
+    fn merges_several_installed_versions_of_one_extension() {
+        let m = nebula("ext-versions");
+        for v in ["1.0.0", "1.1.0"] {
+            extension(&m, &format!("acme.thinker-{}", v), r#"{ "publisher": "acme", "name": "thinker", "categories": ["AI"] }"#);
+        }
+        assert_eq!(discover(&m.view()).iter().filter(|t| t.id == "acme-thinker").count(), 1);
+    }
+
+    #[test]
+    fn reads_large_extension_manifests() {
+        let m = nebula("ext-large");
+        let padding = "x".repeat(600_000);
+        extension(&m, "big.agent-1.0.0", &format!(r#"{{ "publisher": "big", "name": "agent", "categories": ["AI"], "description": "{}" }}"#, padding));
+        assert!(find(&discover(&m.view()), "big-agent").is_some(), "real AI extensions can have manifests over 500 KB");
+    }
+}
+
 #[test]
 fn source_code_names_no_tools() {
     let source = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands/tool_discovery.rs")).unwrap().to_lowercase();
