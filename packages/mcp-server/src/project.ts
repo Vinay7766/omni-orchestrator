@@ -1,5 +1,6 @@
 /** Shared by every tool: find and open the project, and resolve its current phase's skills. */
 import {
+  checkRefs,
   findProject,
   joinPath,
   MemoryStore,
@@ -75,4 +76,31 @@ async function readOverrides(store: MemoryStore, warnings: string[]) {
     return null;
   }
   return valid.value;
+}
+
+export type ReferenceCheck = { ok: true; warnings: string[] } | { ok: false; message: string };
+
+/**
+ * MEM-4: files must exist inside the project and commits must exist in its git history. Commits
+ * that cannot be checked here (no git, not a repository) are accepted with a warning.
+ */
+export async function checkReferences(
+  deps: ToolDeps,
+  root: string,
+  refs: { files?: string[]; commits?: string[] },
+  what: string,
+): Promise<ReferenceCheck> {
+  const result = await checkRefs(deps.fs, root, { files: refs.files ?? [], commits: refs.commits ?? [] }, deps.commits);
+  const bad = result.results.filter((r) => r.status !== "ok" && r.status !== "unverified");
+  if (bad.length > 0) {
+    return {
+      ok: false,
+      message: `Fix these references before ${what}: ${bad.map((r) => `${r.ref}: ${r.status}${r.message ? ` (${r.message})` : ""}`).join("; ")}.`,
+    };
+  }
+  const warnings = result.results
+    .filter((r) => r.status === "unverified")
+    .map((r) => `${r.ref} could not be verified${r.message ? `: ${r.message}` : ""}`);
+  if (result.repository?.message) warnings.push(result.repository.message);
+  return { ok: true, warnings };
 }

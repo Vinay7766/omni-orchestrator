@@ -1,7 +1,7 @@
 /** Task tools (ARCHITECTURE 5; DSN-1..3, HON-4, MEM-3, SKL-4, SKL-8). Rules live in @omni/core. */
-import { checkRefs, checkTaskAction, designNotePath, TaskEngine, type Event } from "@omni/core";
+import { checkTaskAction, designNotePath, TaskEngine, type Event } from "@omni/core";
 import type { ToolResult } from "./phase-tools.js";
-import { currentSkills, openProject, type ToolDeps } from "./project.js";
+import { checkReferences, currentSkills, openProject, type ToolDeps } from "./project.js";
 
 type Actor = Event["actor"];
 const messages = (issues: { path: string; message: string }[]) =>
@@ -180,18 +180,9 @@ export async function completeTask(deps: ToolDeps, actor: Actor, input: Complete
   const { store, root } = opened;
 
   const files = [...new Set([...(input.refs.files ?? []), ...(input.memoryUpdate?.files ?? [])])];
-  const refs = await checkRefs(deps.fs, root, { files, commits: input.refs.commits ?? [] }, deps.commits);
-  const bad = refs.results.filter((r) => r.status !== "ok" && r.status !== "unverified");
-  if (bad.length > 0) {
-    return {
-      ok: false,
-      message: `Fix these references before completing: ${bad.map((r) => `${r.ref}: ${r.status}${r.message ? ` (${r.message})` : ""}`).join("; ")}.`,
-    };
-  }
-  const warnings = refs.results
-    .filter((r) => r.status === "unverified")
-    .map((r) => `${r.ref} could not be verified${r.message ? `: ${r.message}` : ""}`);
-  if (refs.repository?.message) warnings.push(refs.repository.message);
+  const refs = await checkReferences(deps, root, { files, commits: input.refs.commits ?? [] }, "completing");
+  if (!refs.ok) return refs;
+  const warnings = refs.warnings;
 
   const completion = { taskId: input.taskId, summary: input.summary, skillsUsed: input.skillsUsed, tests: input.tests, refs: input.refs };
   const state = await store.readState();
