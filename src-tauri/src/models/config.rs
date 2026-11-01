@@ -56,6 +56,9 @@ pub struct AppSettings {
     pub byok: BYOKConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_skills_directory: Option<String>,
+    /// Folders the dashboard looks in for OmniOrchestrator projects (absolute paths, E2).
+    #[serde(default)]
+    pub project_folders: Vec<String>,
 }
 
 impl Default for AppSettings {
@@ -66,6 +69,7 @@ impl Default for AppSettings {
             active_tool_id: None,
             byok: BYOKConfig::default(),
             custom_skills_directory: None,
+            project_folders: Vec::new(),
         }
     }
 }

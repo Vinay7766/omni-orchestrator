@@ -9,6 +9,7 @@ use commands::byok_engine::*;
 use commands::memory_fs::*;
 use commands::tool_discovery::discover_tools;
 use commands::mcp_setup::setup_mcp;
+use commands::projects::find_projects;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -44,7 +45,9 @@ pub fn run() {
             // Category-based tool discovery (no fixed tool list)
             discover_tools,
             // Automatic MCP setup for discovered tools (D5)
-            setup_mcp
+            setup_mcp,
+            // Projects under the folders the person configured (E2)
+            find_projects
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,6 +6,7 @@ pub mod memory_fs;
 pub mod tool_discovery;
 pub mod adapters;
 pub mod mcp_setup;
+pub mod projects;
 
 pub use storage_cmd::*;
 pub use skill_manager::*;
