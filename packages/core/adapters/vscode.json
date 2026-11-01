@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "id": "vscode",
+  "name": "Visual Studio Code",
+  "matches": ["code"],
+  "mcp": { "format": "servers", "projectConfig": ".vscode/mcp.json" },
+  "instructionFiles": [".github/copilot-instructions.md"],
+  "sources": [
+    { "url": "https://code.visualstudio.com/docs/agents/reference/mcp-configuration", "checked": "2026-11-01", "covers": ["mcp"] },
+    { "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions", "checked": "2026-11-01", "covers": ["instructionFiles"] }
+  ]
+}

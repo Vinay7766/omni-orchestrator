@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "antigravity",
+  "name": "Antigravity",
+  "matches": ["antigravity"],
+  "mcp": {
+    "format": "mcpServers",
+    "userConfig": ["~/.gemini/config/mcp_config.json", "~/.gemini/antigravity/mcp_config.json"],
+    "projectConfig": ".agents/mcp_config.json"
+  },
+  "sources": [
+    { "url": "https://antigravity.google/docs/mcp", "checked": "2026-11-01", "covers": ["mcp"] }
+  ]
+}

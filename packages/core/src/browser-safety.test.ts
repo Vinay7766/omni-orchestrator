@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 // @omni/core also runs in the desktop app's web view. Only these files may use Node APIs;
 // everything else must stay browser-safe. (The package's tsconfig includes Node types so the
 // Node files compile, which is why this is checked here rather than by the compiler.)
-const NODE_ONLY = new Set(["node.ts", "memory/node-fs.ts", "memory/node-git.ts", "memory/node-watch.ts", "skills/node-source.ts"]);
+const NODE_ONLY = new Set(["node.ts", "memory/node-fs.ts", "memory/node-git.ts", "memory/node-watch.ts", "adapters/node-source.ts", "skills/node-source.ts"]);
 
 const srcDir = dirname(fileURLToPath(import.meta.url));
 function sourceFiles(dir: string): string[] {

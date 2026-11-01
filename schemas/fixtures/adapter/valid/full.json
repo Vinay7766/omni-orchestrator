@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "id": "nebula",
+  "name": "Nebula Editor",
+  "matches": ["nebula", "nebula-insiders"],
+  "mcp": { "format": "servers", "userConfig": ["~/.nebula/mcp.json", "~/.config/nebula/mcp.json"], "projectConfig": ".nebula/mcp.json" },
+  "instructionFiles": [".nebula/instructions.md"],
+  "sources": [{ "url": "https://nebula.example/docs/mcp", "checked": "2026-11-01", "covers": ["mcp", "instructionFiles"] }]
+}

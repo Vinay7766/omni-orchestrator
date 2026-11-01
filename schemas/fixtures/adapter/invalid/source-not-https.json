@@ -1,0 +1,1 @@
+{ "formatVersion": 1, "id": "zeta", "name": "Zeta", "matches": ["zeta"], "sources": [{ "url": "http://zeta.example", "checked": "2026-11-01", "covers": ["mcp"] }] }

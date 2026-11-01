@@ -1,0 +1,63 @@
+{
+  "description": "Managed-block behaviour shared by the TypeScript (core) and Rust (launcher) implementations; both test suites run every case.",
+  "begin": "<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->",
+  "end": "<!-- omni:end -->",
+  "cases": [
+    {
+      "name": "creates the file with only the block",
+      "existing": null,
+      "body": "Read .agents/",
+      "text": "<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nRead .agents/\n<!-- omni:end -->\n",
+      "status": "created"
+    },
+    {
+      "name": "appends after the user's content",
+      "existing": "# My rules\n",
+      "body": "Read .agents/",
+      "text": "# My rules\n\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nRead .agents/\n<!-- omni:end -->\n",
+      "status": "appended"
+    },
+    {
+      "name": "appends when the user's file has no final newline",
+      "existing": "# My rules",
+      "body": "Read .agents/",
+      "text": "# My rules\n\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nRead .agents/\n<!-- omni:end -->\n",
+      "status": "appended"
+    },
+    {
+      "name": "replaces only the block and keeps everything around it",
+      "existing": "# Mine\n\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nold pointer\n<!-- omni:end -->\n\nmore of mine\n",
+      "body": "new pointer",
+      "text": "# Mine\n\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nnew pointer\n<!-- omni:end -->\n\nmore of mine\n",
+      "status": "replaced"
+    },
+    {
+      "name": "leaves the file alone when the block is already current",
+      "existing": "# Mine\n\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nsame\n<!-- omni:end -->\n",
+      "body": "same",
+      "text": "# Mine\n\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nsame\n<!-- omni:end -->\n",
+      "status": "unchanged"
+    },
+    {
+      "name": "never guesses when the end marker is missing",
+      "existing": "# Mine\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nhalf\n",
+      "body": "x",
+      "text": "# Mine\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nhalf\n",
+      "status": "unterminated"
+    },
+    {
+      "name": "keeps Windows line endings",
+      "existing": "# Mine\r\n",
+      "body": "Read .agents/",
+      "text": "# Mine\r\n\r\n<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\r\nRead .agents/\r\n<!-- omni:end -->\r\n",
+      "status": "appended"
+    },
+    {
+      "name": "an empty existing file gets just the block",
+      "existing": "",
+      "body": "Read .agents/",
+      "text": "<!-- omni:begin (managed by OmniOrchestrator, safe to delete) -->\nRead .agents/\n<!-- omni:end -->\n",
+      "status": "appended"
+    }
+  ]
+}

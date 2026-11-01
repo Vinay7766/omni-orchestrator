@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "cursor",
+  "name": "Cursor",
+  "matches": ["cursor"],
+  "mcp": { "format": "mcpServers", "userConfig": ["~/.cursor/mcp.json"], "projectConfig": ".cursor/mcp.json" },
+  "sources": [
+    { "url": "https://cursor.com/docs/mcp", "checked": "2026-11-01", "covers": ["mcp"] },
+    { "url": "https://cursor.com/docs/rules", "checked": "2026-11-01", "covers": ["instructionFiles"] }
+  ]
+}

@@ -1,0 +1,1 @@
+{ "formatVersion": 1, "id": "zeta", "name": "Zeta", "matches": ["zeta"], "mcp": { "format": "mcpServers", "userConfig": ["/etc/zeta/mcp.json"] }, "sources": [{ "url": "https://zeta.example/docs", "checked": "2026-11-01", "covers": ["mcp"] }] }

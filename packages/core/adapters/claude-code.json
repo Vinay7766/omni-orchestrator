@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "id": "claude-code",
+  "name": "Claude Code",
+  "matches": ["claude"],
+  "mcp": { "format": "mcpServers", "userConfig": ["~/.claude.json"], "projectConfig": ".mcp.json" },
+  "instructionFiles": ["CLAUDE.md"],
+  "sources": [
+    { "url": "https://code.claude.com/docs/en/mcp", "checked": "2026-11-01", "covers": ["mcp"] },
+    { "url": "https://code.claude.com/docs/en/memory", "checked": "2026-11-01", "covers": ["instructionFiles"] }
+  ]
+}

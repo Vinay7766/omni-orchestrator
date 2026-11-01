@@ -18,6 +18,20 @@ export type CommonId = string;
  */
 export type CommonNonEmptyText = string;
 /**
+ * A path in the user's home folder: starts with ~/, forward slashes, no '..' steps.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "adapter_homePath".
+ */
+export type AdapterHomePath = string;
+/**
+ * Path relative to the project root, forward slashes, never absolute, never leaving the project.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "common_relPath".
+ */
+export type CommonRelPath = string;
+/**
  * One line of .agents/events.jsonl. The append-only event log is the source of truth; state.json is rebuilt from it.
  *
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
@@ -31,13 +45,6 @@ export type Event = Event1;
  * via the `definition` "common_timestamp".
  */
 export type CommonTimestamp = string;
-/**
- * Path relative to the project root, forward slashes, never absolute, never leaving the project.
- *
- * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
- * via the `definition` "common_relPath".
- */
-export type CommonRelPath = string;
 /**
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
  * via the `definition` "common_commitSha".
@@ -110,6 +117,7 @@ export type CommonRelPath1 = string;
  * Every project-memory file type, keyed by schema name.
  */
 export interface MemoryFileTypes {
+  adapter: Adapter;
   "agents-link": AgentsLink;
   "design-note": DesignNote;
   event: Event;
@@ -117,6 +125,65 @@ export interface MemoryFileTypes {
   "skill-catalog": SkillCatalog;
   "skills-config": SkillsConfig;
   state: State;
+}
+/**
+ * Optional known details for one AI tool (TOOL-5): packages/core/adapters/<id>.json. Discovery and integration work without any adapter; an adapter only adds details checked against the tool's own docs.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "Adapter".
+ */
+export interface Adapter {
+  formatVersion: CommonFormatVersion;
+  id: CommonId;
+  name: CommonNonEmptyText;
+  /**
+   * Ids that tool discovery gives this tool (from its own files); the adapter applies to any of them.
+   *
+   * @minItems 1
+   */
+  matches: [string, ...string[]];
+  mcp?: {
+    /**
+     * Top-level key the tool's MCP config uses for its servers.
+     */
+    format: "mcpServers" | "servers";
+    /**
+     * Per-user config files, first existing one wins (tools move them between versions).
+     *
+     * @minItems 1
+     */
+    userConfig?: [AdapterHomePath, ...AdapterHomePath[]];
+    projectConfig?: CommonRelPath;
+  };
+  /**
+   * Project files the tool reads instructions from, besides AGENTS.md. A pointer to project memory is written inside a managed block.
+   *
+   * @minItems 1
+   */
+  instructionFiles?: [CommonRelPath, ...CommonRelPath[]];
+  /**
+   * Where each detail was checked. At least one.
+   *
+   * @minItems 1
+   */
+  sources: [
+    {
+      url: string;
+      checked: string;
+      /**
+       * @minItems 1
+       */
+      covers: ["mcp" | "instructionFiles", ...("mcp" | "instructionFiles")[]];
+    },
+    ...{
+      url: string;
+      checked: string;
+      /**
+       * @minItems 1
+       */
+      covers: ["mcp" | "instructionFiles", ...("mcp" | "instructionFiles")[]];
+    }[]
+  ];
 }
 /**
  * .agents-link in a git worktree (or any secondary checkout): points at the folder whose .agents/ holds the shared project memory.

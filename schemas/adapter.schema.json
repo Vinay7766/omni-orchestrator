@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:adapter",
+  "title": "Adapter",
+  "description": "Optional known details for one AI tool (TOOL-5): packages/core/adapters/<id>.json. Discovery and integration work without any adapter; an adapter only adds details checked against the tool's own docs.",
+  "type": "object",
+  "required": ["formatVersion", "id", "name", "matches", "sources"],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": { "$ref": "urn:omni:schema:common#/$defs/formatVersion" },
+    "id": { "$ref": "urn:omni:schema:common#/$defs/id" },
+    "name": { "$ref": "urn:omni:schema:common#/$defs/nonEmptyText" },
+    "matches": {
+      "description": "Ids that tool discovery gives this tool (from its own files); the adapter applies to any of them.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+    },
+    "mcp": {
+      "type": "object",
+      "required": ["format"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "description": "Top-level key the tool's MCP config uses for its servers.",
+          "enum": ["mcpServers", "servers"]
+        },
+        "userConfig": {
+          "description": "Per-user config files, first existing one wins (tools move them between versions).",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/homePath" }
+        },
+        "projectConfig": { "$ref": "urn:omni:schema:common#/$defs/relPath" }
+      }
+    },
+    "instructionFiles": {
+      "description": "Project files the tool reads instructions from, besides AGENTS.md. A pointer to project memory is written inside a managed block.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "urn:omni:schema:common#/$defs/relPath" }
+    },
+    "sources": {
+      "description": "Where each detail was checked. At least one.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["url", "checked", "covers"],
+        "additionalProperties": false,
+        "properties": {
+          "url": { "type": "string", "pattern": "^https://" },
+          "checked": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          "covers": { "type": "array", "minItems": 1, "items": { "enum": ["mcp", "instructionFiles"] } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "homePath": {
+      "type": "string",
+      "description": "A path in the user's home folder: starts with ~/, forward slashes, no '..' steps.",
+      "pattern": "^~(/\\.?[^/.\\\\:*?\"<>|][^/\\\\:*?\"<>|]*)+$"
+    }
+  }
+}
