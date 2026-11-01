@@ -29,7 +29,7 @@ const skills: SkillSource = {
       } satisfies CatalogEntry,
     ],
   }),
-  readContent: async () => null,
+  readContent: async (id) => (id === "build-well" ? "# Build well\nDo it well.\n" : null),
 };
 
 let root: string;
@@ -63,12 +63,32 @@ afterEach(async () => {
 });
 
 describe("MCP server", () => {
-  it("offers get_context as a read-only tool", async () => {
+  it("offers its tools, with no way for an agent to approve or request changes (GATE-2)", async () => {
     await connect(root);
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(["get_context"]);
-    expect(tools[0].annotations).toMatchObject({ readOnlyHint: true });
-    expect(tools[0].outputSchema).toBeDefined();
+    const names = tools.map((t) => t.name);
+    expect(names).toEqual(["get_context", "get_phase_skills"]);
+    expect(names.filter((n) => /approve|request_changes|review/i.test(n))).toEqual([]);
+    for (const name of ["get_context", "get_phase_skills"]) {
+      const tool = tools.find((t) => t.name === name)!;
+      expect(tool.annotations, name).toMatchObject({ readOnlyHint: true });
+      expect(tool.outputSchema, name).toBeDefined();
+    }
+  });
+
+  it("serves the full text of the phase's skills", async () => {
+    await connect(root);
+    const result = await client.callTool({ name: "get_phase_skills", arguments: {} });
+    expect(result.isError).toBeFalsy();
+    const value = result.structuredContent as { phase: string; skills: { id: string; content: string }[] };
+    expect(value.phase).toBe("build");
+    expect(value.skills).toEqual([expect.objectContaining({ id: "build-well", content: "# Build well\nDo it well.\n" })]);
+  });
+
+  it("returns a tool error for a skill outside the phase", async () => {
+    await connect(root);
+    const result = await client.callTool({ name: "get_phase_skills", arguments: { ids: ["not-in-phase"] } });
+    expect(result.isError).toBe(true);
   });
 
   it("gives a client the summary, phase, task and skills in one call", async () => {
