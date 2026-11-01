@@ -31,7 +31,7 @@ jobs:
         run: npm run build
 
       - name: Run Vitest Suite
-        run: npm test -- --run
+        run: npm test
 
   test-rust-backend:
     name: Rust Backend Unit & Integration Tests

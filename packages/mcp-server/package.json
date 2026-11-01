@@ -1,0 +1,19 @@
+{
+  "name": "@omni/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OmniOrchestrator MCP server: the agent channel to project memory and phase gates.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@omni/core": "0.1.0"
+  }
+}

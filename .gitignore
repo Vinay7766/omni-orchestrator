@@ -33,3 +33,4 @@ PRD.md
 TASKS.md
 .private/
 .claude/
+*.tsbuildinfo

@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "test": "vitest run",
+    "build": "tsc && vite build && npm run build --workspaces --if-present",
+    "test": "vitest run && npm run test --workspaces --if-present",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:app": "vitest run"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -33,5 +34,8 @@
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
     "vitest": "^5.0.5"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

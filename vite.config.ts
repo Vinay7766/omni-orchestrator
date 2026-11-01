@@ -12,6 +12,8 @@ export default defineConfig(() => ({
     environment: "jsdom",
     globals: true,
     pool: "threads",
+    // Desktop app tests only; each workspace package runs its own tests.
+    include: ["src/**/*.test.{ts,tsx}"],
   },
   clearScreen: false,
   server: {

@@ -1,0 +1,22 @@
+{
+  "name": "@omni/extension",
+  "displayName": "OmniOrchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OmniOrchestrator editor extension: the human channel for approvals, handoff and status.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@omni/core": "0.1.0"
+  }
+}
