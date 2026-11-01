@@ -11,6 +11,8 @@ export type { MemoryFs } from "./memory/fs.js";
 export { createInvokeFs, MEMORY_FS_COMMANDS } from "./memory/invoke-fs.js";
 export type { Invoke } from "./memory/invoke-fs.js";
 export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
+export { EventFollower, watchEvents } from "./memory/sync.js";
+export type { SyncUpdate, ChangeTrigger, WatchOptions, EventWatch } from "./memory/sync.js";
 export { renderSummary, renderDecisions, renderProblems, renderLessons, refreshMemoryDocs } from "./memory/docs.js";
 export { findProject, LINK_FILE } from "./memory/discover.js";
 export type { FindProjectResult } from "./memory/discover.js";

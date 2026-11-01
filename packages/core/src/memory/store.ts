@@ -5,6 +5,7 @@ import { validateMemoryFile, type ValidationIssue } from "../validate.js";
 import type { MemoryFs } from "./fs.js";
 import { applyEvent, initialState, rebuild } from "./reduce.js";
 import { parentDir } from "./paths.js";
+import { EventFollower, parseEventLine, type LineIssue } from "./sync.js";
 import * as generated from "../generated/validators.js";
 
 // The schema's own rule for a relative path that cannot escape its base folder.
@@ -34,10 +35,7 @@ export type AppendResult =
 /** A rule evaluated inside the store's lock; returning issues prevents the write. */
 export type EventGuard = (state: State, events: Event[]) => ValidationIssue[];
 
-export interface LineIssue {
-  line: number;
-  message: string;
-}
+export type { LineIssue } from "./sync.js";
 
 class LockTimeout extends Error {}
 
@@ -199,20 +197,13 @@ export class MemoryStore {
     const text = (await this.fs.readText(this.path("events.jsonl"))) ?? "";
     const events: Event[] = [];
     const issues: LineIssue[] = [];
-    text.split("\n").forEach((raw, index) => {
-      if (raw.trim() === "") return;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        issues.push({ line: index + 1, message: "not valid JSON" });
-        return;
-      }
-      const result = validateMemoryFile("event", parsed);
-      if (result.ok) events.push(result.value);
-      else issues.push({ line: index + 1, message: result.issues.map((i) => `${i.path} ${i.message}`).join("; ") });
-    });
+    text.split("\n").forEach((raw, index) => parseEventLine(raw, index + 1, events, issues));
     return { events, issues };
+  }
+
+  /** A follower that reads new events as other processes append them (real-time sync, C11). */
+  follow(): EventFollower {
+    return new EventFollower(this.fs, this.path("events.jsonl"), this.project.flow);
   }
 
   /**
