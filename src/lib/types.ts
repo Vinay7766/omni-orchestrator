@@ -35,22 +35,43 @@ export interface Skill {
   license?: string;
 }
 
-export type ToolId = 
-  | "antigravity"
-  | "cursor"
-  | "vscode"
-  | "windsurf"
-  | "claude-code"
-  | "ollama";
+/** Id of a discovered tool. Open on purpose: any tool discovery finds, no fixed list. */
+export type ToolId = string;
 
-export interface InstalledTool {
+export type ToolCategory = "editor" | "editor-extension" | "command-line" | "desktop-app" | "unknown";
+
+/** A program and its leading arguments; the project folder is added last. */
+export interface LaunchCommand {
+  program: string;
+  args: string[];
+}
+
+/** What launch_and_build reports (Rust LaunchResult). */
+export interface LaunchResult {
+  success: boolean;
+  message: string;
+  projectPath: string;
+  toolLaunched: boolean;
+  verificationNotice: string;
+}
+
+/** One AI coding tool found on this computer (Rust discover_tools, tool_discovery.rs). */
+export interface DiscoveredTool {
   id: ToolId;
   name: string;
-  executablePath: string;
-  installed: boolean;
-  version?: string;
-  configDirectory: string;
-  commandSnippet: string;
+  category: ToolCategory;
+  /** 3 when the tool is shown to support MCP; null when unknown (the user confirms). */
+  capability: number | null;
+  /** Where the tool was found, for the user to check. */
+  evidence: string[];
+  /** True when the only evidence is the tool's own description of itself. */
+  needsConfirmation: boolean;
+  launch?: LaunchCommand | null;
+  executable?: string | null;
+  installDir?: string | null;
+  mcpConfig?: string | null;
+  dataFolder?: string | null;
+  hostEditor?: string | null;
 }
 
 export interface BYOKConfig {

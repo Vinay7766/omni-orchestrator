@@ -54,9 +54,20 @@ pub enum ToolCategory {
     Unknown,
 }
 
+/// A program and its leading arguments; the project folder is added as the last argument.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchCommand {
+    pub program: String,
+    pub args: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DiscoveredTool {
+    /// How to start the tool with a project folder, found in its own install; None when it is
+    /// not started directly (command-line tools run in a terminal, extensions in their editor).
+    pub launch: Option<LaunchCommand>,
     /// For an editor extension: the id of the editor it is installed in.
     pub host_editor: Option<String>,
     /// A command that starts the tool, when one was found on PATH.
@@ -213,7 +224,9 @@ fn find_editors(view: &SystemView) -> Vec<DiscoveredTool> {
                 let id = get("applicationName").or_else(|| get("dataFolderName")).or_else(|| get("nameShort")).map(|s| slug(&s));
                 let name = get("nameLong").or_else(|| get("nameShort"));
                 let (Some(id), Some(name)) = (id.filter(|s| !s.is_empty()), name) else { continue };
+                let launch = get("applicationName").and_then(|a| editor_launcher(&app, &a));
                 found.push(DiscoveredTool {
+                    launch,
                     id,
                     name,
                     category: ToolCategory::Editor,
@@ -229,6 +242,32 @@ fn find_editors(view: &SystemView) -> Vec<DiscoveredTool> {
         }
     }
     found
+}
+
+/// An editor's own command-line launcher: bin/<applicationName> in its install folder.
+fn editor_launcher(app: &Path, application_name: &str) -> Option<LaunchCommand> {
+    let file = if cfg!(windows) { format!("{}.cmd", application_name) } else { application_name.to_string() };
+    [app.join("bin"), app.join("Contents/Resources/app/bin")]
+        .into_iter()
+        .map(|dir| dir.join(&file))
+        .find(|p| p.is_file())
+        .map(|p| LaunchCommand { program: p.to_string_lossy().into_owned(), args: vec![] })
+}
+
+/// A desktop app's own program: <Folder>.exe on Windows, the bundle itself on macOS.
+fn app_launcher(folder: &Path) -> Option<LaunchCommand> {
+    let name = folder.file_name()?.to_string_lossy().into_owned();
+    if name.to_lowercase().ends_with(".app") && cfg!(target_os = "macos") {
+        return Some(LaunchCommand { program: "open".into(), args: vec!["-a".into(), folder.to_string_lossy().into_owned()] });
+    }
+    if cfg!(windows) {
+        let wanted = format!("{}.exe", name.to_lowercase());
+        return children(folder)
+            .into_iter()
+            .find(|p| p.is_file() && file_name_lower(p) == wanted)
+            .map(|p| LaunchCommand { program: p.to_string_lossy().into_owned(), args: vec![] });
+    }
+    None
 }
 
 fn has_mcp_section(value: &serde_json::Value, file_mentions_mcp: bool) -> bool {
@@ -467,6 +506,7 @@ fn merge(findings: Vec<DiscoveredTool>) -> Vec<DiscoveredTool> {
                 existing.data_folder = existing.data_folder.take().or(tool.data_folder);
                 existing.host_editor = existing.host_editor.take().or(tool.host_editor);
                 existing.executable = existing.executable.take().or(tool.executable);
+                existing.launch = existing.launch.take().or(tool.launch);
                 // Any source with real evidence (a config, a manifest) confirms the tool.
                 existing.needs_confirmation = existing.needs_confirmation && tool.needs_confirmation;
                 existing.user_data_name = existing.user_data_name.take().or(tool.user_data_name);
@@ -593,6 +633,9 @@ fn join_installed_apps(view: &SystemView, tools: &mut [DiscoveredTool]) {
         if let Some(tool) = tools.iter_mut().find(|t| (t.id == id || t.id == compact) && t.install_dir.is_none()) {
             if let Some(location) = &app.location {
                 tool.install_dir = Some(location.to_string_lossy().into_owned());
+                if tool.launch.is_none() {
+                    tool.launch = app_launcher(location);
+                }
             }
             tool.evidence.push(format!("listed as an installed app: {}", app.name));
             if tool.category == ToolCategory::Unknown {
@@ -731,10 +774,14 @@ pub fn discover(view: &SystemView) -> Vec<DiscoveredTool> {
 fn join_install_folders(view: &SystemView, tools: &mut [DiscoveredTool]) {
     for root in &view.install_roots {
         for app in children(root).into_iter().filter(|p| p.is_dir()) {
-            let id = slug(&file_name_lower(&app));
+            let folder = file_name_lower(&app);
+            let id = slug(folder.strip_suffix(".app").unwrap_or(&folder));
             if let Some(tool) = tools.iter_mut().find(|t| t.id == id && t.install_dir.is_none()) {
                 tool.install_dir = Some(app.to_string_lossy().into_owned());
                 tool.evidence.push(format!("installed at {}", app.display()));
+                if tool.launch.is_none() {
+                    tool.launch = app_launcher(&app);
+                }
                 if tool.category == ToolCategory::Unknown {
                     tool.category = ToolCategory::DesktopApp;
                 }

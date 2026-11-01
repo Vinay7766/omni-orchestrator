@@ -419,11 +419,98 @@ mod command_line_and_apps {
     }
 }
 
+mod launch_commands {
+    use super::*;
+
+    const CMD: &str = if cfg!(windows) { ".cmd" } else { "" };
+
+    #[test]
+    fn an_editor_is_launched_through_its_own_bin_command() {
+        let m = FakeMachine::new("launch-editor");
+        m.editor("Nebula Editor", r#"{ "nameLong": "Nebula Editor", "applicationName": "nebula" }"#);
+        m.write(&format!("programs/Nebula Editor/bin/nebula{}", CMD), "launcher");
+        let tool = discover(&m.view()).into_iter().find(|t| t.id == "nebula").unwrap();
+        let launch = tool.launch.expect("editor has a launch command");
+        assert!(launch.program.ends_with(&format!("nebula{}", CMD)), "{}", launch.program);
+        assert!(launch.args.is_empty());
+    }
+
+    #[test]
+    fn a_versioned_editor_install_uses_the_top_level_bin_command() {
+        let m = FakeMachine::new("launch-versioned");
+        m.write("programs/Nebula/1a2b3c/resources/app/product.json", r#"{ "nameLong": "Nebula Editor", "applicationName": "nebula" }"#);
+        m.write(&format!("programs/Nebula/bin/nebula{}", CMD), "launcher");
+        let tool = discover(&m.view()).into_iter().find(|t| t.id == "nebula").unwrap();
+        assert!(tool.launch.is_some());
+    }
+
+    #[test]
+    fn an_editor_without_a_bin_command_has_no_launch_command() {
+        let m = FakeMachine::new("launch-nobin");
+        m.editor("Nebula Editor", r#"{ "nameLong": "Nebula Editor", "applicationName": "nebula" }"#);
+        assert!(discover(&m.view()).into_iter().find(|t| t.id == "nebula").unwrap().launch.is_none());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn a_desktop_app_is_launched_through_the_program_named_like_its_folder() {
+        let m = FakeMachine::new("launch-app");
+        m.write("home/.orbit/mcp.json", r#"{ "mcpServers": {} }"#);
+        m.write("programs/Orbit/Orbit.exe", "program");
+        m.write("programs/Orbit/Uninstall Orbit.exe", "uninstaller");
+        let tool = discover(&m.view()).into_iter().find(|t| t.id == "orbit").unwrap();
+        assert!(tool.launch.expect("launch").program.ends_with("Orbit.exe"));
+    }
+
+    #[test]
+    fn command_line_tools_are_not_launched() {
+        let m = FakeMachine::new("launch-cli");
+        m.write("home/.zeta/mcp.json", r#"{ "mcpServers": {} }"#);
+        m.write(if cfg!(windows) { "bin/zeta.cmd" } else { "bin/zeta" }, "binary");
+        let mut view = m.view();
+        view.path_dirs = vec![m.base.join("bin")];
+        let tool = discover(&view).into_iter().find(|t| t.id == "zeta").unwrap();
+        assert_eq!(tool.category, ToolCategory::CommandLine);
+        assert!(tool.launch.is_none(), "a command-line tool runs in a terminal; the user is told the command instead");
+    }
+}
+
 #[test]
 fn source_code_names_no_tools() {
     let source = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands/tool_discovery.rs")).unwrap().to_lowercase();
     for name in ["antigravity", "cursor", "vscode", "windsurf", "kiro", "claude", "ollama", "opencode", "codex", "copilot"] {
         assert!(!source.contains(name), "tool_discovery.rs mentions the tool name '{}'; discovery must work by category", name);
+    }
+}
+
+/// TOOL-0 for the whole app (C12): no Rust or frontend source names a tool. Tests may use
+/// names only as data. Model providers are BYOK settings, opened up separately (C14).
+#[test]
+fn app_code_names_no_tools() {
+    fn sources(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in fs::read_dir(dir).into_iter().flatten().flatten() {
+            let p = entry.path();
+            let name = p.file_name().unwrap().to_string_lossy().to_string();
+            if p.is_dir() {
+                sources(&p, out);
+            } else if (name.ends_with(".rs") || name.ends_with(".ts") || name.ends_with(".tsx")) && !name.contains(".test.") {
+                out.push(p);
+            }
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files = Vec::new();
+    sources(&root.join("src"), &mut files);
+    sources(&root.join("../src"), &mut files);
+    assert!(files.len() > 20, "expected to scan the app sources, found {}", files.len());
+    let names = ["antigravity", "windsurf", "vscode", "kiro", "opencode", "codex", "copilot", "claude-code", "claudecode", "claude code", "cursor"];
+    for file in files {
+        let text = fs::read_to_string(&file).unwrap().to_lowercase();
+        // CSS cursor utilities are not the tool.
+        let text = text.replace("cursor-pointer", "").replace("cursor-not-allowed", "").replace("cursor-default", "").replace("cursor-text", "");
+        for name in names {
+            assert!(!text.contains(name), "{} names the tool '{}'; tools come from discovery (TOOL-0)", file.display(), name);
+        }
     }
 }
 
@@ -434,7 +521,7 @@ fn real_machine() {
     let started = std::time::Instant::now();
     let tools = discover(&SystemView::from_environment());
     for t in &tools {
-        println!("{:<28} {:<17} capability={:<8} evidence={}", t.id, format!("{:?}", t.category), format!("{:?}", t.capability), t.evidence.len());
+        println!("{:<28} {:<17} capability={:<8} evidence={} launch={}", t.id, format!("{:?}", t.category), format!("{:?}", t.capability), t.evidence.len(), t.launch.as_ref().map(|l| l.program.rsplit(['/', '\\']).next().unwrap_or("").to_string()).unwrap_or_else(|| "-".into()));
     }
     println!("{} tools in {:?}", tools.len(), started.elapsed());
 }

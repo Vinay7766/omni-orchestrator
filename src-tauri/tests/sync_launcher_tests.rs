@@ -1,6 +1,8 @@
 use std::fs;
+use std::cell::RefCell;
 use tauri_app_lib::commands::sync_launcher::{SyncLauncher, LaunchPayload};
-use tauri_app_lib::models::{ToolId, Skill, SkillCategory, AuthorAttribution};
+use tauri_app_lib::commands::tool_discovery::{DiscoveredTool, LaunchCommand, ToolCategory};
+use tauri_app_lib::models::{Skill, SkillCategory, AuthorAttribution};
 
 #[test]
 fn test_sync_launcher_injects_tiered_configs_and_state() {
@@ -56,7 +58,7 @@ fn test_sync_launcher_injects_tiered_configs_and_state() {
     let payload = LaunchPayload {
         project_path: temp_dir.to_string_lossy().to_string(),
         project_name: "MockProject".to_string(),
-        selected_tool: ToolId::Cursor,
+        selected_tool: "a-tool-nobody-named".to_string(),
         idea_description: "Build an automated CRM system".to_string(),
         skills,
     };
@@ -74,16 +76,76 @@ fn test_sync_launcher_injects_tiered_configs_and_state() {
     let state_path = temp_dir.join(".agents").join("session-state.json");
     assert!(state_path.exists(), "Session state ledger must exist");
 
-    // 3. Verify Cursor-specific configs: .cursorrules and .cursor/skills/
-    let cursor_rules_path = temp_dir.join(".cursorrules");
-    assert!(cursor_rules_path.exists(), ".cursorrules must exist");
-    let rules_content = fs::read_to_string(&cursor_rules_path).expect("Read cursorrules failed");
-    // Verify Tier 1 micro-rules are compact (< 1500 chars to avoid token bloat)
-    assert!(rules_content.len() < 1500, "Rules must be compact micro-rules to prevent token bloat");
-
-    let cursor_skills_dir = temp_dir.join(".cursor").join("skills");
-    assert!(cursor_skills_dir.exists(), ".cursor/skills dir must exist");
+    // 3. Generic files any tool can read; tool-specific files are optional adapters (C13)
+    let rules = fs::read_to_string(temp_dir.join("AGENTS.md")).expect("AGENTS.md must exist");
+    assert!(rules.len() < 1500, "Rules must be compact micro-rules to prevent token bloat");
+    assert!(temp_dir.join(".agents").join("skills").join("test-driven-development.md").exists());
 
     // Clean up
     let _ = fs::remove_dir_all(temp_dir);
+}
+
+fn payload_for(dir: &std::path::Path, tool: &str) -> LaunchPayload {
+    LaunchPayload {
+        project_path: dir.to_string_lossy().to_string(),
+        project_name: "P".to_string(),
+        selected_tool: tool.to_string(),
+        idea_description: "An idea".to_string(),
+        skills: vec![],
+    }
+}
+fn temp(name: &str) -> std::path::PathBuf {
+    let d = std::env::temp_dir().join(format!("omni-launch-{}-{}", name, std::process::id()));
+    let _ = fs::remove_dir_all(&d);
+    fs::create_dir_all(&d).unwrap();
+    d
+}
+fn tool(id: &str, category: ToolCategory, launch: Option<LaunchCommand>) -> DiscoveredTool {
+    DiscoveredTool { id: id.to_string(), name: format!("{} app", id), category, launch, ..Default::default() }
+}
+
+#[test]
+fn never_overwrites_files_the_user_already_has() {
+    let dir = temp("keep");
+    fs::write(dir.join("AGENTS.md"), "my own rules").unwrap();
+    let result = SyncLauncher::new().prepare_workspace(&payload_for(&dir, "x")).unwrap();
+    assert_eq!(fs::read_to_string(dir.join("AGENTS.md")).unwrap(), "my own rules");
+    assert!(result.verification_notice.contains("AGENTS.md"), "the user is told which files were kept");
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn launches_the_discovered_tool_with_the_project_folder() {
+    let dir = temp("spawn");
+    let spawned = RefCell::new(Vec::new());
+    let tools = vec![tool("nebula", ToolCategory::Editor, Some(LaunchCommand { program: "/opt/nebula/bin/nebula".into(), args: vec![] }))];
+    let result = SyncLauncher::new()
+        .launch_with(&payload_for(&dir, "nebula"), &tools, |cmd, project| {
+            spawned.borrow_mut().push((cmd.program.clone(), project.to_string()));
+            Ok(())
+        })
+        .unwrap();
+    assert!(result.tool_launched);
+    assert_eq!(spawned.borrow().as_slice(), &[("/opt/nebula/bin/nebula".to_string(), dir.to_string_lossy().to_string())]);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn an_unknown_tool_is_reported_and_nothing_is_started() {
+    let dir = temp("unknown");
+    let result = SyncLauncher::new().launch_with(&payload_for(&dir, "not-installed"), &[], |_, _| panic!("must not spawn")).unwrap();
+    assert!(!result.tool_launched);
+    assert!(result.message.contains("not-installed"));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn a_tool_without_a_launch_command_gets_instructions_instead() {
+    let dir = temp("cli");
+    let mut cli = tool("zeta", ToolCategory::CommandLine, None);
+    cli.executable = Some("/usr/local/bin/zeta".into());
+    let result = SyncLauncher::new().launch_with(&payload_for(&dir, "zeta"), &[cli], |_, _| panic!("must not spawn")).unwrap();
+    assert!(!result.tool_launched);
+    assert!(result.message.contains("/usr/local/bin/zeta"), "{}", result.message);
+    let _ = fs::remove_dir_all(dir);
 }

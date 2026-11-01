@@ -12,7 +12,7 @@ const mockedInvoke = vi.mocked(invoke);
 // Resolves the Tauri commands App calls on mount; tests override individual commands.
 function mockBackend(overrides: Record<string, () => Promise<unknown>> = {}) {
   const handlers: Record<string, () => Promise<unknown>> = {
-    detect_installed_tools: () => Promise.resolve([]),
+    discover_tools: () => Promise.resolve([]),
     get_skills: () => Promise.resolve([]),
     get_default_project_path: () => Promise.resolve("C:\\Users\\test\\Projects"),
     ...overrides,
@@ -41,6 +41,8 @@ describe("OmniOrchestrator App", () => {
     expect(screen.getAllByText("OmniOrchestrator")[0]).toBeDefined();
     expect(screen.getByText("Apache 2.0")).toBeDefined();
     expect(screen.getByText(".agents/session-state.json")).toBeDefined();
+    // No tool name is assumed when discovery found nothing.
+    expect(screen.getByText("None found")).toBeDefined();
   });
 
   it("renders the prompt input bar with inline track dropdown", async () => {

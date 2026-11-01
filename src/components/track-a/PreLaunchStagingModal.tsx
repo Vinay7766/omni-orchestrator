@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Skill, ToolId, InstalledTool } from "../../lib/types";
+import { Skill, ToolId, DiscoveredTool } from "../../lib/types";
 import { Folder, Layers, Search, Check, RefreshCw, X } from "lucide-react";
 
 interface PreLaunchStagingModalProps {
@@ -7,9 +7,18 @@ interface PreLaunchStagingModalProps {
   onClose: () => void;
   projectName: string;
   projectPath: string;
-  detectedTools: InstalledTool[];
+  detectedTools: DiscoveredTool[];
   initialSkills: Skill[];
   onLaunch: (selectedTool: ToolId, skills: Skill[], finalProjectPath: string) => Promise<void>;
+}
+
+/** What happens when this tool is chosen, in words; colour is never the only signal. */
+function statusLabel(tool: DiscoveredTool): string {
+  if (tool.needsConfirmation) return "Please confirm";
+  if (tool.launch) return "Opens directly";
+  if (tool.executable) return "Run in a terminal";
+  if (tool.hostEditor) return `Inside ${tool.hostEditor}`;
+  return "Open manually";
 }
 
 export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
@@ -22,8 +31,9 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
   onLaunch,
 }) => {
   const [customPath, setCustomPath] = useState(defaultProjectPath);
-  const [selectedToolId, setSelectedToolId] = useState<ToolId>(
-    detectedTools.find((t) => t.installed)?.id || "cursor"
+  // No tool is assumed: preselect one that can be started directly, else the first found.
+  const [selectedToolId, setSelectedToolId] = useState<ToolId | null>(
+    (detectedTools.find((t) => t.launch) ?? detectedTools[0])?.id ?? null
   );
   const [activeSkills, setActiveSkills] = useState<Skill[]>(initialSkills);
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,6 +61,7 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
   });
 
   const handleLaunchClick = async () => {
+    if (!selectedToolId) return;
     setIsLaunching(true);
     try {
       await onLaunch(selectedToolId, activeSkills, customPath);
@@ -108,6 +119,12 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
             <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider block">
               Target Execution IDE
             </label>
+            {detectedTools.length === 0 && (
+              <p role="status" className="text-xs text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
+                No AI coding tools were found on this computer. Install one, or set it up with
+                MCP, then open this window again.
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {detectedTools.map((tool) => {
                 const isSelected = selectedToolId === tool.id;
@@ -116,6 +133,8 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
                   <button
                     key={tool.id}
                     onClick={() => setSelectedToolId(tool.id)}
+                    aria-pressed={isSelected}
+                    title={tool.evidence.join("\n")}
                     className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
                       isSelected
                         ? "bg-zinc-800 border-zinc-500 shadow-sm"
@@ -126,12 +145,9 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
                       <span className="text-xs font-semibold text-zinc-100">
                         {tool.name}
                       </span>
-                      {tool.installed && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                      )}
                     </div>
                     <span className="text-[10px] text-zinc-400 mt-2 font-mono truncate">
-                      {tool.installed ? "Detected" : "Manual path"}
+                      {statusLabel(tool)}
                     </span>
                   </button>
                 );
@@ -228,9 +244,9 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
             </button>
             <button
               onClick={handleLaunchClick}
-              disabled={isLaunching}
+              disabled={isLaunching || !selectedToolId}
               data-testid="launch-and-build-btn"
-              className="px-5 py-2 text-xs font-semibold rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 transition-colors flex items-center gap-2 shadow"
+              className="px-5 py-2 text-xs font-semibold rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 transition-colors flex items-center gap-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLaunching ? (
                 <>
@@ -240,7 +256,7 @@ export const PreLaunchStagingModal: React.FC<PreLaunchStagingModalProps> = ({
               ) : launchSuccess ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Launched!</span>
+                  <span>Workspace ready</span>
                 </>
               ) : (
                 <>

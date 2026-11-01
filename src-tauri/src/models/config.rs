@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use super::tool::ToolId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
@@ -29,7 +28,8 @@ pub struct AppSettings {
     pub default_track: TrackType,
     pub theme: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub active_tool_id: Option<ToolId>,
+    /// Id of a discovered tool (open; no fixed list).
+    pub active_tool_id: Option<String>,
     pub byok: BYOKConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_skills_directory: Option<String>,
@@ -40,7 +40,7 @@ impl Default for AppSettings {
         Self {
             default_track: TrackType::TrackA,
             theme: "dark".to_string(),
-            active_tool_id: Some(ToolId::Cursor),
+            active_tool_id: None,
             byok: BYOKConfig::default(),
             custom_skills_directory: None,
         }

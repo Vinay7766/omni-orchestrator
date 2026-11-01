@@ -5,7 +5,8 @@ import type {
   ChatMessage,
   Skill,
   TeardownResponse,
-  InstalledTool,
+  DiscoveredTool,
+  LaunchResult,
   BYOKConfig,
 } from "./lib/types";
 import { ChatContainer } from "./components/chat/ChatContainer";
@@ -35,8 +36,8 @@ export function App() {
 
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [tools, setTools] = useState<InstalledTool[]>([]);
-  const [activeTool, setActiveTool] = useState<string>("Visual Studio Code");
+  const [tools, setTools] = useState<DiscoveredTool[]>([]);
+  const [activeTool, setActiveTool] = useState<string>("None found");
   const [defaultProjectPath, setDefaultProjectPath] = useState<string>("");
 
   useEffect(() => {
@@ -45,14 +46,14 @@ export function App() {
 
   const loadInitialData = async () => {
     try {
-      const toolList = await invoke<InstalledTool[]>("detect_installed_tools");
+      const toolList = await invoke<DiscoveredTool[]>("discover_tools");
       setTools(toolList);
-      const installed = toolList.find((t) => t.installed);
-      if (installed) {
-        setActiveTool(installed.name);
+      const startable = toolList.find((t) => t.launch) ?? toolList[0];
+      if (startable) {
+        setActiveTool(startable.name);
       }
     } catch {
-      setActiveTool("Visual Studio Code");
+      setActiveTool("Discovery failed");
     }
 
     try {
@@ -278,8 +279,9 @@ export function App() {
         onClose={() => setShowStaging(false)}
         onLaunch={async (selectedTool, activeSkills, finalProjectPath) => {
           setDefaultProjectPath(finalProjectPath);
+          let result: LaunchResult;
           try {
-            await invoke("launch_and_build", {
+            result = await invoke<LaunchResult>("launch_and_build", {
               payload: {
                 projectPath: finalProjectPath,
                 projectName: stagingPrompt.slice(0, 30) || "GeneratedApp",
@@ -308,7 +310,8 @@ export function App() {
           const noticeMsg: ChatMessage = {
             id: Date.now().toString(),
             sender: "assistant",
-            content: `Target tool **${selectedTool}** launched successfully!\n\n- **Project Path:** \`${finalProjectPath}\`\n- **Directives:** \`AUTONOMOUS_RUNNER.md\` written\n- **Session State:** \`.agents/session-state.json\` created\n- **Active Skills Injected:** ${activeSkills.filter((s) => s.enabled).length} skills with tiered micro-rules (<1500 chars).`,
+            // What the backend actually did: launched, or prepared with instructions to open.
+            content: `${result.message}\n\n${result.verificationNotice}`,
             timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             track: "track-a",
           };

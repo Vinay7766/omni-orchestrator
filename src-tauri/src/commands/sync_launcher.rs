@@ -1,16 +1,18 @@
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use serde::{Deserialize, Serialize};
-use crate::models::{Skill, ToolId};
-use crate::commands::tool_detector::ToolDetector;
+use crate::models::Skill;
+use crate::commands::tool_discovery::{discover, DiscoveredTool, LaunchCommand, SystemView};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LaunchPayload {
     pub project_path: String,
     pub project_name: String,
-    pub selected_tool: ToolId,
+    /// Id of a tool from discover_tools (open: any discovered tool).
+    pub selected_tool: String,
     pub idea_description: String,
     pub skills: Vec<Skill>,
 }
@@ -66,6 +68,26 @@ fn sanitize_filename(id: &str) -> String {
     }
 }
 
+/// Writes `name` (relative to the project) only if it does not exist yet; otherwise records it
+/// in `kept`. The user's own files are never overwritten.
+fn write_new(project_dir: &Path, name: &str, content: &str, kept: &mut Vec<String>) -> Result<(), String> {
+    match fs::OpenOptions::new().write(true).create_new(true).open(project_dir.join(name)) {
+        Ok(mut file) => file.write_all(content.as_bytes()).map_err(|e| format!("Failed to write {}: {}", name, e)),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            kept.push(name.to_string());
+            Ok(())
+        }
+        Err(e) => Err(format!("Failed to write {}: {}", name, e)),
+    }
+}
+
+const MICRO_RULES: &str = r#"# Core Engineering Standards
+- Spec before code: Always verify requirements in PRD.md before writing code.
+- Red-Green-Refactor TDD: Write test first, verify failure, write minimal code, verify green.
+- Never commit secrets or bypass validations.
+- Maintain architecture integrity.
+"#;
+
 impl SyncLauncher {
     pub fn new() -> Self {
         Self
@@ -77,8 +99,10 @@ impl SyncLauncher {
             fs::create_dir_all(&project_dir)
                 .map_err(|e| format!("Failed to create project dir: {}", e))?;
         }
+        let enabled: Vec<&Skill> = payload.skills.iter().filter(|s| s.enabled).collect();
+        let mut kept: Vec<String> = Vec::new();
 
-        // 1. Injects AUTONOMOUS_RUNNER.md
+        // 1. AUTONOMOUS_RUNNER.md
         let runner_content = format!(
             r#"# AUTONOMOUS EXECUTION DIRECTIVE: {}
 
@@ -98,40 +122,48 @@ You are the Autonomous Senior Engineering Team. You MUST execute this project ph
 "#,
             payload.project_name,
             payload.idea_description,
-            payload
-                .skills
+            enabled
                 .iter()
-                .filter(|s| s.enabled)
                 .map(|s| format!("- **{}** (by {}): {}", s.name, s.attribution.name, s.description))
                 .collect::<Vec<_>>()
                 .join("\n")
         );
-        fs::write(project_dir.join("AUTONOMOUS_RUNNER.md"), runner_content)
-            .map_err(|e| format!("Failed to write AUTONOMOUS_RUNNER.md: {}", e))?;
+        write_new(&project_dir, "AUTONOMOUS_RUNNER.md", &runner_content, &mut kept)?;
 
-        // 2. Injects Cross-IDE Session State (.agents/session-state.json)
+        // 2. Cross-tool session state (.agents/session-state.json), refreshed on every launch
         let agents_dir = project_dir.join(".agents");
-        let _ = fs::create_dir_all(&agents_dir);
+        fs::create_dir_all(agents_dir.join("skills")).map_err(|e| format!("Failed to create .agents: {}", e))?;
+        let prepared_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
         let session_state = serde_json::json!({
             "projectName": payload.project_name,
             "selectedTool": payload.selected_tool,
             "currentPhase": 1,
-            "equippedSkills": payload.skills.iter().filter(|s| s.enabled).map(|s| &s.id).collect::<Vec<_>>(),
-            "timestamp": "2026-10-31T11:00:00Z"
+            "equippedSkills": enabled.iter().map(|s| &s.id).collect::<Vec<_>>(),
+            "preparedAtUnixSeconds": prepared_at
         });
         fs::write(
             agents_dir.join("session-state.json"),
             serde_json::to_string_pretty(&session_state).unwrap_or_default(),
         ).map_err(|e| format!("Failed to write session-state.json: {}", e))?;
 
-        // 3. Injects Tier 1 Micro-Rules (always-on, <1500 chars) & Tier 2 Phase-Scoped Skills
-        self.inject_tool_configs(&project_dir, &payload.selected_tool, &payload.skills)?;
+        // 3. Files any agent can read. Tool-specific files are optional adapters (C13), not code.
+        write_new(&project_dir, "AGENTS.md", MICRO_RULES, &mut kept)?;
+        for skill in &enabled {
+            let name = format!(".agents/skills/{}.md", sanitize_filename(&skill.id));
+            write_new(&project_dir, &name, &skill.content, &mut kept)?;
+        }
 
-        let notice = format!(
-            "Workspace successfully prepared at {}!\n\nConfigured:\n- Tier 1 Micro-Rules injected to prevent token bloat.\n- Autonomous Runner directives generated.\n- Cross-IDE session state saved.\n- {} skills equipped.",
+        let mut notice = format!(
+            "Workspace successfully prepared at {}!\n\nConfigured:\n- Tier 1 Micro-Rules (AGENTS.md) to prevent token bloat.\n- Autonomous Runner directives generated.\n- Cross-tool session state saved.\n- {} skills equipped (.agents/skills).",
             payload.project_path,
-            payload.skills.iter().filter(|s| s.enabled).count()
+            enabled.len()
         );
+        if !kept.is_empty() {
+            notice.push_str(&format!("\n\nKept your existing files (not overwritten): {}", kept.join(", ")));
+        }
 
         Ok(LaunchResult {
             success: true,
@@ -142,121 +174,58 @@ You are the Autonomous Senior Engineering Team. You MUST execute this project ph
         })
     }
 
-    fn inject_tool_configs(
-        &self,
-        project_dir: &Path,
-        tool: &ToolId,
-        skills: &[Skill],
-    ) -> Result<(), String> {
-        let micro_rules = r#"# Core Engineering Standards
-- Spec before code: Always verify requirements in PRD.md before writing code.
-- Red-Green-Refactor TDD: Write test first, verify failure, write minimal code, verify green.
-- Never commit secrets or bypass validations.
-- Maintain architecture integrity.
-"#;
-
-        match tool {
-            ToolId::Cursor => {
-                // Injects .cursorrules
-                fs::write(project_dir.join(".cursorrules"), micro_rules)
-                    .map_err(|e| format!("Failed to write .cursorrules: {}", e))?;
-
-                // Injects skills to .cursor/skills/
-                let skills_dir = project_dir.join(".cursor").join("skills");
-                let _ = fs::create_dir_all(&skills_dir);
-                for skill in skills.iter().filter(|s| s.enabled) {
-                    let safe_name = sanitize_filename(&skill.id);
-                    let skill_file = skills_dir.join(format!("{}.md", safe_name));
-                    let _ = fs::write(skill_file, &skill.content);
-                }
-            }
-            ToolId::Antigravity => {
-                // Injects AGENTS.md
-                fs::write(project_dir.join("AGENTS.md"), micro_rules)
-                    .map_err(|e| format!("Failed to write AGENTS.md: {}", e))?;
-
-                // Injects skills to .gemini/config/skills/
-                let skills_dir = project_dir.join(".gemini").join("config").join("skills");
-                let _ = fs::create_dir_all(&skills_dir);
-                for skill in skills.iter().filter(|s| s.enabled) {
-                    let safe_name = sanitize_filename(&skill.id);
-                    let skill_file = skills_dir.join(format!("{}.md", safe_name));
-                    let _ = fs::write(skill_file, &skill.content);
-                }
-            }
-            ToolId::Vscode => {
-                // Injects .github/copilot-instructions.md
-                let github_dir = project_dir.join(".github");
-                let _ = fs::create_dir_all(&github_dir);
-                fs::write(github_dir.join("copilot-instructions.md"), micro_rules)
-                    .map_err(|e| format!("Failed to write copilot-instructions.md: {}", e))?;
-
-                // Injects skills to .agents/skills/
-                let skills_dir = project_dir.join(".agents").join("skills");
-                let _ = fs::create_dir_all(&skills_dir);
-                for skill in skills.iter().filter(|s| s.enabled) {
-                    let safe_name = sanitize_filename(&skill.id);
-                    let skill_file = skills_dir.join(format!("{}.md", safe_name));
-                    let _ = fs::write(skill_file, &skill.content);
-                }
-            }
-            ToolId::Windsurf => {
-                // Injects .windsurfrules
-                fs::write(project_dir.join(".windsurfrules"), micro_rules)
-                    .map_err(|e| format!("Failed to write .windsurfrules: {}", e))?;
-            }
-            ToolId::ClaudeCode => {
-                // Injects CLAUDE.md
-                fs::write(project_dir.join("CLAUDE.md"), micro_rules)
-                    .map_err(|e| format!("Failed to write CLAUDE.md: {}", e))?;
-            }
-            ToolId::Ollama => {}
-        }
-
-        Ok(())
+    /// Prepares the workspace, then starts the tool found by discovery on this machine.
+    pub fn launch_tool(&self, payload: &LaunchPayload) -> Result<LaunchResult, String> {
+        let tools = discover(&SystemView::from_environment());
+        self.launch_with(payload, &tools, |cmd, project| {
+            // The program comes from the tool's own install folder (discovery), never from the
+            // web view, which only sends an id.
+            Command::new(&cmd.program).args(&cmd.args).arg(project).spawn().map(|_| ())
+        })
     }
 
-    pub fn launch_tool(&self, payload: &LaunchPayload) -> Result<LaunchResult, String> {
-        let mut prep_result = self.prepare_workspace(payload)?;
-
-        let detector = ToolDetector::new();
-        let tools = detector.detect_all();
-        let tool_info = tools.into_iter().find(|t| t.id == payload.selected_tool);
-
-        if let Some(tool) = tool_info {
-            if tool.installed && !tool.executable_path.is_empty() {
-                let mut cmd = Command::new(&tool.executable_path);
-                cmd.arg(&payload.project_path);
-
-                match cmd.spawn() {
-                    Ok(_) => {
-                        prep_result.tool_launched = true;
-                        prep_result.message = format!("{} launched successfully!", tool.name);
-                    }
-                    Err(e) => {
-                        prep_result.message = format!("Workspace ready, but failed to launch IDE: {}", e);
-                    }
+    /// Like launch_tool, with the discovered tools and the way to start a program given.
+    pub fn launch_with(
+        &self,
+        payload: &LaunchPayload,
+        tools: &[DiscoveredTool],
+        spawn: impl Fn(&LaunchCommand, &str) -> std::io::Result<()>,
+    ) -> Result<LaunchResult, String> {
+        let mut result = self.prepare_workspace(payload)?;
+        let Some(tool) = tools.iter().find(|t| t.id == payload.selected_tool) else {
+            result.message = format!(
+                "Workspace prepared, but the tool \"{}\" was not found on this computer. Open {} in your tool manually.",
+                payload.selected_tool, payload.project_path
+            );
+            return Ok(result);
+        };
+        match &tool.launch {
+            Some(cmd) => match spawn(cmd, &payload.project_path) {
+                Ok(()) => {
+                    result.tool_launched = true;
+                    result.message = format!("{} launched successfully!", tool.name);
                 }
-            } else {
-                prep_result.message = format!(
-                    "Workspace prepared, but {} is not detected on PATH. You can open {} manually.",
-                    tool.name, payload.project_path
-                );
+                Err(e) => result.message = format!("Workspace ready, but {} could not be started: {}", tool.name, e),
+            },
+            None => {
+                let how = match (&tool.executable, &tool.host_editor) {
+                    (Some(exe), _) => format!("run {} in a terminal inside {}", exe, payload.project_path),
+                    (None, Some(editor)) => format!("open {} in {} and use the extension there", payload.project_path, editor),
+                    _ => format!("open {} in {}", payload.project_path, tool.name),
+                };
+                result.message = format!("Workspace prepared. {} is not started directly: {}.", tool.name, how);
             }
         }
-
-        Ok(prep_result)
+        Ok(result)
     }
 }
 
 #[tauri::command]
 pub fn launch_and_build(payload: LaunchPayload) -> Result<LaunchResult, String> {
-    let launcher = SyncLauncher::new();
-    launcher.launch_tool(&payload)
+    SyncLauncher::new().launch_tool(&payload)
 }
 
 #[tauri::command]
 pub fn prepare_project_staging(payload: LaunchPayload) -> Result<LaunchResult, String> {
-    let launcher = SyncLauncher::new();
-    launcher.prepare_workspace(&payload)
+    SyncLauncher::new().prepare_workspace(&payload)
 }
