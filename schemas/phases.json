@@ -2,7 +2,30 @@
   "version": 1,
   "description": "Ordered phases for each project flow. Single source of truth for phase ids, shared by the TypeScript core and the Rust app. A skill's \"phases\" list uses these ids, or [\"all\"] for skills that apply to every phase.",
   "flows": {
-    "build": ["idea-review", "research", "prd", "architecture", "build", "review", "handover"],
-    "pitch": ["idea-description", "idea-review", "research", "prd", "presentation", "outreach"]
-  }
+    "build": [
+      "idea-review",
+      "research",
+      "prd",
+      "architecture",
+      "build",
+      "review",
+      "handover"
+    ],
+    "pitch": [
+      "idea-description",
+      "idea-review",
+      "research",
+      "prd",
+      "presentation",
+      "outreach"
+    ]
+  },
+  "planning": [
+    "idea-description",
+    "idea-review",
+    "research",
+    "prd",
+    "architecture"
+  ],
+  "planningDescription": "Phases that must include a confirmed Understanding check when submitted (UND-1)."
 }

@@ -15,5 +15,9 @@ export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/pat
 export { checkRefs } from "./memory/refs.js";
 export type { CommitChecker, GitLookup, RefResult, RefStatus } from "./memory/refs.js";
 
-export { SCHEMA_NAMES, FLOWS, PHASE_IDS } from "./generated/contract.js";
+export { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./engine/phases.js";
+export type { PhaseAction, PhaseContext, PhaseResult, CheckResult } from "./engine/phases.js";
+export type { EventGuard } from "./memory/store.js";
+
+export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES } from "./generated/contract.js";
 export type * from "./generated/types.js";

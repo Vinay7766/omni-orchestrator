@@ -95,6 +95,23 @@ describe("appendEvent", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("runs a guard inside the lock and writes nothing when it reports issues", async () => {
+    const store = await created();
+    let seen: { events: number; lastEventId: string | null } | undefined;
+    const result = await store.appendEvent(
+      { type: "phase_started", actor: agent, payload: { phase: "idea-review" } },
+      (state, events) => {
+        seen = { events: events.length, lastEventId: state.lastEventId };
+        return [{ path: "", message: "not allowed right now" }];
+      },
+    );
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.issues[0].message).toBe("not allowed right now");
+    expect(seen?.events).toBe(1);
+    expect(seen?.lastEventId).not.toBeNull();
+    expect(eventLines()).toHaveLength(1);
+  });
+
   it("redacts secrets before writing and reports how many", async () => {
     const store = await created();
     const secret = "sk" + "-proj-" + "aB3dE5gH7jK9mN1pQ2rS4tU6vW8xY0zAbCdEfGh";

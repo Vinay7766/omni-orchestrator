@@ -111,7 +111,9 @@ function buildContract(fileNames) {
     `export const SCHEMA_NAMES = ${JSON.stringify(fileNames)} as const;\n` +
     `export const VALIDATOR_EXPORTS = ${JSON.stringify(Object.fromEntries(fileNames.map((n) => [n, exportName(n)])))} as const;\n` +
     `export const FLOWS = ${JSON.stringify(phases.flows)} as const;\n` +
-    `export const PHASE_IDS = ${JSON.stringify(phaseIds)} as const;\n`
+    `export const PHASE_IDS = ${JSON.stringify(phaseIds)} as const;\n` +
+    `/** Phases that need a confirmed Understanding check when submitted (UND-1). */\n` +
+    `export const PLANNING_PHASES = ${JSON.stringify(phases.planning ?? [])} as const;\n`
   );
 }
 

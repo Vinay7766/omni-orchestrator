@@ -26,6 +26,9 @@ export type AppendResult =
   | { ok: true; event: Event; /** Number of secrets removed before writing. */ redactions: number }
   | { ok: false; issues: ValidationIssue[] };
 
+/** A rule evaluated inside the store's lock; returning issues prevents the write. */
+export type EventGuard = (state: State, events: Event[]) => ValidationIssue[];
+
 export interface LineIssue {
   line: number;
   message: string;
@@ -118,7 +121,12 @@ export class MemoryStore {
   }
 
   /** Redacts, validates and appends one event, keeping state.json in step. */
-  async appendEvent(input: EventInput): Promise<AppendResult> {
+  /**
+   * @param guard optional rule check run inside the lock against the current state and
+   *   events; if it returns issues nothing is written. Use it for any "only if" rule so the
+   *   check and the write are one atomic step (no check-then-act race between tools).
+   */
+  async appendEvent(input: EventInput, guard?: EventGuard): Promise<AppendResult> {
     const { value: clean, findings } = redactJson({ payload: input.payload, refs: input.refs });
     const event: Event = {
       formatVersion: 1,
@@ -135,6 +143,10 @@ export class MemoryStore {
     try {
       return await this.withLock(async () => {
         const state = (await this.readStoredState()) ?? (await this.rebuildState());
+        if (guard) {
+          const problems = guard(state, (await this.readEvents()).events);
+          if (problems.length > 0) return { ok: false as const, issues: problems };
+        }
         const next = applyEvent(state, event);
         const checked = validateMemoryFile("state", next);
         if (!checked.ok) return { ok: false as const, issues: checked.issues };
