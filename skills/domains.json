@@ -111,9 +111,6 @@
       "description": "Cold outreach, lead generation, positioning"
     }
   ],
-  "pendingGaps": [
-    "presentation",
-    "systems-and-hardware"
-  ],
+  "pendingGaps": [],
   "pendingGapsNote": "Domains not yet covered (task A5). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow."
 }

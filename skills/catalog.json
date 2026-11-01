@@ -1311,5 +1311,51 @@
     "domains": [
       "mobile"
     ]
+  },
+  {
+    "id": "pitch-presentation",
+    "name": "pitch-presentation",
+    "description": "Plan and write an honest, evidence-backed pitch presentation for an idea, product or proposal, for any audience (company officials, investors, judges, a manager, a grant panel). Use whenever someone needs a pitch deck, slides, a presentation outline, speaker notes, or a \"how do I present this idea\" plan, even if they don't say \"deck\", and especially when the person presenting is new to the domain. Produces a slide-by-slide outline with one message per slide, a source for every claim, and speaker notes, usable in any slide tool.",
+    "category": "strategy",
+    "attribution": {
+      "name": "OmniOrchestrator",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/pitch-presentation",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "presentation",
+      "outreach"
+    ],
+    "domains": [
+      "presentation"
+    ]
+  },
+  {
+    "id": "systems-performance",
+    "name": "systems-performance",
+    "description": "Reason about how code really runs on hardware - memory and caches, CPU, concurrency, I/O and the operating system - to find and fix slowness, high memory use, contention and race conditions. Use whenever code is slow, uses too much memory, stalls under load, behaves differently with more threads or cores, processes large data, or when choosing data structures, concurrency models or I/O strategies where speed or resources matter, even if the user only says \"it's slow\" or \"it crashes under load\". Insists on measuring before optimising.",
+    "category": "engineering",
+    "attribution": {
+      "name": "OmniOrchestrator",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/systems-performance",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "architecture",
+      "build",
+      "review"
+    ],
+    "domains": [
+      "systems-and-hardware",
+      "performance"
+    ]
   }
 ]
