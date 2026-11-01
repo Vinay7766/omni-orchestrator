@@ -149,3 +149,83 @@ fn a_tool_without_a_launch_command_gets_instructions_instead() {
     assert!(result.message.contains("/usr/local/bin/zeta"), "{}", result.message);
     let _ = fs::remove_dir_all(dir);
 }
+
+// --- Optional adapters (C13): the selected tool's adapter adds a pointer to its own
+// instruction files, inside a managed block. Without adapters everything still works.
+
+use tauri_app_lib::commands::adapters::{parse_adapters, Adapter, AdapterFile, MANAGED_BEGIN};
+
+fn nebula_adapter() -> Vec<Adapter> {
+    let text = r#"{"formatVersion":1,"id":"nebula","name":"Nebula","matches":["nebula"],
+        "instructionFiles":[".nebula/rules.md"],
+        "sources":[{"url":"https://nebula.example/docs","checked":"2026-11-01","covers":["instructionFiles"]}]}"#;
+    let (adapters, issues) = parse_adapters(&[AdapterFile { name: "nebula.json".into(), text: text.into() }]);
+    assert!(issues.is_empty(), "{:?}", issues);
+    adapters
+}
+
+#[test]
+fn the_selected_tools_adapter_gets_a_pointer_to_agents_md() {
+    let dir = temp("adapter-new");
+    let result = SyncLauncher::with_adapters(nebula_adapter()).prepare_workspace(&payload_for(&dir, "nebula")).unwrap();
+    let rules = fs::read_to_string(dir.join(".nebula").join("rules.md")).expect("pointer file is created");
+    assert!(rules.starts_with(MANAGED_BEGIN));
+    assert!(rules.contains("AGENTS.md"));
+    assert!(result.verification_notice.contains(".nebula/rules.md"), "{}", result.verification_notice);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_pointer_is_added_after_the_users_own_instructions_and_only_once() {
+    let dir = temp("adapter-keep");
+    fs::create_dir_all(dir.join(".nebula")).unwrap();
+    fs::write(dir.join(".nebula").join("rules.md"), "# my rules\n").unwrap();
+    let launcher = SyncLauncher::with_adapters(nebula_adapter());
+    launcher.prepare_workspace(&payload_for(&dir, "nebula")).unwrap();
+    let first = fs::read_to_string(dir.join(".nebula").join("rules.md")).unwrap();
+    assert!(first.starts_with("# my rules\n\n"), "{}", first);
+    assert!(first.contains(MANAGED_BEGIN));
+    let second = launcher.prepare_workspace(&payload_for(&dir, "nebula")).unwrap();
+    assert_eq!(fs::read_to_string(dir.join(".nebula").join("rules.md")).unwrap(), first, "a second launch changes nothing");
+    assert!(!second.verification_notice.contains(".nebula/rules.md"), "nothing to report: {}", second.verification_notice);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn an_unfinished_block_is_left_alone_and_reported() {
+    let dir = temp("adapter-half");
+    fs::create_dir_all(dir.join(".nebula")).unwrap();
+    let half = format!("# mine\n{}\nhalf\n", MANAGED_BEGIN);
+    fs::write(dir.join(".nebula").join("rules.md"), &half).unwrap();
+    let result = SyncLauncher::with_adapters(nebula_adapter()).prepare_workspace(&payload_for(&dir, "nebula")).unwrap();
+    assert_eq!(fs::read_to_string(dir.join(".nebula").join("rules.md")).unwrap(), half);
+    assert!(result.verification_notice.contains("left it unchanged"), "{}", result.verification_notice);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn another_tools_adapter_writes_nothing() {
+    let dir = temp("adapter-other");
+    SyncLauncher::with_adapters(nebula_adapter()).prepare_workspace(&payload_for(&dir, "orbit")).unwrap();
+    assert!(!dir.join(".nebula").exists());
+    let _ = fs::remove_dir_all(dir);
+}
+
+/// Acceptance for C13: deleting every adapter leaves every discovered tool usable.
+#[test]
+fn with_no_adapters_at_all_every_tool_still_launches() {
+    let dir = temp("adapter-none");
+    let spawned = RefCell::new(0);
+    let tools = vec![tool("nebula", ToolCategory::Editor, Some(LaunchCommand { program: "/opt/nebula".into(), args: vec![] }))];
+    let result = SyncLauncher::with_adapters(vec![])
+        .launch_with(&payload_for(&dir, "nebula"), &tools, |_, _| {
+            *spawned.borrow_mut() += 1;
+            Ok(())
+        })
+        .unwrap();
+    assert!(result.tool_launched);
+    assert_eq!(*spawned.borrow(), 1);
+    assert!(dir.join("AGENTS.md").exists());
+    assert!(!dir.join(".nebula").exists());
+    let _ = fs::remove_dir_all(dir);
+}

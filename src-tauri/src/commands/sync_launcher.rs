@@ -5,6 +5,7 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use crate::models::Skill;
 use crate::commands::tool_discovery::{discover, DiscoveredTool, LaunchCommand, SystemView};
+use crate::commands::adapters::{adapter_for, apply_managed_block, bundled_adapters, Adapter, ManagedBlockStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,8 +28,17 @@ pub struct LaunchResult {
     pub verification_notice: String,
 }
 
-#[derive(Default, Clone)]
-pub struct SyncLauncher;
+#[derive(Clone)]
+pub struct SyncLauncher {
+    /// Optional per-tool details (C13). Empty is fine: every tool still works.
+    adapters: Vec<Adapter>,
+}
+
+impl Default for SyncLauncher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 fn validate_safe_path(path_str: &str) -> Result<PathBuf, String> {
     if path_str.trim().is_empty() {
@@ -81,6 +91,46 @@ fn write_new(project_dir: &Path, name: &str, content: &str, kept: &mut Vec<Strin
     }
 }
 
+/// What the pointer in a tool's own instruction file says (inside the managed block).
+const POINTER: &str = "This project is prepared by OmniOrchestrator. Read AGENTS.md first: it holds the shared rules every AI tool follows, and .agents/ holds the project memory and skills.";
+
+/// Adds the pointer to one instruction file named by the selected tool's adapter. The user's own
+/// text is never changed; returns a line for the notice, or None when nothing changed.
+fn write_pointer(project_dir: &Path, rel: &str) -> Result<Option<String>, String> {
+    let path = project_dir.join(rel);
+    let existing = match fs::read_to_string(&path) {
+        Ok(text) => Some(text),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Ok(Some(format!("Could not read {} ({}); left it unchanged.", rel, e))),
+    };
+    let (text, status) = apply_managed_block(existing.as_deref(), POINTER);
+    match status {
+        ManagedBlockStatus::Unchanged => return Ok(None),
+        ManagedBlockStatus::Unterminated => {
+            return Ok(Some(format!(
+                "{} has an OmniOrchestrator begin marker without an end marker, so we left it unchanged. Delete the marker line to let us add the pointer again.",
+                rel
+            )))
+        }
+        ManagedBlockStatus::Created => {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).map_err(|e| format!("Failed to create folder for {}: {}", rel, e))?;
+            }
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+                .map_err(|e| format!("Failed to write {}: {}", rel, e))?;
+            file.write_all(text.as_bytes()).map_err(|e| format!("Failed to write {}: {}", rel, e))?;
+            return Ok(Some(format!("{} created, pointing to AGENTS.md.", rel)));
+        }
+        ManagedBlockStatus::Appended | ManagedBlockStatus::Replaced => {
+            fs::write(&path, text).map_err(|e| format!("Failed to write {}: {}", rel, e))?;
+        }
+    }
+    Ok(Some(format!("{} now points to AGENTS.md (your own text in it is kept).", rel)))
+}
+
 const MICRO_RULES: &str = r#"# Core Engineering Standards
 - Spec before code: Always verify requirements in PRD.md before writing code.
 - Red-Green-Refactor TDD: Write test first, verify failure, write minimal code, verify green.
@@ -89,8 +139,14 @@ const MICRO_RULES: &str = r#"# Core Engineering Standards
 "#;
 
 impl SyncLauncher {
+    /// A launcher using the adapters shipped with the app. Invalid ones are left out; the tests
+    /// guarantee the shipped set has none.
     pub fn new() -> Self {
-        Self
+        Self::with_adapters(bundled_adapters().0)
+    }
+
+    pub fn with_adapters(adapters: Vec<Adapter>) -> Self {
+        Self { adapters }
     }
 
     pub fn prepare_workspace(&self, payload: &LaunchPayload) -> Result<LaunchResult, String> {
@@ -156,11 +212,24 @@ You are the Autonomous Senior Engineering Team. You MUST execute this project ph
             write_new(&project_dir, &name, &skill.content, &mut kept)?;
         }
 
+        // 4. Optional: the selected tool's own instruction files point to AGENTS.md (C13).
+        let mut pointers: Vec<String> = Vec::new();
+        if let Some(adapter) = adapter_for(&payload.selected_tool, &self.adapters) {
+            for rel in &adapter.instruction_files {
+                if let Some(line) = write_pointer(&project_dir, rel)? {
+                    pointers.push(format!("- {}", line));
+                }
+            }
+        }
+
         let mut notice = format!(
             "Workspace successfully prepared at {}!\n\nConfigured:\n- Tier 1 Micro-Rules (AGENTS.md) to prevent token bloat.\n- Autonomous Runner directives generated.\n- Cross-tool session state saved.\n- {} skills equipped (.agents/skills).",
             payload.project_path,
             enabled.len()
         );
+        if !pointers.is_empty() {
+            notice.push_str(&format!("\n\nTool instruction files:\n{}", pointers.join("\n")));
+        }
         if !kept.is_empty() {
             notice.push_str(&format!("\n\nKept your existing files (not overwritten): {}", kept.join(", ")));
         }
