@@ -17,10 +17,12 @@ import { BYOKSettings } from "./components/track-b/BYOKSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SkillCard } from "./components/skills/SkillCard";
 import { SkillDetailModal } from "./components/skills/SkillDetailModal";
-import { Terminal, Search, Sliders, X } from "lucide-react";
+import { Terminal, Search, Sliders, X, FolderOpen, MessageSquare } from "lucide-react";
+import { ProjectsView } from "./components/projects/ProjectsView";
 
 export function App() {
   const [currentTrack, setCurrentTrack] = useState<TrackType>("track-a");
+  const [view, setView] = useState<"workspace" | "projects">("workspace");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [byokConfig, setByokConfig] = useState<BYOKConfig>({});
@@ -229,6 +231,13 @@ export function App() {
         {/* Right Actions */}
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setView(view === "projects" ? "workspace" : "projects")}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5"
+          >
+            {view === "projects" ? <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" /> : <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />}
+            <span>{view === "projects" ? "Workspace" : "Projects"}</span>
+          </button>
+          <button
             onClick={() => setShowSkillsModal(true)}
             className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5"
             aria-label="Open Skill Catalog"
@@ -242,8 +251,16 @@ export function App() {
         </div>
       </header>
 
+      {view === "projects" && (
+        <main className="flex-1 overflow-y-auto">
+          <ErrorBoundary panelName="Projects">
+            <ProjectsView />
+          </ErrorBoundary>
+        </main>
+      )}
+
       {/* Main Content Area with Chat Flow */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      <main className={`flex-1 flex flex-col overflow-hidden relative ${view === "projects" ? "hidden" : ""}`}>
         <ChatContainer
           messages={messages}
           onOpenStaging={() => handleOpenStaging(stagingPrompt || "Autonomous build task")}

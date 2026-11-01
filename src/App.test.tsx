@@ -65,6 +65,41 @@ describe("OmniOrchestrator App", () => {
     expect(screen.getByText(/Engineering Skill Catalog/i)).toBeDefined();
   });
 
+  it("opens the projects list with the saved folders and saves a new folder", async () => {
+    const saved: unknown[] = [];
+    const settings = { defaultTrack: "track-a", theme: "dark", byok: {}, projectFolders: ["C:/work"] };
+    mockedInvoke.mockImplementation((cmd: string, args?: unknown) => {
+      const handlers: Record<string, () => Promise<unknown>> = {
+        discover_tools: () => Promise.resolve([]),
+        get_skills: () => Promise.resolve([]),
+        get_default_project_path: () => Promise.resolve("C:\\Users\\test\\Projects"),
+        get_app_settings: () => Promise.resolve(settings),
+        save_app_settings: () => {
+          saved.push(args);
+          return Promise.resolve(null);
+        },
+        find_projects: () => Promise.resolve({ roots: [], errors: [] }),
+      };
+      return handlers[cmd] ? handlers[cmd]() : Promise.reject(`Unexpected command: ${cmd}`);
+    });
+    await renderApp();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Projects$/ }));
+    });
+    expect(await screen.findByText(/No projects found in C:\/work/)).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText("Folder to add"), { target: { value: "D:/more" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /add folder/i }));
+    });
+    expect(saved).toEqual([{ settings: { ...settings, projectFolders: ["C:/work", "D:/more"] } }]);
+
+    // Back to the workspace view.
+    fireEvent.click(screen.getByRole("button", { name: /^Workspace$/ }));
+    expect(screen.getByRole("button", { name: /^Projects$/ })).toBeDefined();
+  });
+
   it("shows the backend error instead of a fabricated brief when Track A fails", async () => {
     mockBackend({
       generate_project_brief: () => Promise.reject("Failed to write brief: access denied"),

@@ -96,6 +96,8 @@ export interface AppSettings {
   activeToolId?: ToolId;
   byok: BYOKConfig;
   customSkillsDirectory?: string;
+  /** Folders the projects list looks in (absolute paths). */
+  projectFolders?: string[];
 }
 
 export interface ChatMessage {
