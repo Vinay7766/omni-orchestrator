@@ -38,11 +38,12 @@ impl SkillManager {
     }
 
     pub fn get_default_skills(&self) -> Vec<Skill> {
-        const ALL_SKILLS_JSON: &str = include_str!("../../resources/all_52_skills.json");
-        if let Ok(skills) = serde_json::from_str::<Vec<Skill>>(ALL_SKILLS_JSON) {
-            return skills;
-        }
-        vec![]
+        // Assembled from /skills by build.rs.
+        const ALL_SKILLS_JSON: &str = include_str!(concat!(env!("OUT_DIR"), "/skills.json"));
+        // The catalog is compiled in and covered by tests, so a parse failure is a
+        // build defect. Fail loudly rather than silently showing zero skills.
+        serde_json::from_str::<Vec<Skill>>(ALL_SKILLS_JSON)
+            .unwrap_or_else(|e| panic!("bundled skill catalog does not match the Skill model: {}", e))
     }
 
     pub fn get_all_skills(&self) -> Result<Vec<Skill>, String> {

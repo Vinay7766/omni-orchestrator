@@ -38,4 +38,7 @@ pub struct Skill {
     pub is_custom: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phase_scope: Option<String>,
+    /// SPDX license id, or "unverified" when not yet checked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
 }

@@ -51,3 +51,31 @@ fn test_catalog_includes_design_phase_skills_with_attribution() {
 
     let _ = std::fs::remove_dir_all(temp_dir);
 }
+
+#[test]
+fn test_every_catalog_skill_declares_a_license_or_unverified() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_license_test"));
+    let skills = manager.get_default_skills();
+
+    for skill in &skills {
+        let license = skill.license.as_deref().unwrap_or_else(|| panic!("{} has no license field", skill.id));
+        assert!(!license.is_empty(), "{} has an empty license", skill.id);
+    }
+    let license_of = |id: &str| skills.iter().find(|s| s.id == id).and_then(|s| s.license.clone());
+    assert_eq!(license_of("brainstorming").as_deref(), Some("MIT"));
+    assert_eq!(license_of("solution-design").as_deref(), Some("Apache-2.0"));
+}
+
+#[test]
+fn test_embedded_catalog_content_matches_skill_files_on_disk() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_content_test"));
+    let skills_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("skills");
+
+    for skill in manager.get_default_skills() {
+        let on_disk = std::fs::read_to_string(skills_dir.join(&skill.id).join("SKILL.md"))
+            .unwrap_or_else(|_| panic!("missing SKILL.md for {}", skill.id))
+            .replace("\r\n", "\n");
+        assert_eq!(skill.content, on_disk, "embedded content differs from skills/{}/SKILL.md", skill.id);
+        assert!(!skill.content.contains('\r'), "{} content must be LF-normalised", skill.id);
+    }
+}

@@ -29,6 +29,7 @@ fn test_sync_launcher_injects_tiered_configs_and_state() {
             content: "# Spec\nFollow spec rules.".to_string(),
             is_custom: false,
             phase_scope: Some("spec".to_string()),
+            license: None,
         },
         Skill {
             id: "test-driven-development".to_string(),
@@ -46,6 +47,7 @@ fn test_sync_launcher_injects_tiered_configs_and_state() {
             content: "# TDD\nWrite tests first.".to_string(),
             is_custom: false,
             phase_scope: Some("build".to_string()),
+            license: None,
         },
     ];
 

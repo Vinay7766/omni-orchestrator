@@ -1,0 +1,866 @@
+[
+  {
+    "id": "always-verify-gcp",
+    "name": "always-verify-gcp",
+    "description": "A workflow skill for all Google Cloud resource management tasks (create, delete, modify). This skill ensures that the correct CLI tool (`gcloud`, `bq`, `gsutil`) is chosen and that its commands are verified against the latest official documentation before execution.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "api-and-interface-design",
+    "name": "api-and-interface-design",
+    "description": "Guides stable API and interface design. Use when designing APIs, module boundaries, or any public interface. Use when creating REST or GraphQL endpoints, defining type contracts between modules, or establishing boundaries between frontend and backend.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "browser-testing-with-devtools",
+    "name": "browser-testing-with-devtools",
+    "description": "Tests in real browsers via Chrome DevTools MCP. Use when building or debugging anything that runs in a browser. Use when you need to inspect the DOM, capture console errors, analyze network requests, profile performance, or verify visual output with real runtime data. Requires the chrome-devtools MCP server to be configured.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "ci-cd-and-automation",
+    "name": "ci-cd-and-automation",
+    "description": "Automates CI/CD pipeline setup. Use when setting up or modifying build and deployment pipelines. Use when you need to automate quality gates, configure test runners in CI, or establish deployment strategies.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "code-review-and-quality",
+    "name": "code-review-and-quality",
+    "description": "Conducts multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to assess code quality across multiple dimensions before it enters the main branch. Use when asked to review a diff or a pull request, even when the diff is pasted inline.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "code-simplification",
+    "name": "code-simplification",
+    "description": "Simplifies code for clarity. Use when refactoring code for clarity without changing behavior. Use when code works but is harder to read, maintain, or extend than it should be. Use when reviewing code that has accumulated unnecessary complexity.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "cold-email",
+    "name": "cold-email",
+    "description": "Write and run B2B cold outbound that gets replies, from cold emails and follow-ups to sending setup, LinkedIn, multichannel cadences, and reply handling. Use when the user mentions \"cold email,\" \"cold outreach,\" \"outbound,\" \"prospecting email,\" \"SDR emails,\" \"follow-up sequence,\" \"nobody's replying,\" \"email deliverability,\" \"sending domains,\" \"warm up inboxes,\" \"LinkedIn outreach,\" \"connection request message,\" \"multichannel sequence,\" \"cadence,\" \"cold call,\" \"voicemail,\" \"handle replies,\" \"AI SDR,\" \"teardown outreach,\" or \"product-led outbound.\" Send from secondary domains, verify lists first, turn off open tracking, and stop every channel when a prospect replies. Copy avoids AI tells like 'it's not X, it's Y' reveals. For building the list and account research, see prospecting. For lifecycle email, see emails. For call scripts and sales collateral, see sales-enablement.",
+    "category": "marketing",
+    "attribution": {
+      "name": "Corey Haines",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/coreyhaines31/marketingskills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "competitor-profiling",
+    "name": "competitor-profiling",
+    "description": "\"When the user wants to research, profile, or analyze competitors from their URLs. Also use when the user mentions 'competitor profile,' 'competitor research,' 'competitor analysis,' 'profile this competitor,' 'analyze competitor,' 'competitive intelligence,' 'competitor deep dive,' 'who are my competitors,' 'competitor landscape,' 'competitor dossier,' 'competitive audit,' or 'research these competitors.' Input is a list of competitor URLs. Output is structured competitor profile markdown files. For creating comparison/alternative pages from profiles, see competitors. For sales-specific battle cards, see sales-enablement. For researching accounts you're selling to, see prospecting.\"",
+    "category": "marketing",
+    "attribution": {
+      "name": "Corey Haines",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/coreyhaines31/marketingskills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "constraint-driven-development",
+    "name": "constraint-driven-development",
+    "description": "Establishes a project's quality bar as a written contract and stops agents quietly lowering it. Interviews the user on which dimensions matter, supplies sane default thresholds when they have no number in mind, records everything in CONSTRAINTS.md, and watches the diff for a weakened bar — new @ts-ignore or eslint-disable suppressions, skipped or deleted tests, assertions stripped out, unimplemented stubs, thresholds edited down. Use when no quality bar is written down, when the user says \"set up constraints\" or \"define our standards\", when the user wants dimensions they care about — accessibility, web performance, coverage — set up as enforced constraints, when an agent keeps silencing checks or skipping tests to get to green, when you need a coverage or performance threshold and don't know what number to pick, or when an agent writes more code than anyone will read.",
+    "category": "testing",
+    "attribution": {
+      "name": "TexasBedouin & Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/TexasBedouin/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "unverified"
+  },
+  {
+    "id": "context-engineering",
+    "name": "context-engineering",
+    "description": "Optimizes agent context setup. Use when starting a new session, when agent output quality degrades, when switching between tasks, or when you need to configure rules files and context for a project.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "customer-research",
+    "name": "customer-research",
+    "description": "When the user wants to conduct, analyze, or synthesize customer research. Use when the user mentions \"customer research,\" \"ICP research,\" \"talk to customers,\" \"analyze transcripts,\" \"customer interviews,\" \"survey analysis,\" \"support ticket analysis,\" \"voice of customer,\" \"VOC,\" \"build personas,\" \"customer personas,\" \"jobs to be done,\" \"JTBD,\" \"what do customers say,\" \"what are customers struggling with,\" \"Reddit mining,\" \"G2 reviews,\" \"review mining,\" \"digital watering holes,\" \"community research,\" \"forum research,\" \"competitor reviews,\" \"customer sentiment,\" \"PMF survey,\" \"product/market fit survey,\" \"customer interview questions,\" \"interview outreach,\" \"Sales Safari,\" or \"find out why customers churn/convert/buy.\" Use for analyzing existing research assets, mining online sources, AND running primary research (interviews and surveys). For writing copy informed by research, see copywriting. For acting on research to improve pages, see cro.",
+    "category": "marketing",
+    "attribution": {
+      "name": "Corey Haines",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/coreyhaines31/marketingskills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "database-schema-validator",
+    "name": "database-schema-validator",
+    "description": "Validates SQL schema files for compliance with internal safety and naming policies.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "debugging-and-error-recovery",
+    "name": "debugging-and-error-recovery",
+    "description": "Guides systematic root-cause debugging. Use when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need to figure out what broke and why — a systematic approach to finding and fixing the root cause rather than guessing.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "deprecation-and-migration",
+    "name": "deprecation-and-migration",
+    "description": "Manages deprecation and migration. Use when removing old systems, APIs, or features. Use when migrating users from one implementation to another. Use when migrating a database schema in production, such as renaming or dropping a column without downtime (expand/contract). Use when deciding whether to maintain or sunset existing code.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "documentation-and-adrs",
+    "name": "documentation-and-adrs",
+    "description": "Records decisions and documentation. Use when you need to document an architecture decision (ADR) or the reasoning behind a design choice, when changing public APIs, shipping features, or when you need to record context that future engineers and agents will need to understand the codebase.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "doubt-driven-development",
+    "name": "doubt-driven-development",
+    "description": "Subjects every non-trivial decision to a fresh-context adversarial review before it stands. Use when you want every assumption cross-examined before proceeding, when stress-testing a plan for hidden failure modes, when correctness matters more than speed, when working in unfamiliar code, when stakes are high (production auth, security-sensitive logic, a high-stakes migration, irreversible operations), or any time a confident output would be cheaper to verify now than to debug later.",
+    "category": "testing",
+    "attribution": {
+      "name": "TexasBedouin & Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/TexasBedouin/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "unverified"
+  },
+  {
+    "id": "frontend-ui-engineering",
+    "name": "frontend-ui-engineering",
+    "description": "Builds production-quality, accessible, responsive user-facing UIs. Use when building or modifying interfaces and pages, creating components, implementing layouts, meeting WCAG accessibility requirements, managing state, or when the output needs to look and feel production-quality rather than AI-generated.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "git-commit-formatter",
+    "name": "git-commit-formatter",
+    "description": "Formats git commit messages according to Conventional Commits specification. Use this when the user asks to commit changes or write a commit message.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "git-workflow-and-versioning",
+    "name": "git-workflow-and-versioning",
+    "description": "Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, splitting uncommitted work in a messy working tree into clean atomic commits, opening or reviewing a pull request (PR), pushing to a remote, or when you need to organize work across multiple parallel streams. Use when cutting a release, choosing a semantic version bump, tagging, or writing a changelog.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "google-agents-cli-adk-code",
+    "name": "google-agents-cli-adk-code",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "google-agents-cli-deploy",
+    "name": "google-agents-cli-deploy",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "google-agents-cli-eval",
+    "name": "google-agents-cli-eval",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "google-agents-cli-observability",
+    "name": "google-agents-cli-observability",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "google-agents-cli-publish",
+    "name": "google-agents-cli-publish",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "google-agents-cli-scaffold",
+    "name": "google-agents-cli-scaffold",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "google-agents-cli-workflow",
+    "name": "google-agents-cli-workflow",
+    "description": ">",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "idea-descriptor",
+    "name": "idea-descriptor",
+    "description": "\"Turn the user's casual, messy, non-native-English description of an idea into a professional, self-contained, complete A-to-Z written brief. Use whenever the user describes an idea in their own words and wants a clean professional description they can paste anywhere. The AI asks structured clarifying questions first, then produces the brief. Description only — no evaluation, no hype, no review.\"",
+    "category": "strategy",
+    "attribution": {
+      "name": "Yan Liu",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/yanliudesign/product-teardown-skill",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "idea-refine",
+    "name": "idea-refine",
+    "description": "Refines raw ideas into sharp, actionable concepts through structured divergent and convergent thinking. Use when an idea is still vague, when you need to stress-test assumptions before committing to a plan, or when you want to expand options before converging on one. Triggers on \"ideate\", \"refine this idea\", or \"stress-test my plan\".",
+    "category": "strategy",
+    "attribution": {
+      "name": "Yan Liu",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/yanliudesign/product-teardown-skill",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "idea-review",
+    "name": "idea-review",
+    "description": "\"Brutal, evidence-based, real-human-cited A-to-Z review of any idea the user brings. Use whenever the user shares an idea, concept, proposal, or pitch and wants a reality check with no hype. Covers consumer-tech, AI, startups, business, content, research, science, policy, social, personal — any domain.\"",
+    "category": "strategy",
+    "attribution": {
+      "name": "Yan Liu",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/yanliudesign/product-teardown-skill",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "incremental-implementation",
+    "name": "incremental-implementation",
+    "description": "Delivers changes incrementally in thin, verifiable slices. Use when implementing any feature or change that touches more than one file, or when picking up the next task from a plan. Use when rolling a change out behind a feature flag, when you're about to write a large amount of code at once, or when a task feels too big to land in one step.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "interview-me",
+    "name": "interview-me",
+    "description": "Extracts what the user actually wants instead of what they think they should want. Achieves this through one-question-at-a-time interview until ~95% confidence about the underlying intent. Use when an ask is underspecified (\"build me X\" without \"for whom\" or \"why now\"), when the user explicitly invokes (\"interview me\", \"grill me\", \"are we sure?\", \"stress-test my thinking\"), or when you catch yourself silently filling in ambiguous requirements before any plan, spec, or code exists.",
+    "category": "strategy",
+    "attribution": {
+      "name": "Yan Liu",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/yanliudesign/product-teardown-skill",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "json-to-pydantic",
+    "name": "json-to-pydantic",
+    "description": "Converts JSON data snippets into Python Pydantic data models.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "lead-magnets",
+    "name": "lead-magnets",
+    "description": "When the user wants to create, plan, or optimize a lead magnet for email capture or lead generation. Also use when the user mentions \"lead magnet,\" \"gated content,\" \"content upgrade,\" \"downloadable,\" \"ebook,\" \"cheat sheet,\" \"checklist,\" \"template download,\" \"opt-in,\" \"freebie,\" \"PDF download,\" \"resource library,\" \"content offer,\" \"email capture content,\" \"Notion template,\" \"spreadsheet template,\" \"what should I give away for emails,\" \"course as a skill,\" or \"package our content as an agent skill.\" Use this for planning what to create and how to distribute it. For interactive tools as lead magnets, see free-tools. For writing the actual content, see copywriting. For the email sequence after capture, see emails.",
+    "category": "marketing",
+    "attribution": {
+      "name": "Corey Haines",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/coreyhaines31/marketingskills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "license-header-adder",
+    "name": "license-header-adder",
+    "description": "Adds the standard open-source license header to new source files. Use involves creating new code files that require copyright attribution.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "mcp-server-patterns",
+    "name": "mcp-server-patterns",
+    "description": "Build MCP servers with Node/TypeScript SDK — tools, resources, prompts, Zod validation, stdio vs Streamable HTTP. Use Context7 or official MCP docs for latest API. Use when building or debugging an MCP server — tools, resources, prompts, validation, or transport choice.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "observability-and-instrumentation",
+    "name": "observability-and-instrumentation",
+    "description": "Instruments code so production behavior is visible and diagnosable. Use when adding logging, metrics, tracing, or alerting. Use when shipping any feature that runs in production and you need evidence it works. Use when production issues are reported but you can't tell what happened from the available data.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "performance-optimization",
+    "name": "performance-optimization",
+    "description": "Optimizes application performance across frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times need improvement, when N+1 query patterns need fixing, or when profiling reveals bottlenecks.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "planning-and-task-breakdown",
+    "name": "planning-and-task-breakdown",
+    "description": "Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to estimate scope, or when parallel work is possible.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "product-teardown",
+    "name": "product-teardown",
+    "description": "Principal-PM-level product teardowns and competitive reverse-engineering. Reverse-engineers any product as a complete system (Users & JTBD, Core Loops, Information Architecture, Monetization, Friction, and Growth Opportunities). Use when analyzing an existing product or preparing a strategic teardown report to pitch to companies, leadership, or investors.",
+    "category": "strategy",
+    "attribution": {
+      "name": "Yan Liu",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/yanliudesign/product-teardown-skill",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "unverified"
+  },
+  {
+    "id": "prompt-caching-strategy",
+    "name": "prompt-caching-strategy",
+    "description": ">-",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "security-and-hardening",
+    "name": "security-and-hardening",
+    "description": "Hardens code against vulnerabilities. Use when auditing an input handler for vulnerabilities, when handling user input, authentication, data storage, or external integrations, or when checking a login flow is safe against the OWASP Top Ten. Use when building any feature that accepts untrusted data, manages user sessions, or interacts with third-party services. Use when auditing dependencies for known vulnerabilities, triaging package-manager audit findings, or assessing supply-chain risk in a new package. Use when personal data or privacy compliance (GDPR, CCPA) is involved.",
+    "category": "security",
+    "attribution": {
+      "name": "OWASP & Security Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://owasp.org",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "review",
+    "license": "unverified"
+  },
+  {
+    "id": "security-review",
+    "name": "security-review",
+    "description": "Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive security checklist and patterns.",
+    "category": "security",
+    "attribution": {
+      "name": "OWASP & Security Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://owasp.org",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "review",
+    "license": "unverified"
+  },
+  {
+    "id": "shipping-and-launch",
+    "name": "shipping-and-launch",
+    "description": "Prepares production launches. Use when preparing to deploy to production, or when asking what needs to be in place before shipping. Use when you need a pre-launch checklist, when setting up monitoring, when planning a staged rollout, or when you need a rollback strategy.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "source-driven-development",
+    "name": "source-driven-development",
+    "description": "Grounds every implementation decision in official documentation. Use when you want to verify an approach against the official docs before implementing it, or when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or library where correctness matters.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "spec-driven-development",
+    "name": "spec-driven-development",
+    "description": "Creates specs before coding. Use when starting a new project, feature, or significant change and no specification exists yet. Use when drafting a PRD or requirements document with objectives and scope, or when requirements are unclear, ambiguous, or only exist as a vague idea. Use when a single requirement spans several independently testable capabilities and needs decomposing into a capability map of modules before specifying.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "test-driven-development",
+    "name": "test-driven-development",
+    "description": "Drives development with tests using the red-green-refactor loop. Use when implementing any logic, fixing any bug, or changing any behavior. Use when you need to prove that code works, when a bug report arrives, or when you're about to modify existing functionality. Use when asked to add tests to a function, fix a bug in it or change its behavior, even when the code is pasted inline and the request does not mention tests.",
+    "category": "testing",
+    "attribution": {
+      "name": "TexasBedouin & Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/TexasBedouin/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "unverified"
+  },
+  {
+    "id": "token-budget-advisor",
+    "name": "token-budget-advisor",
+    "description": "Offer a choice of response depth (25%/50%/75%/100%) with token estimates before answering, then answer at that level. Use when the user asks to control response length or token budget, such as 'token budget', 'short version', 'brief answer', 'respuesta corta vs larga', 'cuántos tokens', 'ahorrar tokens', 'responde al 50%', 'dame la versión corta', 'quiero controlar cuánto usas'. Skip if depth is already set this session or 'token' means an auth/payment token.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google Agents & Cloud Team",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/google/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "architecture",
+    "license": "unverified"
+  },
+  {
+    "id": "unified-memory",
+    "name": "unified-memory",
+    "description": "Share durable, inspectable context and handoffs between Claude, Codex, Hermes, Cursor, OpenCode, and other agents through the local ECC Memory Vault. Use when an agent must save work state, transfer context, resume another agent's task, or search shared project knowledge.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "using-agent-skills",
+    "name": "using-agent-skills",
+    "description": "Discovers and invokes agent skills. Use when starting a session, or when you need to decide which skill or workflow applies to the piece of work at hand. This is the meta-skill that governs how all other skills are discovered and invoked.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Agent Skills Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "MIT"
+  },
+  {
+    "id": "verification-loop",
+    "name": "verification-loop",
+    "description": "Run a six-phase verification of a Claude Code session's work — build, type check, lint, tests with coverage, security grep, and diff review — then produce a PASS/FAIL verification report. Use when verifying work after completing a feature or refactor, before creating a PR, or when quality gates must pass.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Addy Osmani",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/addyosmani/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "spec",
+    "license": "MIT"
+  },
+  {
+    "id": "vibe-check",
+    "name": "vibe-check",
+    "description": ">-",
+    "category": "testing",
+    "attribution": {
+      "name": "TexasBedouin & Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/TexasBedouin/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "unverified"
+  },
+  {
+    "id": "vibe-code-rescue",
+    "name": "vibe-code-rescue",
+    "description": "Transform an unmaintainable, AI-generated vibe coded codebase into a production-grade, maintainable, scalable, and secure application without breaking existing functionality. Follows Rule Zero (never break what works), audit phase, problem inventory, backward compatibility, and atomic test-first commits. Use when inheriting or rescuing a messy, AI-generated codebase.",
+    "category": "testing",
+    "attribution": {
+      "name": "TexasBedouin & Community",
+      "role": "Senior Engineering Specialist",
+      "sourceUrl": "https://github.com/TexasBedouin/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "unverified"
+  },
+  {
+    "id": "brainstorming",
+    "name": "brainstorming",
+    "description": "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning anything new, in software or out of it (a talk, a business, a renovation).",
+    "category": "strategy",
+    "attribution": {
+      "name": "Jesse Vincent (obra/superpowers, MIT)",
+      "role": "Author of the Superpowers skills framework",
+      "sourceUrl": "https://github.com/obra/superpowers",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "discovery",
+    "license": "MIT"
+  },
+  {
+    "id": "solution-design",
+    "name": "solution-design",
+    "description": "Use before writing code for any non-trivial coding task — implementing a function, algorithm, feature logic, data processing, a bug fix whose cause is not yet known, or performance work. Forces understanding the problem, comparing 2-3 genuinely different approaches (complexity, risk, fit), choosing one with a stated reason, and planning edge-case tests before any code is written. Skip only for trivial edits such as renames, copy text or config values.",
+    "category": "engineering",
+    "attribution": {
+      "name": "OmniOrchestrator (based on Polya and Ousterhout)",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/solution-design",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "phaseScope": "build",
+    "license": "Apache-2.0"
+  }
+]
