@@ -17,6 +17,8 @@ export type { Adapter, AdapterIssue, ManagedBlockStatus, McpServerCommand, McpSn
 export type { SyncUpdate, ChangeTrigger, WatchOptions, EventWatch } from "./memory/sync.js";
 export { renderSummary, renderDecisions, renderProblems, renderLessons, refreshMemoryDocs } from "./memory/docs.js";
 export { findProject, LINK_FILE } from "./memory/discover.js";
+export { projectOverview } from "./memory/overview.js";
+export type { ProjectOverview } from "./memory/overview.js";
 export type { FindProjectResult } from "./memory/discover.js";
 export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/paths.js";
 export { checkRefs } from "./memory/refs.js";
