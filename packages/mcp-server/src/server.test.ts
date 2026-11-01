@@ -76,6 +76,9 @@ describe("MCP server", () => {
       "mark_task_trivial",
       "start_task",
       "complete_task",
+      "record_decision",
+      "record_problem",
+      "record_lesson",
     ]);
     expect(names.filter((n) => /approve|request_changes|review/i.test(n))).toEqual([]);
     for (const name of ["get_context", "get_phase_skills"]) {
@@ -150,6 +153,23 @@ describe("MCP server", () => {
     expect(second.structuredContent).toMatchObject({ started: true });
     const incomplete = await client.callTool({ name: "complete_task", arguments: { taskId: "T-2", summary: "x" } });
     expect(incomplete.isError).toBe(true);
+  });
+
+  it("records a decision through MCP and refuses one without real references", async () => {
+    mkdirSync(join(root, "docs"), { recursive: true });
+    writeFileSync(join(root, "docs", "design.md"), "design");
+    await connect(root);
+    const ok = await client.callTool({
+      name: "record_decision",
+      arguments: { title: "Use files", decision: "JSON in .agents", reason: "Readable", refs: { files: ["docs/design.md"] } },
+    });
+    expect(ok.isError, JSON.stringify(ok.content)).toBeFalsy();
+    expect(ok.structuredContent).toMatchObject({ type: "decision_recorded" });
+    const bad = await client.callTool({
+      name: "record_decision",
+      arguments: { title: "Use files", decision: "JSON", reason: "Readable", refs: { files: ["docs/missing.md"] } },
+    });
+    expect(bad.isError).toBe(true);
   });
 
   it("returns a tool error for a skill outside the phase", async () => {

@@ -8,6 +8,7 @@ import * as z from "zod";
 import { buildContext, type ContextDeps } from "./context.js";
 import { getPhaseSkills, submitPhase } from "./phase-tools.js";
 import { completeTask, createTasks, markTaskTrivial, startTask, submitDesignNote } from "./task-tools.js";
+import { recordDecision, recordLesson, recordProblem } from "./record-tools.js";
 import type { Event } from "@omni/core";
 import { SERVER_INFO } from "./info.js";
 
@@ -270,6 +271,73 @@ export function createServer(deps: ContextDeps): McpServer {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async ({ model, ...input }) => toolResult("complete_task", () => completeTask(deps, agentActor(server, model), input)),
+  );
+
+  const refsInput = z.object({
+    files: z.array(projectFile).optional().describe("Project files this entry concerns."),
+    commits: z.array(z.string().min(1)).optional().describe("Commit SHAs this entry concerns."),
+  });
+  const recordedOutput = { eventId: z.string(), type: z.string(), warnings: z.array(z.string()) };
+  const recordAnnotations = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
+
+  server.registerTool(
+    "record_decision",
+    {
+      title: "Record a decision",
+      description:
+        "Add a decision to the project memory (decisions.md) with the reason and the alternatives considered. It must point " +
+        "to at least one real file or commit it concerns; references are checked and invalid ones are rejected.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        title: z.string().min(1),
+        decision: z.string().min(1),
+        reason: z.string().min(1),
+        alternatives: z.array(z.string().min(1)).optional(),
+        refs: refsInput,
+      },
+      outputSchema: recordedOutput,
+      annotations: recordAnnotations,
+    },
+    async (input) => toolResult("record_decision", () => recordDecision(deps, agentActor(server), input)),
+  );
+
+  server.registerTool(
+    "record_problem",
+    {
+      title: "Record a problem",
+      description:
+        "Add a known problem to the project memory (problems.md), or update one: recording the same title again replaces " +
+        "its details and status (open, resolved, wont_fix). It must point to at least one real file or commit.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        title: z.string().min(1).describe("Same title as an earlier problem to update it."),
+        details: z.string().min(1),
+        status: z.enum(["open", "resolved", "wont_fix"]),
+        refs: refsInput,
+      },
+      outputSchema: { ...recordedOutput, status: z.string() },
+      annotations: recordAnnotations,
+    },
+    async (input) => toolResult("record_problem", () => recordProblem(deps, agentActor(server), input)),
+  );
+
+  server.registerTool(
+    "record_lesson",
+    {
+      title: "Record a lesson",
+      description:
+        "When the user corrects how you understood the request, record the correction as a lesson (lessons.md). Every tool " +
+        "working on the project receives it through get_context. References are optional and checked when given.",
+      inputSchema: {
+        projectPath: projectPathInput,
+        lesson: z.string().min(1).describe("The correction, in a sentence the next tool can apply."),
+        context: z.string().optional().describe("Where it came up, e.g. the phase."),
+        refs: refsInput.optional(),
+      },
+      outputSchema: recordedOutput,
+      annotations: recordAnnotations,
+    },
+    async (input) => toolResult("record_lesson", () => recordLesson(deps, agentActor(server), input)),
   );
 
   return server;
