@@ -21,6 +21,14 @@ Skills marked `unverified` in `catalog.json` have not had their license confirme
 | https://github.com/yanliudesign/product-teardown-skill | unverified | idea-descriptor, idea-refine, idea-review, interview-me, product-teardown |
 | https://owasp.org | unverified | security-and-hardening, security-review |
 
+## Modifications to bundled skills
+
+Changes OmniOrchestrator made to third-party skills, so the original text and ours can be told apart. Each added section is labelled in the skill itself.
+
+| Skill | Source | Change |
+|---|---|---|
+| git-workflow-and-versioning | addyosmani/agent-skills | Added the section "Verify the Way CI Does", a step 6 in "Pre-Commit Hygiene" and one Verification checklist item (2026-11-02). |
+
 ## MIT License: addyosmani/agent-skills
 
 ```

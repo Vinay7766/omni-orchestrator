@@ -227,6 +227,8 @@ npm run lint
 
 # 5. Run type checking
 npx tsc --noEmit
+
+# 6. Build, dependency or cross-package change? Also verify the way CI does (below)
 ```
 
 Automate this with git hooks:
@@ -240,6 +242,39 @@ Automate this with git hooks:
   }
 }
 ```
+
+## Verify the Way CI Does
+
+*Section added by OmniOrchestrator (not part of the original agent-skills text).*
+
+Green locally does not mean green in CI. Your working copy carries things a CI runner never has: build output from earlier runs, caches, installed but undeclared packages, environment variables, files that are ignored by git. Any of them can make a missing import path, dependency or build step look fine on your machine. The pre-commit checks above prove the change works *here*; this check proves it works *from a clean start*.
+
+**When to do it** (in addition to the pre-commit checks):
+
+- build or tool configuration changed (`tsconfig`, bundler, test runner, `Cargo.toml`, CI files)
+- dependencies or the lockfile changed
+- code starts importing from another package or workspace, or from a new subpath of one
+- generated code, environment variables or required files changed
+
+**How:**
+
+1. Read the CI configuration (for example `.github/workflows/*.yml`) and list its steps **in order**. Do not guess them: the order matters (a type check that runs before packages are built behaves differently from one that runs after).
+2. Check out the commit in a separate, clean folder, so nothing from your working copy leaks in:
+
+   ```bash
+   git worktree add --detach ../ci-check HEAD   # after committing
+   cd ../ci-check
+   ```
+
+3. Run CI's steps exactly, starting from the install from the lockfile (`npm ci`, `cargo build --locked`, `pip install -r requirements.txt`, ...).
+4. Clean up: `cd - && git worktree remove ../ci-check`.
+
+**If CI fails anyway:** stop, reproduce the failure locally under CI's conditions before fixing it (see `debugging-and-error-recovery`), fix the cause, confirm it both in the clean checkout and in your working copy, and write down what was missed so the next check covers it.
+
+| Rationalization | Reality |
+|---|---|
+| "All tests pass locally, so CI will pass" | Local leftovers (build output, caches) can satisfy what CI cannot. A clean checkout is the only proof. |
+| "It's just a config tweak" | Config, dependency and import changes are exactly the ones that behave differently on a clean machine. |
 
 ## Handling Generated Files
 
@@ -344,6 +379,7 @@ For every commit:
 - [ ] Commit does one logical thing
 - [ ] Message explains the why, follows type conventions
 - [ ] Tests pass before committing
+- [ ] Build, dependency or cross-package changes also pass in a clean checkout running CI's steps in CI's order
 - [ ] No secrets in the diff
 - [ ] No formatting-only changes mixed with behavior changes
 - [ ] `.gitignore` covers standard exclusions
