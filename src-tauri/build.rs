@@ -4,7 +4,35 @@ use std::path::Path;
 
 fn main() {
     bundle_skill_catalog();
+    bundle_adapters();
     tauri_build::build()
+}
+
+/// Copies `packages/core/adapters/*.json` as raw `{ name, text }` entries into OUT_DIR for the
+/// launcher (`include_str!`). Adapters are optional (TOOL-5): a missing or empty folder bundles
+/// an empty list and the app still builds. Parsing and checks happen in `commands::adapters`,
+/// so the bundled and test paths use the same code.
+fn bundle_adapters() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("core").join("adapters");
+    println!("cargo:rerun-if-changed={}", dir.display());
+    let mut files: Vec<(String, String)> = match fs::read_dir(&dir) {
+        Ok(entries) => entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "json"))
+            .map(|p| {
+                println!("cargo:rerun-if-changed={}", p.display());
+                let text = fs::read_to_string(&p).unwrap_or_else(|e| panic!("cannot read {}: {}", p.display(), e));
+                (p.file_name().unwrap().to_string_lossy().into_owned(), text)
+            })
+            .collect(),
+        Err(_) => Vec::new(),
+    };
+    files.sort();
+    let list: Vec<serde_json::Value> =
+        files.into_iter().map(|(name, text)| serde_json::json!({ "name": name, "text": text })).collect();
+    let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("adapters.json");
+    fs::write(&out, serde_json::to_string(&list).unwrap()).expect("cannot write bundled adapters");
 }
 
 /// Assembles `/skills/catalog.json` (metadata) and `/skills/<id>/SKILL.md` (content)

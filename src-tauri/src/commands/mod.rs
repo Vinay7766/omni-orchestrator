@@ -4,6 +4,7 @@ pub mod sync_launcher;
 pub mod byok_engine;
 pub mod memory_fs;
 pub mod tool_discovery;
+pub mod adapters;
 
 pub use storage_cmd::*;
 pub use skill_manager::*;

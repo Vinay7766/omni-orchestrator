@@ -133,6 +133,19 @@ fn the_real_skill_catalog_matches_its_schema() {
 }
 
 #[test]
+fn every_shipped_adapter_matches_its_schema() {
+    let validator = validator_for("adapter");
+    let dir = schemas_dir().join("..").join("packages").join("core").join("adapters");
+    for entry in fs::read_dir(&dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|x| x == "json") {
+            let errors: Vec<String> = validator.iter_errors(&read_json(&path)).take(5).map(|e| e.to_string()).collect();
+            assert!(errors.is_empty(), "{} does not match the adapter schema: {:?}", path.display(), errors);
+        }
+    }
+}
+
+#[test]
 fn event_type_enum_matches_the_schema_exactly() {
     let schema = read_json(&schemas_dir().join("event.schema.json"));
     let mut in_schema: Vec<String> = schema["properties"]["type"]["enum"]
