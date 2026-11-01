@@ -53,6 +53,37 @@ describe("stdio server", () => {
     }
   }, 60_000);
 
+  it("finds the project named by --project, wherever it was started", async () => {
+    const elsewhere = mkdtempSync(join(tmpdir(), "omni-mcp-stdio-else-"));
+    const client = new Client({ name: "made-up-client", version: "0.0.1" });
+    try {
+      await client.connect(
+        new StdioClientTransport({
+          command: process.execPath,
+          args: [join(pkgDir, "dist", "main.js"), "--project", root],
+          cwd: elsewhere,
+          stderr: "pipe",
+        }),
+      );
+      const result = await client.callTool({ name: "get_context", arguments: {} });
+      expect((result.structuredContent as { project: { root: string } }).project.root).toBe(root);
+    } finally {
+      await client.close();
+      rmSync(elsewhere, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it("refuses unknown arguments instead of guessing", () => {
+    let failed = false;
+    try {
+      execFileSync(process.execPath, [join(pkgDir, "dist", "main.js"), "--verbose"], { stdio: "pipe", timeout: 20_000 });
+    } catch (error) {
+      failed = true;
+      expect(String((error as { stderr?: Buffer }).stderr)).toMatch(/usage: .*--project/);
+    }
+    expect(failed).toBe(true);
+  });
+
   it("checks cited commits against the project's git repository", async () => {
     execFileSync("git", ["init", "-q"], { cwd: root });
     writeFileSync(join(root, "src", "parser.ts"), "export {};\n");
