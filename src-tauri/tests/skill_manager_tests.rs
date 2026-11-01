@@ -110,6 +110,22 @@ fn test_every_phase_has_at_least_one_dedicated_skill() {
 }
 
 #[test]
+fn test_no_skill_description_is_a_leftover_yaml_block_marker() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_desc_test"));
+
+    for skill in manager.get_default_skills() {
+        let d = skill.description.trim();
+        assert!(
+            !matches!(d, ">" | ">-" | ">+" | "|" | "|-" | "|+"),
+            "{} description is a YAML block marker, not text: {:?}",
+            skill.id,
+            d
+        );
+        assert!(d.len() >= 20, "{} description is too short to be useful: {:?}", skill.id, d);
+    }
+}
+
+#[test]
 fn test_embedded_catalog_content_matches_skill_files_on_disk() {
     let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_content_test"));
     let skills_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("skills");
