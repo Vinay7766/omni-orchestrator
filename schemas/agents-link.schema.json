@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:agents-link",
+  "title": "AgentsLink",
+  "description": ".agents-link in a git worktree (or any secondary checkout): points at the folder whose .agents/ holds the shared project memory.",
+  "type": "object",
+  "required": ["formatVersion", "projectRoot"],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": { "$ref": "urn:omni:schema:common#/$defs/formatVersion" },
+    "projectRoot": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "description": "Path to the main project folder: relative to the folder containing this file (preferred), or absolute."
+    }
+  }
+}

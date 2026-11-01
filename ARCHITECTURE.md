@@ -97,7 +97,7 @@ Every event has: `id`, `time`, `type`, `actor` (`{ kind: "agent" | "human", tool
 
 ### 3.3 Git and branches
 
-- `.agents/` is **gitignored by default**: it holds summaries of private conversations. Users can opt in to committing it.
+- OmniOrchestrator's own files in `.agents/` are **gitignored by default**: they hold summaries of private conversations. Users can opt in to committing them. Only our files are ignored, because other tools also keep files in `.agents/` (for example `.agents/skills/`).
 - With multi-IDE work, each IDE gets its own **git worktree** (separate folder, separate branch). Every worktree contains a small `.agents-link` file pointing to the main project's `.agents/`, so all IDEs share one memory instead of one copy per branch.
 
 ### 3.4 Schemas

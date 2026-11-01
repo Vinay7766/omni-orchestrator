@@ -64,11 +64,25 @@ export type CommonRelPath1 = string;
  * Every project-memory file type, keyed by schema name.
  */
 export interface MemoryFileTypes {
+  "agents-link": AgentsLink;
   "design-note": DesignNote;
   event: Event;
   project: Project;
   "skills-config": SkillsConfig;
   state: State;
+}
+/**
+ * .agents-link in a git worktree (or any secondary checkout): points at the folder whose .agents/ holds the shared project memory.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "AgentsLink".
+ */
+export interface AgentsLink {
+  formatVersion: CommonFormatVersion;
+  /**
+   * Path to the main project folder: relative to the folder containing this file (preferred), or absolute.
+   */
+  projectRoot: string;
 }
 /**
  * .agents/design-notes/<task>.json: the solution-design output required before coding a task (DSN-1..3, UND-3).
