@@ -131,8 +131,7 @@ not_started ──start──► in_progress ──submit──► awaiting_revi
 
 ```
 todo ──design──► designed ──start──► in_progress ──complete──► done
-                     ▲                                │
-                     └────── reopen (approach wrong) ◄┘
+                     (reopen when the approach was wrong: back to todo, a new design note is needed)
 ```
 
 - `start` is rejected unless the task has a valid design note (DSN-1), or is marked trivial with a reason.

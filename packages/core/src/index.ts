@@ -1,12 +1,14 @@
-/** Version of the project memory format this library reads and writes. */
-export const MEMORY_FORMAT_VERSION = 1;
-
-/** Name of the per-project memory folder. */
-export const MEMORY_DIR = ".agents";
+export { MEMORY_FORMAT_VERSION, MEMORY_DIR } from "./constants.js";
 
 export { validateMemoryFile } from "./validate.js";
+export type { SchemaName, ValidationIssue, ValidationResult } from "./validate.js";
 export { redactText, redactJson } from "./redact.js";
 export type { TextFinding, JsonFinding } from "./redact.js";
-export type { SchemaName, ValidationIssue, ValidationResult } from "./validate.js";
+
+export { MemoryStore } from "./memory/store.js";
+export type { StoreOptions, StoreResult, EventInput, AppendResult, LineIssue } from "./memory/store.js";
+export type { MemoryFs } from "./memory/fs.js";
+export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
+
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS } from "./generated/contract.js";
 export type * from "./generated/types.js";

@@ -3,7 +3,10 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "composite": true
+    "composite": true,
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "src"
