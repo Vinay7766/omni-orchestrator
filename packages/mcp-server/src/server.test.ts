@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await connect(root);
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    expect(names).toEqual(["get_context", "get_phase_skills"]);
+    expect(names).toEqual(["get_context", "get_phase_skills", "submit_phase"]);
     expect(names.filter((n) => /approve|request_changes|review/i.test(n))).toEqual([]);
     for (const name of ["get_context", "get_phase_skills"]) {
       const tool = tools.find((t) => t.name === name)!;
@@ -83,6 +83,42 @@ describe("MCP server", () => {
     const value = result.structuredContent as { phase: string; skills: { id: string; content: string }[] };
     expect(value.phase).toBe("build");
     expect(value.skills).toEqual([expect.objectContaining({ id: "build-well", content: "# Build well\nDo it well.\n" })]);
+  });
+
+  it("submits a phase as the connected agent, never as a person", async () => {
+    mkdirSync(join(root, "docs"), { recursive: true });
+    writeFileSync(join(root, "docs", "build-notes.md"), "notes\n");
+    await connect(root);
+    const result = await client.callTool({
+      name: "submit_phase",
+      arguments: {
+        phase: "build",
+        documents: ["docs/build-notes.md"],
+        skillsUsed: [{ skill: "build-well", evidence: "Red test first, see docs/build-notes.md" }],
+        memoryUpdate: { files: ["docs/build-notes.md"] },
+        model: "made-up-model",
+      },
+    });
+    expect(result.isError, JSON.stringify(result.content)).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ phase: "build", status: "awaiting_review" });
+    const opened = await MemoryStore.open(fs, root);
+    if (!opened.ok) throw new Error("reopen");
+    const last = (await opened.store.readEvents()).events.at(-1)!;
+    expect(last.type).toBe("phase_submitted");
+    expect(last.actor).toEqual({ kind: "agent", tool: "made-up-client", model: "made-up-model" });
+  });
+
+  it("rejects a submission without a skills-used list", async () => {
+    mkdirSync(join(root, "docs"), { recursive: true });
+    writeFileSync(join(root, "docs", "build-notes.md"), "notes\n");
+    await connect(root);
+    for (const skillsUsed of [undefined, []]) {
+      const result = await client.callTool({
+        name: "submit_phase",
+        arguments: { phase: "build", documents: ["docs/build-notes.md"], memoryUpdate: { files: ["docs/build-notes.md"] }, ...(skillsUsed ? { skillsUsed } : {}) },
+      });
+      expect(result.isError, JSON.stringify(skillsUsed)).toBe(true);
+    }
   });
 
   it("returns a tool error for a skill outside the phase", async () => {

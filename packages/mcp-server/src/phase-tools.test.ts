@@ -91,3 +91,116 @@ describe("get_phase_skills", () => {
     expect(result.value.warnings.join(" ")).toMatch(/missing-text/);
   });
 });
+
+// --- submit_phase (GATE-3, UND-1, SKL-4). Every rejection must leave the memory untouched.
+
+import { mkdirSync, writeFileSync } from "node:fs";
+import { submitPhase, type SubmitInput } from "./phase-tools.js";
+
+const tool = { kind: "agent" as const, tool: "made-up-client" };
+
+function write(rel: string, text = "content\n") {
+  mkdirSync(join(root, rel, ".."), { recursive: true });
+  writeFileSync(join(root, rel), text);
+}
+const eventTypes = async () => (await store.readEvents()).events.map((e) => e.type);
+
+/** A complete, valid submission of the planning phase "idea-review". */
+async function ready(): Promise<SubmitInput> {
+  await startPhase("idea-review");
+  write("docs/idea-review.md");
+  write("docs/understanding.md", "Restated request; examples mapped to categories; assumptions.\n");
+  return {
+    phase: "idea-review",
+    documents: ["docs/idea-review.md"],
+    skillsUsed: [{ skill: "plan-well", evidence: "Compared three approaches in docs/idea-review.md" }],
+    understandingCheck: "docs/understanding.md",
+    memoryUpdate: { files: ["docs/idea-review.md"] },
+  };
+}
+const submit = (input: SubmitInput) => submitPhase({ fs, skills, startDir: root }, tool, input);
+
+describe("submit_phase", () => {
+  it("records the memory update and the submission, and asks for the person's review", async () => {
+    const result = await submit(await ready());
+    if (!result.ok) throw new Error(result.message);
+    expect(result.value).toMatchObject({ phase: "idea-review", status: "awaiting_review" });
+    expect(result.value.reviewQuestion).toMatch(/reviewed/);
+    expect((await eventTypes()).slice(-2)).toEqual(["memory_updated", "phase_submitted"]);
+    const submitted = (await store.readEvents()).events.at(-1)!;
+    expect(submitted.actor).toEqual(tool);
+    expect(submitted.id).toBe(result.value.eventId);
+    expect((await store.readState()).phases["idea-review"].status).toBe("awaiting_review");
+  });
+
+  it("accepts a memory update recorded earlier in the phase", async () => {
+    const input = await ready();
+    const earlier = await store.appendEvent({ type: "memory_updated", actor: tool, payload: { files: ["docs/idea-review.md"] } });
+    if (!earlier.ok) throw new Error(JSON.stringify(earlier));
+    const { memoryUpdate: _, ...withoutUpdate } = input;
+    expect((await submit(withoutUpdate)).ok).toBe(true);
+  });
+
+  it("rejects a submission without a memory update and writes nothing", async () => {
+    const { memoryUpdate: _, ...input } = await ready();
+    const before = await eventTypes();
+    const result = await submit(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/update the project memory/);
+    expect(await eventTypes()).toEqual(before);
+  });
+
+  it("rejects a planning phase without an understanding check and writes nothing", async () => {
+    const { understandingCheck: _, ...input } = await ready();
+    const before = await eventTypes();
+    const result = await submit(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/Understanding check/);
+    expect(await eventTypes()).toEqual(before);
+  });
+
+  it("checks every referenced file before anything is written", async () => {
+    const input = await ready();
+    const before = await eventTypes();
+    const result = await submit({
+      ...input,
+      documents: ["docs/idea-review.md", "docs/not-written.md", "../outside.md"],
+      memoryUpdate: { files: ["/etc/passwd"] },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toMatch(/docs\/not-written\.md: missing/);
+      expect(result.message).toMatch(/\.\.\/outside\.md: invalid/);
+      expect(result.message).toMatch(/\/etc\/passwd: invalid/);
+    }
+    expect(await eventTypes()).toEqual(before);
+  });
+
+  it("rejects a missing or blank understanding check", async () => {
+    const input = await ready();
+    write("docs/blank.md", "  \n\n");
+    for (const understandingCheck of ["docs/nowhere.md", "docs/blank.md"]) {
+      const result = await submit({ ...input, understandingCheck });
+      expect(result.ok, understandingCheck).toBe(false);
+    }
+    expect(await eventTypes()).not.toContain("phase_submitted");
+  });
+
+  it("rejects a phase that has not started, and a second submission", async () => {
+    write("docs/a.md");
+    const early = await submit({
+      phase: "research",
+      documents: ["docs/a.md"],
+      skillsUsed: [{ skill: "plan-well", evidence: "x" }],
+      memoryUpdate: { files: ["docs/a.md"] },
+    });
+    expect(early.ok).toBe(false);
+    if (!early.ok) expect(early.message).toMatch(/has not been started/);
+
+    const input = await ready();
+    expect((await submit(input)).ok).toBe(true);
+    const again = await submit(input);
+    expect(again.ok).toBe(false);
+    if (!again.ok) expect(again.message).toMatch(/awaiting_review/);
+  });
+});
