@@ -27,6 +27,22 @@ pub struct BYOKConfig {
     pub compatible_api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preferred_model: Option<String>,
+    /// The provider to use. When unset, the first one set up is used (in the order of
+    /// `ByokProvider`). Only that provider is called: a model name belongs to one provider.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_provider: Option<ByokProvider>,
+}
+
+/// The protocols BYOK speaks. Which servers and models are used is the user's data (TOOL-6):
+/// `Compatible` covers any OpenAI-compatible server.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ByokProvider {
+    Gemini,
+    Claude,
+    Openai,
+    Compatible,
+    Ollama,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

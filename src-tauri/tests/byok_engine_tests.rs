@@ -69,39 +69,47 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::sync::mpsc;
 
-/// Serves one HTTP request with `status` and `body`; returns the base URL and the raw request.
-fn fake_endpoint(status: u16, body: &'static str) -> (String, mpsc::Receiver<String>) {
+/// Serves one request per reply, in order; returns the server's base URL and the raw requests.
+fn fake_server(replies: Vec<(u16, &'static str)>) -> (String, mpsc::Receiver<String>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
-        let (stream, _) = listener.accept().unwrap();
-        let mut reader = BufReader::new(stream);
-        let mut head = String::new();
-        let mut length = 0usize;
-        loop {
-            let mut line = String::new();
-            reader.read_line(&mut line).unwrap();
-            if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
-                length = v.trim().parse().unwrap();
+        for (status, body) in replies {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream);
+            let mut head = String::new();
+            let mut length = 0usize;
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                    length = v.trim().parse().unwrap();
+                }
+                head.push_str(&line);
+                if line == "\r\n" || line.is_empty() {
+                    break;
+                }
             }
-            head.push_str(&line);
-            if line == "\r\n" || line.is_empty() {
-                break;
-            }
+            let mut payload = vec![0u8; length];
+            reader.read_exact(&mut payload).unwrap();
+            let _ = tx.send(head + &String::from_utf8_lossy(&payload));
+            let reply = format!(
+                "HTTP/1.1 {} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                status,
+                body.len(),
+                body
+            );
+            reader.get_mut().write_all(reply.as_bytes()).unwrap();
         }
-        let mut payload = vec![0u8; length];
-        reader.read_exact(&mut payload).unwrap();
-        tx.send(head + &String::from_utf8_lossy(&payload)).unwrap();
-        let reply = format!(
-            "HTTP/1.1 {} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-            status,
-            body.len(),
-            body
-        );
-        reader.get_mut().write_all(reply.as_bytes()).unwrap();
     });
-    (format!("http://127.0.0.1:{}/v1", port), rx)
+    (format!("http://127.0.0.1:{}", port), rx)
+}
+
+/// A made-up OpenAI-compatible endpoint answering one request; base URL ends in /v1.
+fn fake_endpoint(status: u16, body: &'static str) -> (String, mpsc::Receiver<String>) {
+    let (base, rx) = fake_server(vec![(status, body)]);
+    (format!("{}/v1", base), rx)
 }
 
 fn compatible(base: &str, key: Option<&str>, model: Option<&str>) -> TeardownRequest {
@@ -183,4 +191,155 @@ fn unsafe_endpoint_addresses_are_refused() {
         let err = ByokEngine::new().generate_teardown(&compatible(bad, None, Some("m"))).unwrap_err();
         assert!(err.contains(refusal), "{} -> {}", bad, err);
     }
+}
+
+// --- No built-in model names; models are read from the provider or typed (C14, TOOL-6).
+
+use tauri_app_lib::commands::byok_engine::NativeBases;
+use tauri_app_lib::models::ByokProvider;
+
+fn engine_at(base: &str) -> ByokEngine {
+    ByokEngine::with_native_bases(NativeBases {
+        gemini: format!("{}/gemini", base),
+        anthropic: format!("{}/anthropic", base),
+        openai: format!("{}/openai", base),
+    })
+}
+
+fn request_with(byok: BYOKConfig) -> TeardownRequest {
+    TeardownRequest { target_product_or_company: "Acme".into(), analysis_type: "full-teardown".into(), byok }
+}
+
+#[test]
+fn every_provider_needs_a_chosen_model() {
+    for byok in [
+        BYOKConfig { gemini_api_key: Some("k".into()), ..Default::default() },
+        BYOKConfig { anthropic_api_key: Some("k".into()), ..Default::default() },
+        BYOKConfig { openai_api_key: Some("k".into()), ..Default::default() },
+        BYOKConfig { ollama_endpoint: Some("http://127.0.0.1:9".into()), ..Default::default() },
+    ] {
+        let err = engine_at("http://127.0.0.1:9").generate_teardown(&request_with(byok)).unwrap_err();
+        assert!(err.contains("Choose a model"), "{}", err);
+    }
+}
+
+#[test]
+fn the_selected_provider_is_used_even_when_others_are_configured() {
+    let (base, requests) = fake_endpoint(200, REPLY);
+    let byok = BYOKConfig {
+        anthropic_api_key: Some("k".into()),
+        compatible_base_url: Some(base),
+        active_provider: Some(ByokProvider::Compatible),
+        preferred_model: Some("nebula-7b".into()),
+        ..Default::default()
+    };
+    let response = engine_at("http://127.0.0.1:9").generate_teardown(&request_with(byok)).unwrap();
+    assert_eq!(response.source, "compatible");
+    assert!(requests.recv().unwrap().contains("nebula-7b"));
+}
+
+#[test]
+fn a_failing_provider_does_not_pass_its_model_to_another_provider() {
+    let (base, requests) = fake_server(vec![(500, r#"{"error":"down"}"#)]);
+    let byok = BYOKConfig {
+        anthropic_api_key: Some("k".into()),
+        openai_api_key: Some("k".into()),
+        preferred_model: Some("orbit-large".into()),
+        ..Default::default()
+    };
+    let err = engine_at(&base).generate_teardown(&request_with(byok)).unwrap_err();
+    assert!(err.contains("500"), "{}", err);
+    let first = requests.recv().unwrap();
+    assert!(first.starts_with("POST /anthropic/"), "{}", first);
+    assert!(requests.try_recv().is_err(), "no second provider was called");
+}
+
+#[test]
+fn a_selected_provider_that_is_not_set_up_is_reported() {
+    let byok = BYOKConfig { active_provider: Some(ByokProvider::Gemini), preferred_model: Some("m".into()), ..Default::default() };
+    let err = engine_at("http://127.0.0.1:9").generate_teardown(&request_with(byok)).unwrap_err();
+    assert!(err.contains("Gemini"), "{}", err);
+}
+
+#[test]
+fn a_model_name_cannot_change_the_gemini_request_path() {
+    let byok = BYOKConfig { gemini_api_key: Some("k".into()), preferred_model: Some("../files?x=1".into()), ..Default::default() };
+    let err = engine_at("http://127.0.0.1:9").generate_teardown(&request_with(byok)).unwrap_err();
+    assert!(err.contains("model name"), "{}", err);
+}
+
+#[test]
+fn models_are_listed_from_a_made_up_compatible_endpoint() {
+    let (base, requests) =
+        fake_endpoint(200, r#"{"object":"list","data":[{"id":"nebula-7b","object":"model"},{"id":"nebula-70b","object":"model"}]}"#);
+    let byok = BYOKConfig { compatible_base_url: Some(base), compatible_api_key: Some("k".into()), ..Default::default() };
+    let models = ByokEngine::new().list_models(&byok, ByokProvider::Compatible).unwrap();
+    assert_eq!(models, vec!["nebula-7b", "nebula-70b"]);
+    let sent = requests.recv().unwrap();
+    assert!(sent.starts_with("GET /v1/models "), "{}", sent);
+    assert!(sent.to_ascii_lowercase().contains("authorization: bearer k"), "{}", sent);
+}
+
+#[test]
+fn local_runner_models_come_from_its_own_list() {
+    let (base, requests) = fake_server(vec![(200, r#"{"models":[{"name":"orbit:latest","model":"orbit:latest"}]}"#)]);
+    let byok = BYOKConfig { ollama_endpoint: Some(base), ..Default::default() };
+    assert_eq!(ByokEngine::new().list_models(&byok, ByokProvider::Ollama).unwrap(), vec!["orbit:latest"]);
+    assert!(requests.recv().unwrap().starts_with("GET /api/tags "));
+}
+
+#[test]
+fn anthropic_models_are_read_across_pages() {
+    let (base, requests) = fake_server(vec![
+        (200, r#"{"data":[{"type":"model","id":"made-up-a"}],"has_more":true,"first_id":"made-up-a","last_id":"made-up-a"}"#),
+        (200, r#"{"data":[{"type":"model","id":"made-up-b"}],"has_more":false,"first_id":"made-up-b","last_id":"made-up-b"}"#),
+    ]);
+    let byok = BYOKConfig { anthropic_api_key: Some("k".into()), ..Default::default() };
+    assert_eq!(engine_at(&base).list_models(&byok, ByokProvider::Claude).unwrap(), vec!["made-up-a", "made-up-b"]);
+    assert!(requests.recv().unwrap().starts_with("GET /anthropic/v1/models?"));
+    assert!(requests.recv().unwrap().contains("after_id=made-up-a"));
+}
+
+#[test]
+fn gemini_lists_only_models_that_generate_content_across_pages() {
+    let (base, requests) = fake_server(vec![
+        (200, r#"{"models":[{"name":"models/made-up-pro","supportedGenerationMethods":["generateContent"]},{"name":"models/made-up-embed","supportedGenerationMethods":["embedContent"]}],"nextPageToken":"p2"}"#),
+        (200, r#"{"models":[{"name":"models/made-up-lite","supportedGenerationMethods":["generateContent","countTokens"]}]}"#),
+    ]);
+    let byok = BYOKConfig { gemini_api_key: Some("k".into()), ..Default::default() };
+    assert_eq!(engine_at(&base).list_models(&byok, ByokProvider::Gemini).unwrap(), vec!["made-up-pro", "made-up-lite"]);
+    let first = requests.recv().unwrap();
+    assert!(first.starts_with("GET /gemini/v1beta/models?"), "{}", first);
+    assert!(!first.contains("key=k"), "the key stays out of the URL: {}", first);
+    assert!(requests.recv().unwrap().contains("pageToken=p2"));
+}
+
+#[test]
+fn a_server_that_never_stops_paging_is_cut_off() {
+    let page = r#"{"data":[{"type":"model","id":"loop"}],"has_more":true,"last_id":"loop"}"#;
+    let (base, _requests) = fake_server(vec![(200, page); 30]);
+    let byok = BYOKConfig { anthropic_api_key: Some("k".into()), ..Default::default() };
+    let err = engine_at(&base).list_models(&byok, ByokProvider::Claude).unwrap_err();
+    assert!(err.contains("pages"), "{}", err);
+}
+
+#[test]
+fn a_malformed_model_list_is_an_error() {
+    let (base, _requests) = fake_endpoint(200, r#"{"unexpected":true}"#);
+    let byok = BYOKConfig { compatible_base_url: Some(base), ..Default::default() };
+    assert!(ByokEngine::new().list_models(&byok, ByokProvider::Compatible).is_err());
+}
+
+#[test]
+fn listing_models_for_a_provider_that_is_not_set_up_is_reported() {
+    let err = ByokEngine::new().list_models(&BYOKConfig::default(), ByokProvider::Openai).unwrap_err();
+    assert!(err.contains("OpenAI"), "{}", err);
+}
+
+#[test]
+fn a_model_listed_twice_is_offered_once_in_the_providers_order() {
+    let (base, _requests) =
+        fake_endpoint(200, r#"{"object":"list","data":[{"id":"zeta"},{"id":"alpha"},{"id":"zeta"},{"id":""}]}"#);
+    let byok = BYOKConfig { compatible_base_url: Some(base), ..Default::default() };
+    assert_eq!(ByokEngine::new().list_models(&byok, ByokProvider::Compatible).unwrap(), vec!["zeta", "alpha"]);
 }

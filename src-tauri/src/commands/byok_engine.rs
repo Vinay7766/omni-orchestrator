@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::models::BYOKConfig;
+use crate::models::{BYOKConfig, ByokProvider};
 
 // ──────────────────────────────────────────────────────────────
 // Request / Response types
@@ -149,77 +149,279 @@ struct OllamaResponse {
 // ByokEngine
 // ──────────────────────────────────────────────────────────────
 
+/// Where the native provider APIs live. Overridable so tests can point them at a local server.
+#[derive(Debug, Clone)]
+pub struct NativeBases {
+    pub gemini: String,
+    pub anthropic: String,
+    /// OpenAI is one OpenAI-compatible endpoint; this is its base (".../v1").
+    pub openai: String,
+}
+
+impl Default for NativeBases {
+    fn default() -> Self {
+        Self {
+            gemini: "https://generativelanguage.googleapis.com".to_string(),
+            anthropic: "https://api.anthropic.com".to_string(),
+            openai: "https://api.openai.com/v1".to_string(),
+        }
+    }
+}
+
 #[derive(Default, Clone)]
-pub struct ByokEngine;
+pub struct ByokEngine {
+    bases: NativeBases,
+}
+
+/// The order used when the user has not selected a provider.
+const PROVIDER_ORDER: [ByokProvider; 5] =
+    [ByokProvider::Gemini, ByokProvider::Claude, ByokProvider::Openai, ByokProvider::Compatible, ByokProvider::Ollama];
+
+/// A server that keeps saying "more pages" is cut off here.
+const MAX_MODEL_PAGES: usize = 20;
+
+fn label(provider: ByokProvider) -> &'static str {
+    match provider {
+        ByokProvider::Gemini => "Gemini",
+        ByokProvider::Claude => "Claude",
+        ByokProvider::Openai => "OpenAI",
+        ByokProvider::Compatible => "your OpenAI-compatible endpoint",
+        ByokProvider::Ollama => "Ollama",
+    }
+}
+
+/// The key or address that sets a provider up, if the user gave one.
+fn credential(byok: &BYOKConfig, provider: ByokProvider) -> Option<&str> {
+    match provider {
+        ByokProvider::Gemini => configured(&byok.gemini_api_key),
+        ByokProvider::Claude => configured(&byok.anthropic_api_key),
+        ByokProvider::Openai => configured(&byok.openai_api_key),
+        ByokProvider::Compatible => configured(&byok.compatible_base_url),
+        ByokProvider::Ollama => configured(&byok.ollama_endpoint),
+    }
+}
+
+fn require_credential(byok: &BYOKConfig, provider: ByokProvider) -> Result<&str, String> {
+    credential(byok, provider).ok_or_else(|| {
+        format!("{} is selected but not set up: add its key or address in BYOK settings.", label(provider))
+    })
+}
+
+fn http_client(timeout_secs: u64) -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+/// Sends a request and parses a JSON reply. Error text names `who` and never contains `key`.
+fn send_json<T: serde::de::DeserializeOwned>(
+    request: reqwest::blocking::RequestBuilder,
+    who: &str,
+    key: Option<&str>,
+) -> Result<T, String> {
+    let scrub = |text: String| match key {
+        Some(k) if !k.is_empty() => text.replace(k, "[key]"),
+        _ => text,
+    };
+    let resp = request.send().map_err(|e| scrub(format!("{} request failed: {}", who, e)))?;
+    let status = resp.status();
+    let body = resp.text().map_err(|e| scrub(format!("{} read error: {}", who, e)))?;
+    if !status.is_success() {
+        return Err(scrub(format!("{} error {}: {}", who, status, body)));
+    }
+    serde_json::from_str(&body).map_err(|e| scrub(format!("{} returned an unexpected reply: {}", who, e)))
+}
+
+/// Keeps the first occurrence of each name, in the provider's order.
+fn unique(names: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    names.into_iter().filter(|n| !n.is_empty() && seen.insert(n.clone())).collect()
+}
+
+#[derive(Deserialize)]
+struct IdItem {
+    id: String,
+}
+
+#[derive(Deserialize)]
+struct OpenAiModelList {
+    data: Vec<IdItem>,
+}
+
+#[derive(Deserialize)]
+struct AnthropicModelPage {
+    data: Vec<IdItem>,
+    #[serde(default)]
+    has_more: bool,
+    last_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct GeminiModelPage {
+    #[serde(default)]
+    models: Vec<GeminiModelItem>,
+    #[serde(rename = "nextPageToken")]
+    next_page_token: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct GeminiModelItem {
+    name: String,
+    #[serde(default, rename = "supportedGenerationMethods")]
+    supported_generation_methods: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct OllamaTags {
+    models: Vec<OllamaTag>,
+}
+
+#[derive(Deserialize)]
+struct OllamaTag {
+    name: String,
+}
 
 impl ByokEngine {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
-    /// Dispatches to the configured live LLM APIs in priority order.
-    /// Uses the offline template only when no provider is configured; if every
-    /// configured provider fails, their errors are returned instead.
+    pub fn with_native_bases(bases: NativeBases) -> Self {
+        Self { bases }
+    }
+
+    /// Calls the selected provider (or the first one set up) with the chosen model. Only that
+    /// provider is called. The offline template is used only when nothing is set up.
     pub fn generate_teardown(&self, req: &TeardownRequest) -> Result<TeardownResponse, String> {
         let name = &req.target_product_or_company;
+        let byok = &req.byok;
+        let provider = match byok.active_provider {
+            Some(p) => p,
+            None => match PROVIDER_ORDER.into_iter().find(|p| credential(byok, *p).is_some()) {
+                Some(p) => p,
+                None => return Ok(self.generate_offline_template(req)),
+            },
+        };
+        let credential = require_credential(byok, provider)?;
+        let model = configured(&byok.preferred_model).ok_or_else(|| {
+            format!(
+                "Choose a model for {}: use Load models in BYOK settings, or type the model name.",
+                label(provider)
+            )
+        })?;
         let prompt = build_teardown_prompt(name, &req.analysis_type);
-        let mut errors: Vec<String> = Vec::new();
-
-        // Priority: Gemini → Claude → OpenAI → Ollama → Offline
-        if let Some(key) = configured(&req.byok.gemini_api_key) {
-            match self.call_gemini(key, &prompt, &req.byok) {
-                Ok(report) => return Ok(build_response(name, report, "gemini")),
-                Err(e) => errors.push(e),
+        let (report, source) = match provider {
+            ByokProvider::Gemini => (self.call_gemini(credential, model, &prompt)?, "gemini"),
+            ByokProvider::Claude => (self.call_claude(credential, model, &prompt)?, "claude"),
+            ByokProvider::Openai => (chat_openai_compatible(&self.bases.openai, Some(credential), model, &prompt)?, "openai"),
+            ByokProvider::Compatible => {
+                let key = configured(&byok.compatible_api_key);
+                (chat_openai_compatible(credential, key, model, &prompt)?, "compatible")
             }
-        }
+            ByokProvider::Ollama => (self.call_ollama(credential, model, &prompt)?, "ollama"),
+        };
+        Ok(build_response(name, report, source))
+    }
 
-        if let Some(key) = configured(&req.byok.anthropic_api_key) {
-            match self.call_claude(key, &prompt, &req.byok) {
-                Ok(report) => return Ok(build_response(name, report, "claude")),
-                Err(e) => errors.push(e),
+    /// The models a provider offers, read from the provider itself (TOOL-6: no model list in
+    /// code). The user can always type a model name instead.
+    pub fn list_models(&self, byok: &BYOKConfig, provider: ByokProvider) -> Result<Vec<String>, String> {
+        let credential = require_credential(byok, provider)?;
+        let client = http_client(30)?;
+        let names = match provider {
+            // Source: openai-openapi v2.3.0 listModels: GET /models -> { object: "list", data: [{ id }] }
+            ByokProvider::Openai | ByokProvider::Compatible => {
+                let (base, key) = if provider == ByokProvider::Openai {
+                    (self.bases.openai.as_str(), Some(credential))
+                } else {
+                    (credential, configured(&byok.compatible_api_key))
+                };
+                let url = endpoint_base(base, key.is_some())?;
+                let host = url.host_str().unwrap_or("").to_string();
+                let mut request = client.get(format!("{}/models", url.as_str().trim_end_matches('/')));
+                if let Some(k) = key {
+                    request = request.bearer_auth(k);
+                }
+                let list: OpenAiModelList = send_json(request, &format!("Endpoint {}", host), key)?;
+                list.data.into_iter().map(|m| m.id).collect()
             }
-        }
-
-        if let Some(key) = configured(&req.byok.openai_api_key) {
-            match self.call_openai(key, &prompt, &req.byok) {
-                Ok(report) => return Ok(build_response(name, report, "openai")),
-                Err(e) => errors.push(e),
+            // Source: github.com/ollama/ollama docs/api.md "List Local Models": GET /api/tags -> { models: [{ name }] }
+            ByokProvider::Ollama => {
+                let url = endpoint_base(credential, false)?;
+                let tags: OllamaTags =
+                    send_json(client.get(format!("{}/api/tags", url.as_str().trim_end_matches('/'))), "Ollama", None)?;
+                tags.models.into_iter().map(|m| m.name).collect()
             }
-        }
-
-        if let Some(base) = configured(&req.byok.compatible_base_url) {
-            let key = configured(&req.byok.compatible_api_key);
-            match self.call_compatible(base, key, &prompt, &req.byok) {
-                Ok(report) => return Ok(build_response(name, report, "compatible")),
-                Err(e) => errors.push(e),
+            // Source: platform.claude.com/docs/en/api/models-list: GET /v1/models, data[].id,
+            // has_more + last_id, next page with after_id; limit up to 1000.
+            ByokProvider::Claude => {
+                let mut names = Vec::new();
+                let mut after: Option<String> = None;
+                for _ in 0..MAX_MODEL_PAGES {
+                    let mut query = vec![("limit", "1000".to_string())];
+                    if let Some(a) = &after {
+                        query.push(("after_id", a.clone()));
+                    }
+                    let request = client
+                        .get(format!("{}/v1/models", self.bases.anthropic.trim_end_matches('/')))
+                        .query(&query)
+                        .header("x-api-key", credential)
+                        .header("anthropic-version", "2023-06-01");
+                    let page: AnthropicModelPage = send_json(request, "Claude", Some(credential))?;
+                    names.extend(page.data.into_iter().map(|m| m.id));
+                    match (page.has_more, page.last_id) {
+                        (true, Some(last)) => after = Some(last),
+                        _ => return Ok(unique(names)),
+                    }
+                }
+                return Err(format!("Claude kept returning more pages; stopped after {} pages.", MAX_MODEL_PAGES));
             }
-        }
-
-        if let Some(endpoint) = configured(&req.byok.ollama_endpoint) {
-            match self.call_ollama(endpoint, &prompt, &req.byok) {
-                Ok(report) => return Ok(build_response(name, report, "ollama")),
-                Err(e) => errors.push(e),
+            // Source: ai.google.dev/api/models models.list: GET v1beta/models, models[].name
+            // ("models/x"), supportedGenerationMethods, nextPageToken -> pageToken; pageSize up to 1000.
+            ByokProvider::Gemini => {
+                let mut names = Vec::new();
+                let mut token: Option<String> = None;
+                for _ in 0..MAX_MODEL_PAGES {
+                    let mut query = vec![("pageSize", "1000".to_string())];
+                    if let Some(t) = &token {
+                        query.push(("pageToken", t.clone()));
+                    }
+                    // Key in a header (as for generateContent), never in the URL.
+                    let request = client
+                        .get(format!("{}/v1beta/models", self.bases.gemini.trim_end_matches('/')))
+                        .query(&query)
+                        .header("x-goog-api-key", credential);
+                    let page: GeminiModelPage = send_json(request, "Gemini", Some(credential))?;
+                    names.extend(
+                        page.models
+                            .into_iter()
+                            .filter(|m| m.supported_generation_methods.iter().any(|g| g == "generateContent"))
+                            .map(|m| m.name.strip_prefix("models/").unwrap_or(&m.name).to_string()),
+                    );
+                    match page.next_page_token.filter(|t| !t.is_empty()) {
+                        Some(t) => token = Some(t),
+                        None => return Ok(unique(names)),
+                    }
+                }
+                return Err(format!("Gemini kept returning more pages; stopped after {} pages.", MAX_MODEL_PAGES));
             }
-        }
-
-        if !errors.is_empty() {
-            return Err(errors.join("\n"));
-        }
-
-        // No provider configured — use offline template
-        Ok(self.generate_offline_template(req))
+        };
+        Ok(unique(names))
     }
 
     // ── Gemini API ────────────────────────────────────────────
 
-    fn call_gemini(&self, api_key: &str, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
-        let model = configured(&config.preferred_model).unwrap_or("gemini-2.0-flash");
-
+    fn call_gemini(&self, api_key: &str, model: &str, prompt: &str) -> Result<String, String> {
+        // The model name goes into the URL path, so it may not carry path or query characters.
+        if !model.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_')) || model.starts_with('.') {
+            return Err(format!(
+                "Gemini model name \"{}\" may contain only letters, digits, '-', '.' and '_'.",
+                model
+            ));
+        }
         // Key goes in a header, not the query string, so it never appears in request error text.
-        let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
-            model
-        );
+        let url = format!("{}/v1beta/models/{}:generateContent", self.bases.gemini.trim_end_matches('/'), model);
 
         let body = GeminiRequest {
             contents: vec![GeminiContent {
@@ -231,28 +433,12 @@ impl ByokEngine {
                 max_output_tokens: 2048,
             },
         };
-
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| e.to_string())?;
-
-        let resp = client
+        let request = http_client(30)?
             .post(&url)
             .header("x-goog-api-key", api_key)
             .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .map_err(|e| format!("Gemini request failed: {}", e))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body_text = resp.text().unwrap_or_default();
-            return Err(format!("Gemini API error {}: {}", status, body_text));
-        }
-
-        let parsed: GeminiResponse = resp.json().map_err(|e| format!("Gemini parse error: {}", e))?;
-
+            .json(&body);
+        let parsed: GeminiResponse = send_json(request, "Gemini", Some(api_key))?;
         parsed
             .candidates
             .first()
@@ -263,9 +449,7 @@ impl ByokEngine {
 
     // ── Anthropic Claude API ──────────────────────────────────
 
-    fn call_claude(&self, api_key: &str, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
-        let model = configured(&config.preferred_model).unwrap_or("claude-3-5-haiku-20241022");
-
+    fn call_claude(&self, api_key: &str, model: &str, prompt: &str) -> Result<String, String> {
         let body = ClaudeRequest {
             model: model.to_string(),
             max_tokens: 2048,
@@ -274,29 +458,13 @@ impl ByokEngine {
                 content: prompt.to_string(),
             }],
         };
-
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| e.to_string())?;
-
-        let resp = client
-            .post("https://api.anthropic.com/v1/messages")
+        let request = http_client(30)?
+            .post(format!("{}/v1/messages", self.bases.anthropic.trim_end_matches('/')))
             .header("x-api-key", api_key)
             .header("anthropic-version", "2023-06-01")
             .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .map_err(|e| format!("Claude request failed: {}", e))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body_text = resp.text().unwrap_or_default();
-            return Err(format!("Claude API error {}: {}", status, body_text));
-        }
-
-        let parsed: ClaudeResponse = resp.json().map_err(|e| format!("Claude parse error: {}", e))?;
-
+            .json(&body);
+        let parsed: ClaudeResponse = send_json(request, "Claude", Some(api_key))?;
         parsed
             .content
             .iter()
@@ -305,54 +473,20 @@ impl ByokEngine {
             .ok_or_else(|| "Claude returned empty response".to_string())
     }
 
-    // ── OpenAI API ────────────────────────────────────────────
-
-    fn call_openai(&self, api_key: &str, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
-        let model = configured(&config.preferred_model).unwrap_or("gpt-4o-mini");
-        chat_openai_compatible(OPENAI_BASE_URL, Some(api_key), model, prompt)
-    }
-
-    // ── Any OpenAI-compatible endpoint (TOOL-6) ───────────────
-
-    fn call_compatible(&self, base: &str, api_key: Option<&str>, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
-        let model = configured(&config.preferred_model).ok_or_else(|| {
-            "Choose a model for your OpenAI-compatible endpoint (type the model name in BYOK settings).".to_string()
-        })?;
-        chat_openai_compatible(base, api_key, model, prompt)
-    }
-
     // ── Ollama (local) ────────────────────────────────────────
 
-    fn call_ollama(&self, endpoint: &str, prompt: &str, config: &BYOKConfig) -> Result<String, String> {
-        let model = configured(&config.preferred_model).unwrap_or("llama3.2");
-
-        let base = endpoint.trim_end_matches('/');
-        let url = format!("{}/api/generate", base);
-
+    fn call_ollama(&self, endpoint: &str, model: &str, prompt: &str) -> Result<String, String> {
+        let url = endpoint_base(endpoint, false)?;
         let body = OllamaRequest {
             model: model.to_string(),
             prompt: prompt.to_string(),
             stream: false,
         };
-
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(120)) // Ollama can be slow
-            .build()
-            .map_err(|e| e.to_string())?;
-
-        let resp = client
-            .post(&url)
+        let request = http_client(120)? // local models can be slow
+            .post(format!("{}/api/generate", url.as_str().trim_end_matches('/')))
             .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .map_err(|e| format!("Ollama request failed: {}", e))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            return Err(format!("Ollama error {}", status));
-        }
-
-        let parsed: OllamaResponse = resp.json().map_err(|e| format!("Ollama parse error: {}", e))?;
+            .json(&body);
+        let parsed: OllamaResponse = send_json(request, "Ollama", None)?;
         Ok(parsed.response)
     }
 
@@ -388,7 +522,7 @@ impl ByokEngine {
 - Network effects through external document sharing.
 
 ---
-> **To get an AI-powered teardown:** Add your Gemini, Claude, or OpenAI API key, or an Ollama endpoint, in the BYOK Settings panel above.
+> **To get an AI-powered teardown:** In the BYOK Settings panel above, add a provider key, a local runner, or any OpenAI-compatible endpoint, and choose a model.
 
 *Framework Attributions: Product Teardown by Yan Liu; Strategic Framing by Corey Haines.*
 "#,
@@ -463,9 +597,6 @@ fn configured(value: &Option<String>) -> Option<&str> {
     value.as_deref().map(str::trim).filter(|v| !v.is_empty())
 }
 
-/// OpenAI itself is one OpenAI-compatible endpoint.
-const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
-
 /// Checks a user-entered endpoint base URL before anything is sent to it. A key may travel over
 /// plain http only to this machine; addresses carrying a user name or password are refused.
 pub fn endpoint_base(base: &str, has_key: bool) -> Result<reqwest::Url, String> {
@@ -492,40 +623,28 @@ pub fn endpoint_base(base: &str, has_key: bool) -> Result<reqwest::Url, String> 
 /// One chat completion against an OpenAI-compatible server at `base` (e.g. ".../v1").
 fn chat_openai_compatible(base: &str, api_key: Option<&str>, model: &str, prompt: &str) -> Result<String, String> {
     let url = endpoint_base(base, api_key.is_some())?;
-    let host = url.host_str().unwrap_or("").to_string();
-    let endpoint = format!("{}/chat/completions", url.as_str().trim_end_matches('/'));
     let body = OpenAiRequest {
         model: model.to_string(),
         messages: vec![OpenAiMessage { role: "user".to_string(), content: prompt.to_string() }],
     };
-    let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(120)) // local runners can be slow
-        .build()
-        .map_err(|e| e.to_string())?;
-    let mut request = client.post(&endpoint).header("Content-Type", "application/json").json(&body);
+    let mut request = http_client(120)? // local runners can be slow
+        .post(format!("{}/chat/completions", url.as_str().trim_end_matches('/')))
+        .header("Content-Type", "application/json")
+        .json(&body);
+    // The key is only ever in a header; send_json also scrubs it from any echoed error text.
     if let Some(key) = api_key {
         request = request.bearer_auth(key);
     }
-    // The key is only ever in a header; scrub it from any text a server echoes back anyway.
-    let scrub = |text: String| match api_key {
-        Some(key) if !key.is_empty() => text.replace(key, "[key]"),
-        _ => text,
-    };
-    let resp = request.send().map_err(|e| scrub(format!("Endpoint {} request failed: {}", host, e)))?;
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body_text = resp.text().unwrap_or_default();
-        return Err(scrub(format!("Endpoint {} error {}: {}", host, status, body_text)));
-    }
-    let body_text = resp.text().map_err(|e| format!("Endpoint {} read error: {}", host, e))?;
-    parse_openai_response(&body_text).map_err(scrub)
+    let who = format!("Endpoint {}", url.host_str().unwrap_or(""));
+    first_choice_text(send_json(request, &who, api_key)?)
 }
 
 /// Extracts the assistant text from an OpenAI Chat Completions response body.
 pub fn parse_openai_response(body: &str) -> Result<String, String> {
-    let parsed: OpenAiResponse =
-        serde_json::from_str(body).map_err(|e| format!("OpenAI parse error: {}", e))?;
+    first_choice_text(serde_json::from_str(body).map_err(|e| format!("OpenAI parse error: {}", e))?)
+}
 
+fn first_choice_text(parsed: OpenAiResponse) -> Result<String, String> {
     parsed
         .choices
         .into_iter()
@@ -570,6 +689,14 @@ fn build_response(name: &str, ai_text: String, source: &str) -> TeardownResponse
 // ──────────────────────────────────────────────────────────────
 // Tauri command
 // ──────────────────────────────────────────────────────────────
+
+/// Lists the models a provider offers. Runs off the main thread: it waits on the network.
+#[tauri::command]
+pub async fn list_byok_models(byok: BYOKConfig, provider: ByokProvider) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || ByokEngine::new().list_models(&byok, provider))
+        .await
+        .map_err(|e| e.to_string())?
+}
 
 #[tauri::command]
 pub fn execute_strategic_teardown(request: TeardownRequest) -> Result<TeardownResponse, String> {

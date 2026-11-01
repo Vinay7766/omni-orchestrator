@@ -28,6 +28,7 @@ pub fn run() {
             launch_and_build,
             prepare_project_staging,
             execute_strategic_teardown,
+            list_byok_models,
             update_skill_content,
             // Project memory file access for @omni/core in the web view (path policy in memory_fs.rs)
             memfs_read_text,
