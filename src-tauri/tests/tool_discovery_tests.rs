@@ -525,3 +525,52 @@ fn real_machine() {
     }
     println!("{} tools in {:?}", tools.len(), started.elapsed());
 }
+
+// --- Shared vendor folders (fix 2026-11-02): a config in <vendor>/config/ is not proof of a tool
+// named after the vendor folder, when that folder holds other tools too.
+
+mod shared_vendor_folders {
+    use super::*;
+    use tauri_app_lib::commands::adapters::{parse_adapters, AdapterFile};
+    use tauri_app_lib::commands::tool_discovery::discover_with;
+
+    fn shared(m: &FakeMachine) {
+        m.write("home/.nebula/config/mcp_config.json", r#"{ "mcpServers": { "a": { "command": "x" } } }"#);
+        m.write("home/.nebula/orbit/mcp_config.json", r#"{ "mcpServers": {} }"#);
+    }
+
+    #[test]
+    fn a_name_guessed_from_a_shared_vendor_folder_needs_confirmation() {
+        let m = FakeMachine::new("shared-vendor");
+        shared(&m);
+        let tools = discover_with(&m.view(), &[]);
+        let nebula = find(&tools, "nebula").expect("still reported: the MCP evidence is real");
+        assert!(nebula.needs_confirmation, "the folder may belong to another tool");
+        let orbit = find(&tools, "orbit").expect("orbit");
+        assert!(!orbit.needs_confirmation, "a tool in its own named folder is not a guess");
+    }
+
+    #[test]
+    fn an_adapter_naming_the_exact_file_attributes_it_to_its_tool() {
+        let m = FakeMachine::new("shared-adapter");
+        shared(&m);
+        let text = r#"{"formatVersion":1,"id":"orbit","name":"Orbit Studio","matches":["orbit"],
+            "mcp":{"format":"mcpServers","userConfig":["~/.nebula/config/mcp_config.json"]},
+            "sources":[{"url":"https://orbit.example/docs","checked":"2026-11-02","covers":["mcp"]}]}"#;
+        let (adapters, issues) = parse_adapters(&[AdapterFile { name: "orbit.json".into(), text: text.into() }]);
+        assert!(issues.is_empty(), "{:?}", issues);
+        let tools = discover_with(&m.view(), &adapters);
+        assert!(find(&tools, "nebula").is_none(), "no tool named after the vendor folder: {:?}", tools.iter().map(|t| &t.id).collect::<Vec<_>>());
+        let orbit = find(&tools, "orbit").expect("orbit");
+        assert_eq!(orbit.capability, Some(3));
+        assert!(orbit.evidence.iter().any(|e| e.contains("config")), "both configs are its evidence: {:?}", orbit.evidence);
+    }
+
+    #[test]
+    fn a_single_tool_behind_a_generic_folder_stays_confirmed() {
+        let m = FakeMachine::new("single-generic");
+        m.write("home/.quill/settings/mcp.json", r#"{ "mcpServers": {} }"#);
+        let quill = discover_with(&m.view(), &[]).into_iter().find(|t| t.id == "quill").expect("quill");
+        assert!(!quill.needs_confirmation);
+    }
+}

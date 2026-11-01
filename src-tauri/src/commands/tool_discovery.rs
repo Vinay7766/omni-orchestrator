@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use crate::commands::adapters::{bundled_adapters, Adapter};
+
 const MAX_FILE_BYTES: u64 = 256 * 1024;
 /// A tool's own MCP configuration sits at most one folder below its settings folder
 /// (~/.tool/mcp.json or ~/.vendor/tool/mcp_config.json). Deeper levels hold history,
@@ -276,16 +278,20 @@ fn has_mcp_section(value: &serde_json::Value, file_mentions_mcp: bool) -> bool {
 }
 
 /// The tool that owns a config file: the nearest folder name that is not generic.
-fn owner_of(file: &Path, top: &Path) -> Option<String> {
+/// The tool a config file belongs to: the nearest folder with a meaningful name. The flag is
+/// true when generic folders (config, settings, ...) had to be skipped to find it.
+fn owner_of(file: &Path, top: &Path) -> Option<(String, bool)> {
     let mut dir = file.parent();
+    let mut skipped_generic = false;
     while let Some(d) = dir {
         let name = file_name_lower(d);
         if !generic(&name) && !name.is_empty() {
             let id = slug(&name);
             if !id.is_empty() {
-                return Some(id);
+                return Some((id, skipped_generic));
             }
         }
+        skipped_generic = true;
         if d == top {
             break;
         }
@@ -296,7 +302,7 @@ fn owner_of(file: &Path, top: &Path) -> Option<String> {
 
 /// Breadth first: every file at one level is checked before any folder below it, so a tool's
 /// own config near the top is found even next to large history folders.
-fn scan_for_mcp(top: &Path, budget: &mut usize, found: &mut Vec<DiscoveredTool>) {
+fn scan_for_mcp(top: &Path, budget: &mut usize, found: &mut Vec<(DiscoveredTool, bool)>) {
     let mut level = vec![top.to_path_buf()];
     for depth in 1..=MAX_DEPTH {
         let mut next = Vec::new();
@@ -319,7 +325,7 @@ fn scan_for_mcp(top: &Path, budget: &mut usize, found: &mut Vec<DiscoveredTool>)
     }
 }
 
-fn check_config_file(entry: &Path, name: &str, top: &Path, budget: &mut usize, found: &mut Vec<DiscoveredTool>) {
+fn check_config_file(entry: &Path, name: &str, top: &Path, budget: &mut usize, found: &mut Vec<(DiscoveredTool, bool)>) {
     if !(name.ends_with(".json") || name.ends_with(".jsonc")) {
         return;
     }
@@ -339,8 +345,8 @@ fn check_config_file(entry: &Path, name: &str, top: &Path, budget: &mut usize, f
     if !evidence {
         return;
     }
-    let Some(id) = owner_of(entry, top) else { return };
-    found.push(DiscoveredTool {
+    let Some((id, via_generic)) = owner_of(entry, top) else { return };
+    found.push((DiscoveredTool {
         name: id.clone(),
         id,
         category: ToolCategory::Unknown,
@@ -350,7 +356,7 @@ fn check_config_file(entry: &Path, name: &str, top: &Path, budget: &mut usize, f
         mcp_config: Some(entry.to_string_lossy().into_owned()),
         data_folder: None,
         ..Default::default()
-    });
+    }, via_generic));
 }
 
 /// Tools that use MCP, found by their configuration files.
@@ -368,9 +374,52 @@ fn find_mcp_configs(view: &SystemView) -> Vec<DiscoveredTool> {
             continue;
         }
         let mut budget = MAX_FILES_PER_FOLDER;
-        scan_for_mcp(&top, &mut budget, &mut found);
+        let mut here = Vec::new();
+        scan_for_mcp(&top, &mut budget, &mut here);
+        // A folder that holds several tools' own configs is a vendor folder shared by them: a
+        // name found only by skipping generic folders (vendor/config/...) may belong to any of
+        // them, so the user confirms it.
+        let mut ids: Vec<&str> = here.iter().map(|(t, _)| t.id.as_str()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        let shared: Vec<String> = ids.iter().map(|s| s.to_string()).collect();
+        for (mut tool, via_generic) in here {
+            if via_generic && shared.len() > 1 {
+                tool.needs_confirmation = true;
+                let others: Vec<&str> = shared.iter().map(String::as_str).filter(|id| *id != tool.id).collect();
+                tool.evidence.push(format!(
+                    "the folder {} also holds settings of {}, so this name is a guess; please confirm",
+                    top.display(),
+                    others.join(", ")
+                ));
+            }
+            found.push(tool);
+        }
     }
     found
+}
+
+/// When an adapter names a config file exactly (checked against the tool's own docs), a finding
+/// made only from that file belongs to the adapter's tool, whatever folder it sits in.
+fn attribute_known_configs(view: &SystemView, adapters: &[Adapter], findings: &mut [DiscoveredTool]) {
+    let same = |a: &Path, b: &Path| {
+        let (a, b) = (a.to_string_lossy().replace('\\', "/"), b.to_string_lossy().replace('\\', "/"));
+        if cfg!(windows) { a.eq_ignore_ascii_case(&b) } else { a == b }
+    };
+    for tool in findings.iter_mut().filter(|t| t.category == ToolCategory::Unknown) {
+        let Some(config) = tool.mcp_config.as_deref().map(PathBuf::from) else { continue };
+        let known = adapters.iter().find(|a| {
+            a.mcp.as_ref().is_some_and(|m| {
+                m.user_config.iter().filter_map(|p| p.strip_prefix("~/")).any(|rel| view.home_dirs.iter().any(|h| same(&h.join(rel), &config)))
+            })
+        });
+        if let Some(adapter) = known {
+            tool.id = adapter.matches[0].clone();
+            tool.name = adapter.name.clone();
+            tool.needs_confirmation = false;
+            tool.evidence.retain(|e| !e.ends_with("please confirm"));
+        }
+    }
 }
 
 /// Extension manifests of real AI extensions can exceed 500 KB.
@@ -748,6 +797,11 @@ fn installed_apps_from_system() -> Vec<InstalledApp> {
 
 /// Every AI coding tool found in `view`, merged and sorted by name.
 pub fn discover(view: &SystemView) -> Vec<DiscoveredTool> {
+    discover_with(view, &bundled_adapters().0)
+}
+
+/// Like discover, with the adapters given (none at all is fine: they only add knowledge).
+pub fn discover_with(view: &SystemView, adapters: &[Adapter]) -> Vec<DiscoveredTool> {
     let mut editors = find_editors(view);
     let (extensions, editor_mcp) = find_extensions(view, &editors);
     for (editor_id, evidence) in editor_mcp {
@@ -760,7 +814,9 @@ pub fn discover(view: &SystemView) -> Vec<DiscoveredTool> {
     }
     let mut findings = editors;
     findings.extend(extensions);
-    findings.extend(find_mcp_configs(view));
+    let mut configs = find_mcp_configs(view);
+    attribute_known_configs(view, adapters, &mut configs);
+    findings.extend(configs);
     findings.extend(find_global_packages(view));
     let mut tools = merge(findings);
     join_install_folders(view, &mut tools);
