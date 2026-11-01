@@ -165,6 +165,31 @@ fn test_every_domain_is_covered_by_at_least_one_skill() {
 }
 
 #[test]
+fn test_every_licensed_third_party_source_ships_its_license_text() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_third_party_test"));
+    let notices = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("skills").join("THIRD_PARTY_LICENSES.md"),
+    )
+    .expect("skills/THIRD_PARTY_LICENSES.md must exist");
+
+    for skill in manager.get_default_skills() {
+        let license = skill.license.as_deref().unwrap_or("unverified");
+        let source = &skill.attribution.source_url;
+        let own_project = source.contains("Vinay7766/omni-orchestrator");
+        if license == "unverified" || own_project {
+            continue;
+        }
+        assert!(
+            notices.contains(source.as_str()),
+            "{} comes from {} ({}) but that source is not listed in THIRD_PARTY_LICENSES.md",
+            skill.id,
+            source,
+            license
+        );
+    }
+}
+
+#[test]
 fn test_no_skill_description_is_a_leftover_yaml_block_marker() {
     let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_desc_test"));
 

@@ -112,12 +112,7 @@
     }
   ],
   "pendingGaps": [
-    "backend",
-    "data-and-ml",
-    "devops-infrastructure",
-    "mobile",
     "presentation",
-    "system-design",
     "systems-and-hardware"
   ],
   "pendingGapsNote": "Domains not yet covered (task A5). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow."

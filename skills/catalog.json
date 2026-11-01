@@ -1176,5 +1176,140 @@
       "software-architecture",
       "code-quality"
     ]
+  },
+  {
+    "id": "system-design",
+    "name": "system-design",
+    "description": "Design systems, services, and architectures. Trigger with \"design a system for\", \"how should we architect\", \"system design for\", \"what's the right architecture for\", or when the user needs help with API design, data modeling, or service boundaries.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins)",
+      "role": "Official Anthropic plugin skill",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "architecture"
+    ],
+    "domains": [
+      "system-design",
+      "software-architecture"
+    ]
+  },
+  {
+    "id": "statistical-analysis",
+    "name": "statistical-analysis",
+    "description": "Apply statistical methods including descriptive stats, trend analysis, outlier detection, and hypothesis testing. Use when analyzing distributions, testing for significance, detecting anomalies, computing correlations, or interpreting statistical results.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins)",
+      "role": "Official Anthropic plugin skill",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "research",
+      "build",
+      "review"
+    ],
+    "domains": [
+      "data-and-ml"
+    ]
+  },
+  {
+    "id": "terraform-style-guide",
+    "name": "terraform-style-guide",
+    "description": "Generate Terraform HCL code following HashiCorp's official style conventions and best practices. Use when writing, reviewing, or generating Terraform configurations.",
+    "category": "engineering",
+    "attribution": {
+      "name": "HashiCorp (agent-skills)",
+      "role": "Official HashiCorp skill",
+      "sourceUrl": "https://github.com/hashicorp/agent-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MPL-2.0",
+    "phases": [
+      "build",
+      "handover"
+    ],
+    "domains": [
+      "devops-infrastructure",
+      "cloud"
+    ]
+  },
+  {
+    "id": "architecture-patterns",
+    "name": "architecture-patterns",
+    "description": "Implement proven backend architecture patterns including Clean Architecture, Hexagonal Architecture, and Domain-Driven Design. Use this skill when designing clean architecture for a new microservice, when refactoring a monolith to use bounded contexts, when implementing hexagonal or onion architecture patterns, or when debugging dependency cycles between application layers.",
+    "category": "architecture",
+    "attribution": {
+      "name": "Seth Hobson (wshobson/agents)",
+      "role": "Community skill collection (42k stars)",
+      "sourceUrl": "https://github.com/wshobson/agents",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "architecture",
+      "build"
+    ],
+    "domains": [
+      "backend",
+      "software-architecture"
+    ]
+  },
+  {
+    "id": "docker-project-foundations",
+    "name": "docker-project-foundations",
+    "description": "Use this skill when setting up, initializing, or Dockerizing a project, even if the user doesn't explicitly mention Docker but describes a need for containerized local development, adding a database or cache dependency, or running services without host-level installs. Covers Dockerfile, compose.yaml, and .dockerignore creation with Docker best practices.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Docker, Inc. (docker/skills)",
+      "role": "Official Docker skill",
+      "sourceUrl": "https://github.com/docker/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "build",
+      "handover"
+    ],
+    "domains": [
+      "devops-infrastructure"
+    ]
+  },
+  {
+    "id": "react-native-architecture",
+    "name": "react-native-architecture",
+    "description": "Build production React Native apps with Expo, navigation, native modules, offline sync, and cross-platform patterns. Use when developing mobile apps, implementing native integrations, or architecting React Native projects.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Seth Hobson (wshobson/agents)",
+      "role": "Community skill collection (42k stars)",
+      "sourceUrl": "https://github.com/wshobson/agents",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "architecture",
+      "build"
+    ],
+    "domains": [
+      "mobile"
+    ]
   }
 ]
