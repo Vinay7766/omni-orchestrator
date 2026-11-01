@@ -8,6 +8,8 @@ export type { TextFinding, JsonFinding } from "./redact.js";
 export { MemoryStore } from "./memory/store.js";
 export type { StoreOptions, StoreResult, EventInput, AppendResult, LineIssue } from "./memory/store.js";
 export type { MemoryFs } from "./memory/fs.js";
+export { createInvokeFs, MEMORY_FS_COMMANDS } from "./memory/invoke-fs.js";
+export type { Invoke } from "./memory/invoke-fs.js";
 export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
 export { renderSummary, renderDecisions, renderProblems, renderLessons, refreshMemoryDocs } from "./memory/docs.js";
 export { findProject, LINK_FILE } from "./memory/discover.js";
