@@ -318,6 +318,107 @@ mod extensions {
     }
 }
 
+mod command_line_and_apps {
+    use super::*;
+    use tauri_app_lib::commands::tool_discovery::{parse_desktop_entry, parse_registry_output, InstalledApp};
+
+    fn view_with_path(m: &FakeMachine) -> SystemView {
+        let mut view = m.view();
+        view.path_dirs = vec![m.base.join("bin"), m.base.join("npm-prefix")];
+        view
+    }
+    fn executable(m: &FakeMachine, name: &str) {
+        m.write(&format!("bin/{}", name), "binary");
+    }
+    fn npm_package(m: &FakeMachine, folder: &str, manifest: &str) {
+        m.write(&format!("npm-prefix/node_modules/{}/package.json", folder), manifest);
+    }
+
+    #[test]
+    fn joins_an_executable_on_path_to_the_tool_found_by_its_config() {
+        let m = FakeMachine::new("cli-join");
+        m.write("home/.zeta/mcp.json", r#"{ "mcpServers": {} }"#);
+        executable(&m, if cfg!(windows) { "zeta.cmd" } else { "zeta" });
+        let zeta = discover(&view_with_path(&m)).into_iter().find(|t| t.id == "zeta").unwrap();
+        assert_eq!(zeta.category, ToolCategory::CommandLine);
+        assert!(zeta.executable.as_deref().unwrap().contains("zeta"));
+        assert_eq!(zeta.capability, Some(3));
+    }
+
+    #[test]
+    fn does_not_list_unrelated_executables() {
+        let m = FakeMachine::new("cli-unrelated");
+        executable(&m, if cfg!(windows) { "grep.exe" } else { "grep" });
+        assert!(discover(&view_with_path(&m)).is_empty());
+    }
+
+    #[test]
+    fn lists_a_global_package_that_declares_itself_an_ai_cli_but_asks_for_confirmation() {
+        let m = FakeMachine::new("npm-ai");
+        npm_package(&m, "@acme/coder", r#"{ "name": "@acme/coder", "bin": { "acme-coder": "cli.js" }, "keywords": ["cli", "ai", "agent"], "description": "Codes things" }"#);
+        let tool = discover(&view_with_path(&m)).into_iter().find(|t| t.id == "acme-coder").expect("AI CLI package not listed");
+        assert_eq!(tool.category, ToolCategory::CommandLine);
+        assert_eq!(tool.capability, None);
+        assert!(tool.needs_confirmation, "self-declared keywords are a hint, not proof");
+    }
+
+    #[test]
+    fn skips_mcp_servers_and_packages_without_ai_keywords_or_commands() {
+        let m = FakeMachine::new("npm-skip");
+        npm_package(&m, "files-server", r#"{ "name": "files-server", "bin": "server.js", "keywords": ["mcp", "mcp-server", "ai"] }"#);
+        npm_package(&m, "left-pad", r#"{ "name": "left-pad", "bin": "pad.js", "keywords": ["string"] }"#);
+        npm_package(&m, "ai-utils", r#"{ "name": "ai-utils", "keywords": ["ai"] }"#);
+        assert!(discover(&view_with_path(&m)).is_empty());
+    }
+
+    #[test]
+    fn joins_a_package_to_the_tool_found_by_its_config_and_trusts_the_config() {
+        let m = FakeMachine::new("npm-join");
+        m.write("home/.orion/settings.json", r#"{ "mcpServers": {} }"#);
+        npm_package(&m, "orion-cli", r#"{ "name": "orion-cli", "bin": { "orion": "cli.js" }, "keywords": ["ai"] }"#);
+        let orion = discover(&view_with_path(&m)).into_iter().find(|t| t.id == "orion").expect("orion");
+        assert_eq!(orion.category, ToolCategory::CommandLine);
+        assert_eq!(orion.capability, Some(3));
+        assert!(!orion.needs_confirmation, "config evidence confirms it");
+    }
+
+    #[test]
+    fn joins_an_installed_app_from_the_system_list_to_the_tool_found_by_its_config() {
+        let m = FakeMachine::new("apps-join");
+        m.write("home/.vega/mcp.json", r#"{ "mcpServers": {} }"#);
+        let mut view = m.view();
+        view.installed_apps = vec![
+            InstalledApp { name: "Vega".into(), location: Some(m.base.join("elsewhere").join("Vega")) },
+            InstalledApp { name: "Photo Editor Pro".into(), location: None },
+        ];
+        let tools = discover(&view);
+        let vega = tools.iter().find(|t| t.id == "vega").unwrap();
+        assert_eq!(vega.category, ToolCategory::DesktopApp);
+        assert!(vega.install_dir.as_deref().unwrap().contains("elsewhere"));
+        assert_eq!(tools.len(), 1, "other installed apps are not assumed to be AI tools");
+    }
+
+    #[test]
+    fn parses_windows_registry_uninstall_entries() {
+        let output = "\r\nHKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Vega\r\n    DisplayName    REG_SZ    Vega\r\n    InstallLocation    REG_SZ    C:\\Users\\dev\\AppData\\Local\\Programs\\Vega\\\r\n\r\nHKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NoName\r\n    UninstallString    REG_SZ    x.exe\r\n\r\nHKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Other\r\n    DisplayName    REG_SZ    Other App\r\n";
+        let apps = parse_registry_output(output);
+        assert_eq!(apps.len(), 2, "entries without a display name are skipped");
+        assert_eq!(apps[0].name, "Vega");
+        assert!(apps[0].location.as_ref().unwrap().to_string_lossy().ends_with("Vega\\"));
+        assert_eq!(apps[1].name, "Other App");
+        assert!(apps[1].location.is_none());
+    }
+
+    #[test]
+    fn parses_a_linux_desktop_entry() {
+        let entry = "[Desktop Entry]\nName=Vega\nName[de]=Vega DE\nExec=/opt/vega/vega %F\nType=Application\n";
+        let app = parse_desktop_entry(entry).unwrap();
+        assert_eq!(app.name, "Vega");
+        assert_eq!(app.location.unwrap(), PathBuf::from("/opt/vega"));
+        assert!(parse_desktop_entry("[Desktop Entry]\nType=Link\n").is_none());
+    }
+}
+
 #[test]
 fn source_code_names_no_tools() {
     let source = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands/tool_discovery.rs")).unwrap().to_lowercase();

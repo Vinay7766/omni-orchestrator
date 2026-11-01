@@ -59,6 +59,11 @@ pub enum ToolCategory {
 pub struct DiscoveredTool {
     /// For an editor extension: the id of the editor it is installed in.
     pub host_editor: Option<String>,
+    /// A command that starts the tool, when one was found on PATH.
+    pub executable: Option<String>,
+    /// True when the only evidence is the tool's own description of itself (for example
+    /// package keywords): shown to the user as "please confirm", never assumed.
+    pub needs_confirmation: bool,
     /// An editor's per-user settings folder name (where extension storage lives); internal.
     #[serde(skip)]
     pub user_data_name: Option<String>,
@@ -116,6 +121,7 @@ impl SystemView {
         if let Some(path) = std::env::var_os("PATH") {
             view.path_dirs = std::env::split_paths(&path).collect();
         }
+        view.installed_apps = installed_apps_from_system();
         view
     }
 }
@@ -217,7 +223,7 @@ fn find_editors(view: &SystemView) -> Vec<DiscoveredTool> {
                     mcp_config: None,
                     data_folder: get("dataFolderName"),
                     user_data_name: get("nameShort"),
-                    host_editor: None,
+                    ..Default::default()
                 });
             }
         }
@@ -460,6 +466,9 @@ fn merge(findings: Vec<DiscoveredTool>) -> Vec<DiscoveredTool> {
                 existing.mcp_config = existing.mcp_config.take().or(tool.mcp_config);
                 existing.data_folder = existing.data_folder.take().or(tool.data_folder);
                 existing.host_editor = existing.host_editor.take().or(tool.host_editor);
+                existing.executable = existing.executable.take().or(tool.executable);
+                // Any source with real evidence (a config, a manifest) confirms the tool.
+                existing.needs_confirmation = existing.needs_confirmation && tool.needs_confirmation;
                 existing.user_data_name = existing.user_data_name.take().or(tool.user_data_name);
             }
         }
@@ -467,6 +476,231 @@ fn merge(findings: Vec<DiscoveredTool>) -> Vec<DiscoveredTool> {
     let mut tools: Vec<DiscoveredTool> = by_id.into_values().collect();
     tools.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     tools
+}
+
+/// Keywords a package uses to describe itself as an AI tool (self-declared, like extension
+/// categories), and keywords that mark it as a server that serves AI tools instead.
+const AI_KEYWORDS: &[&str] = &["ai", "agent", "agents", "ai-agent", "coding-agent", "llm", "assistant", "ai-assistant"];
+const SERVER_KEYWORDS: &[&str] = &["mcp-server", "mcp-servers"];
+const MAX_PACKAGES: usize = 2000;
+
+/// Folders where global packages live next to the commands on PATH (npm prefixes).
+fn package_roots(view: &SystemView) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    for dir in &view.path_dirs {
+        for candidate in [dir.join("node_modules"), dir.join("..").join("lib").join("node_modules")] {
+            if candidate.is_dir() && !roots.contains(&candidate) {
+                roots.push(candidate);
+            }
+        }
+    }
+    roots
+}
+
+/// Globally installed packages that provide a command and describe themselves as AI tools.
+/// Keywords are a hint, so these are marked needs_confirmation unless other evidence joins.
+fn find_global_packages(view: &SystemView) -> Vec<DiscoveredTool> {
+    let mut found = Vec::new();
+    for root in package_roots(view) {
+        let mut folders = Vec::new();
+        for entry in children(&root).into_iter().filter(|p| p.is_dir()) {
+            if file_name_lower(&entry).starts_with('@') {
+                folders.extend(children(&entry).into_iter().filter(|p| p.is_dir()));
+            } else {
+                folders.push(entry);
+            }
+        }
+        for folder in folders.into_iter().take(MAX_PACKAGES) {
+            let manifest_path = folder.join("package.json");
+            let Some(manifest) = read_small(&manifest_path).and_then(|t| parse_jsonc(&t)) else { continue };
+            let Some(name) = manifest.get("name").and_then(|v| v.as_str()).map(str::to_string) else { continue };
+            let commands: Vec<String> = match manifest.get("bin") {
+                Some(serde_json::Value::String(_)) => vec![name.rsplit('/').next().unwrap_or(&name).to_string()],
+                Some(serde_json::Value::Object(map)) => map.keys().cloned().collect(),
+                _ => continue, // provides no command
+            };
+            if commands.is_empty() {
+                continue;
+            }
+            let keywords: Vec<String> = manifest
+                .get("keywords")
+                .and_then(|k| k.as_array())
+                .map(|k| k.iter().filter_map(|v| v.as_str()).map(|s| s.to_lowercase()).collect())
+                .unwrap_or_default();
+            if keywords.iter().any(|k| SERVER_KEYWORDS.contains(&k.as_str())) || name.to_lowercase().contains("mcp-server") {
+                continue;
+            }
+            let matched: Vec<&String> = keywords.iter().filter(|k| AI_KEYWORDS.contains(&k.as_str())).collect();
+            if matched.is_empty() {
+                continue;
+            }
+            let id = if commands.len() == 1 { slug(&commands[0]) } else { slug(&name) };
+            found.push(DiscoveredTool {
+                id,
+                name: name.clone(),
+                category: ToolCategory::CommandLine,
+                capability: None,
+                needs_confirmation: true,
+                evidence: vec![format!(
+                    "global package {} provides a command and describes itself as {} ({})",
+                    name,
+                    matched.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
+                    manifest_path.display()
+                )],
+                install_dir: Some(folder.to_string_lossy().into_owned()),
+                ..Default::default()
+            });
+        }
+    }
+    found
+}
+
+/// A command on PATH named like a discovered tool is that tool's command line.
+fn join_executables(view: &SystemView, tools: &mut [DiscoveredTool]) {
+    const COMMAND_SUFFIXES: &[&str] = &[".exe", ".cmd", ".bat", ".ps1"];
+    let wanted: std::collections::HashSet<String> = tools.iter().map(|t| t.id.clone()).collect();
+    for dir in &view.path_dirs {
+        // PATH folders such as the system folder hold thousands of files: compare names first
+        // and only look at the file itself when the name matches a discovered tool.
+        let Ok(entries) = fs::read_dir(dir) else { continue };
+        for entry in entries.filter_map(|e| e.ok()) {
+            let lower = entry.file_name().to_string_lossy().to_lowercase();
+            let base = COMMAND_SUFFIXES.iter().find_map(|s| lower.strip_suffix(s)).unwrap_or(&lower);
+            let id = slug(base);
+            if !wanted.contains(&id) {
+                continue;
+            }
+            let file = entry.path();
+            if !file.is_file() {
+                continue;
+            }
+            if let Some(tool) = tools.iter_mut().find(|t| t.id == id && t.executable.is_none()) {
+                tool.executable = Some(file.to_string_lossy().into_owned());
+                tool.evidence.push(format!("command on PATH at {}", file.display()));
+                if tool.category == ToolCategory::Unknown {
+                    tool.category = ToolCategory::CommandLine;
+                }
+            }
+        }
+    }
+}
+
+/// An app from the system's installed-apps list whose name matches a discovered tool.
+fn join_installed_apps(view: &SystemView, tools: &mut [DiscoveredTool]) {
+    for app in &view.installed_apps {
+        let id = slug(&app.name);
+        let compact = id.replace('-', "");
+        if let Some(tool) = tools.iter_mut().find(|t| (t.id == id || t.id == compact) && t.install_dir.is_none()) {
+            if let Some(location) = &app.location {
+                tool.install_dir = Some(location.to_string_lossy().into_owned());
+            }
+            tool.evidence.push(format!("listed as an installed app: {}", app.name));
+            if tool.category == ToolCategory::Unknown {
+                tool.category = ToolCategory::DesktopApp;
+            }
+        }
+    }
+}
+
+/// Parses `reg query <Uninstall key> /s` output into installed apps (Windows).
+pub fn parse_registry_output(output: &str) -> Vec<InstalledApp> {
+    let mut apps = Vec::new();
+    let (mut name, mut location): (Option<String>, Option<PathBuf>) = (None, None);
+    let flush = |name: &mut Option<String>, location: &mut Option<PathBuf>, apps: &mut Vec<InstalledApp>| {
+        if let Some(n) = name.take() {
+            apps.push(InstalledApp { name: n, location: location.take() });
+        }
+        *location = None;
+    };
+    for line in output.lines() {
+        if line.starts_with("HKEY_") {
+            flush(&mut name, &mut location, &mut apps);
+            continue;
+        }
+        let mut parts = line.trim().splitn(3, "    ").map(str::trim);
+        let (Some(key), Some(kind), Some(value)) = (parts.next(), parts.next(), parts.next()) else { continue };
+        if !kind.starts_with("REG_") || value.is_empty() {
+            continue;
+        }
+        match key {
+            "DisplayName" => name = Some(value.to_string()),
+            "InstallLocation" => location = Some(PathBuf::from(value)),
+            _ => {}
+        }
+    }
+    flush(&mut name, &mut location, &mut apps);
+    apps
+}
+
+/// Parses a freedesktop .desktop entry (Linux) into an installed app, if it is an application.
+pub fn parse_desktop_entry(text: &str) -> Option<InstalledApp> {
+    let (mut in_entry, mut name, mut exec, mut is_app) = (false, None, None, false);
+    for line in text.lines().map(str::trim) {
+        if line.starts_with('[') {
+            in_entry = line == "[Desktop Entry]";
+            continue;
+        }
+        if !in_entry {
+            continue;
+        }
+        if let Some(v) = line.strip_prefix("Name=") {
+            name.get_or_insert_with(|| v.to_string());
+        } else if let Some(v) = line.strip_prefix("Exec=") {
+            exec = Some(v.to_string());
+        } else if line == "Type=Application" {
+            is_app = true;
+        }
+    }
+    if !is_app {
+        return None;
+    }
+    let location = exec
+        .and_then(|e| e.split_whitespace().next().map(str::to_string))
+        // .desktop files are Linux files: "/..." is absolute whatever OS parses them.
+        .filter(|p| p.starts_with('/'))
+        .map(PathBuf::from)
+        .and_then(|p| p.parent().map(Path::to_path_buf));
+    Some(InstalledApp { name: name?, location })
+}
+
+/// Installed apps from the operating system's own list (best effort; empty if unavailable).
+fn installed_apps_from_system() -> Vec<InstalledApp> {
+    let mut apps = Vec::new();
+    if cfg!(windows) {
+        let keys = [
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall",
+            r"HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall",
+            r"HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+        ];
+        // reg.exe is the system's own registry reader; no discovered program is run.
+        // The three lists are read in parallel (the system-wide ones take hundreds of ms each).
+        let readers: Vec<_> = keys
+            .iter()
+            .map(|key| {
+                let key = key.to_string();
+                std::thread::spawn(move || {
+                    std::process::Command::new("reg")
+                        .args(["query", &key, "/s"])
+                        .output()
+                        .map(|out| parse_registry_output(&String::from_utf8_lossy(&out.stdout)))
+                        .unwrap_or_default()
+                })
+            })
+            .collect();
+        for reader in readers {
+            apps.extend(reader.join().unwrap_or_default());
+        }
+    } else if cfg!(target_os = "linux") {
+        let home = std::env::var_os("HOME").map(PathBuf::from);
+        let mut folders = vec![PathBuf::from("/usr/share/applications")];
+        folders.extend(home.map(|h| h.join(".local/share/applications")));
+        for folder in folders {
+            for file in children(&folder).into_iter().filter(|p| file_name_lower(p).ends_with(".desktop")) {
+                apps.extend(read_small(&file).and_then(|t| parse_desktop_entry(&t)));
+            }
+        }
+    }
+    apps
 }
 
 /// Every AI coding tool found in `view`, merged and sorted by name.
@@ -484,8 +718,11 @@ pub fn discover(view: &SystemView) -> Vec<DiscoveredTool> {
     let mut findings = editors;
     findings.extend(extensions);
     findings.extend(find_mcp_configs(view));
+    findings.extend(find_global_packages(view));
     let mut tools = merge(findings);
     join_install_folders(view, &mut tools);
+    join_installed_apps(view, &mut tools);
+    join_executables(view, &mut tools);
     tools
 }
 
