@@ -66,6 +66,49 @@ fn test_every_catalog_skill_declares_a_license_or_unverified() {
     assert_eq!(license_of("solution-design").as_deref(), Some("Apache-2.0"));
 }
 
+/// All phase ids across every flow, read from the shared contract file.
+fn all_phase_ids() -> std::collections::BTreeSet<String> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("schemas").join("phases.json");
+    let doc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).expect("schemas/phases.json"))
+        .expect("phases.json is valid JSON");
+    doc["flows"]
+        .as_object()
+        .expect("phases.json has a flows object")
+        .values()
+        .flat_map(|phases| phases.as_array().expect("each flow is an array").iter())
+        .map(|p| p.as_str().expect("phase ids are strings").to_string())
+        .collect()
+}
+
+#[test]
+fn test_every_skill_maps_to_known_phases() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_phase_test"));
+    let known = all_phase_ids();
+
+    for skill in manager.get_default_skills() {
+        assert!(!skill.phases.is_empty(), "{} has no phases", skill.id);
+        if skill.phases.iter().any(|p| p == "all") {
+            assert_eq!(skill.phases, vec!["all".to_string()], "{}: \"all\" cannot be combined with named phases", skill.id);
+            continue;
+        }
+        for phase in &skill.phases {
+            assert!(known.contains(phase), "{} maps to unknown phase \"{}\"", skill.id, phase);
+        }
+    }
+}
+
+#[test]
+fn test_every_phase_has_at_least_one_dedicated_skill() {
+    let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_phase_coverage_test"));
+    let skills = manager.get_default_skills();
+
+    // "all" skills don't count: each phase needs a skill chosen for it.
+    for phase in all_phase_ids() {
+        let covered = skills.iter().any(|s| s.phases.iter().any(|p| *p == phase));
+        assert!(covered, "phase \"{}\" has no skill mapped to it", phase);
+    }
+}
+
 #[test]
 fn test_embedded_catalog_content_matches_skill_files_on_disk() {
     let manager = SkillManager::new(std::env::temp_dir().join("agent_orchestrator_skill_content_test"));

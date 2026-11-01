@@ -36,8 +36,9 @@ pub struct Skill {
     pub enabled: bool,
     pub content: String,
     pub is_custom: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phase_scope: Option<String>,
+    /// Phase ids from schemas/phases.json, or ["all"] for every phase.
+    #[serde(default)]
+    pub phases: Vec<String>,
     /// SPDX license id, or "unverified" when not yet checked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub license: Option<String>,

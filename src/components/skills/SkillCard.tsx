@@ -1,4 +1,5 @@
 import React from "react";
+import { PhaseBadges } from "./PhaseBadges";
 import type { Skill } from "../../lib/types";
 import { CheckCircle2, ExternalLink, Eye, Edit3 } from "lucide-react";
 
@@ -24,11 +25,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
               <h3 className="font-semibold text-sm text-zinc-100 tracking-tight">
                 {skill.name}
               </h3>
-              {skill.phaseScope && (
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  {skill.phaseScope}
-                </span>
-              )}
+              <PhaseBadges phases={skill.phases} />
             </div>
             <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
               {skill.description}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { PhaseBadges } from "./PhaseBadges";
 import type { Skill } from "../../lib/types";
 import { CheckCircle2, ExternalLink, X, Save, Edit3, Eye } from "lucide-react";
 
@@ -44,11 +45,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
           <div>
             <div className="flex items-center gap-2.5">
               <h2 className="text-base font-bold text-zinc-100">{skill.name}</h2>
-              {skill.phaseScope && (
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  {skill.phaseScope}
-                </span>
-              )}
+              <PhaseBadges phases={skill.phases} />
               {skill.isCustom && (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
                   Custom / Modified

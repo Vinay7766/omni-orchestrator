@@ -18,7 +18,7 @@ describe("SkillCard Component", () => {
     enabled: true,
     content: "# Spec",
     isCustom: false,
-    phaseScope: "spec",
+    phases: ["prd", "architecture"],
   };
 
   it("renders skill title, description, and author attribution correctly", () => {
@@ -27,7 +27,14 @@ describe("SkillCard Component", () => {
     expect(screen.getByText("Spec-Driven Development")).toBeDefined();
     expect(screen.getByText("Addy Osmani")).toBeDefined();
     expect(screen.getByTestId("verified-badge")).toBeDefined();
-    expect(screen.getByText("spec")).toBeDefined();
+    expect(screen.getByText("prd")).toBeDefined();
+    expect(screen.getByText("architecture")).toBeDefined();
+  });
+
+  it("labels a skill that applies to every phase as all phases", () => {
+    render(<SkillCard skill={{ ...mockSkill, phases: ["all"] }} onToggle={vi.fn()} />);
+
+    expect(screen.getByText("all phases")).toBeDefined();
   });
 
   it("triggers onToggle callback when switch is clicked", () => {

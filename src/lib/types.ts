@@ -29,7 +29,10 @@ export interface Skill {
   enabled: boolean;
   content: string;
   isCustom: boolean;
-  phaseScope?: "discovery" | "spec" | "architecture" | "build" | "review";
+  /** Phase ids from schemas/phases.json, or ["all"] for every phase. */
+  phases?: string[];
+  /** SPDX license id, or "unverified" when not yet checked. */
+  license?: string;
 }
 
 export type ToolId = 

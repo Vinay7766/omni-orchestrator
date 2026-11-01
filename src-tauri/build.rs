@@ -20,12 +20,15 @@ fn bundle_skill_catalog() {
     let mut entries: Vec<serde_json::Value> =
         serde_json::from_str(&catalog_text).expect("skills/catalog.json is not a valid JSON array");
 
+    let known_phases = load_phase_ids();
+
     let mut listed = HashSet::new();
     for entry in entries.iter_mut() {
         let id = entry["id"]
             .as_str()
             .expect("every catalog entry needs a string \"id\"")
             .to_string();
+        check_phases(&id, &entry["phases"], &known_phases);
         let skill_file = skills_dir.join(&id).join("SKILL.md");
         println!("cargo:rerun-if-changed={}", skill_file.display());
         let content = fs::read_to_string(&skill_file)
@@ -51,4 +54,45 @@ fn bundle_skill_catalog() {
 
     let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("skills.json");
     fs::write(&out, serde_json::to_string(&entries).unwrap()).expect("cannot write bundled skills");
+}
+
+/// Every phase id across all flows in `/schemas/phases.json`.
+fn load_phase_ids() -> HashSet<String> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("schemas").join("phases.json");
+    println!("cargo:rerun-if-changed={}", path.display());
+    let doc: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {}", path.display(), e)),
+    )
+    .expect("schemas/phases.json is not valid JSON");
+    doc["flows"]
+        .as_object()
+        .expect("schemas/phases.json needs a \"flows\" object")
+        .values()
+        .flat_map(|flow| flow.as_array().expect("each flow must be an array of phase ids").iter())
+        .map(|p| p.as_str().expect("phase ids must be strings").to_string())
+        .collect()
+}
+
+/// A skill's phases must be a non-empty list of known phase ids, or exactly ["all"].
+fn check_phases(id: &str, phases: &serde_json::Value, known: &HashSet<String>) {
+    let list: Vec<&str> = phases
+        .as_array()
+        .unwrap_or_else(|| panic!("skill \"{}\" needs a \"phases\" array", id))
+        .iter()
+        .map(|p| p.as_str().unwrap_or_else(|| panic!("skill \"{}\" has a non-string phase", id)))
+        .collect();
+    if list.is_empty() {
+        panic!("skill \"{}\" has an empty \"phases\" list", id);
+    }
+    if list.contains(&"all") {
+        if list.len() > 1 {
+            panic!("skill \"{}\": \"all\" cannot be combined with named phases", id);
+        }
+        return;
+    }
+    for phase in list {
+        if !known.contains(phase) {
+            panic!("skill \"{}\" maps to unknown phase \"{}\" (see schemas/phases.json)", id, phase);
+        }
+    }
 }

@@ -34,7 +34,7 @@ fn test_custom_skill_storage_operations() {
         enabled: true,
         content: "# Test Skill Instructions".to_string(),
         is_custom: true,
-        phase_scope: Some("build".to_string()),
+        phases: vec!["build".to_string()],
         license: None,
     };
 

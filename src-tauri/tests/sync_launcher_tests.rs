@@ -28,7 +28,7 @@ fn test_sync_launcher_injects_tiered_configs_and_state() {
             enabled: true,
             content: "# Spec\nFollow spec rules.".to_string(),
             is_custom: false,
-            phase_scope: Some("spec".to_string()),
+            phases: vec!["prd".to_string()],
             license: None,
         },
         Skill {
@@ -46,7 +46,7 @@ fn test_sync_launcher_injects_tiered_configs_and_state() {
             enabled: true,
             content: "# TDD\nWrite tests first.".to_string(),
             is_custom: false,
-            phase_scope: Some("build".to_string()),
+            phases: vec!["build".to_string()],
             license: None,
         },
     ];
