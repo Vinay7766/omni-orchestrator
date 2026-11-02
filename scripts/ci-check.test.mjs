@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readCiJobs, jobsToRun, toLocalCommand, jobEnv } from "./ci-check.mjs";
+import { readCiJobs, jobsToRun, toLocalCommand, jobEnv, verifiedMarker } from "./ci-check.mjs";
 
 // Vitest runs from the repository root.
 const realCi = readFileSync(resolve(process.cwd(), ".github/workflows/ci.yml"), "utf8");
@@ -90,5 +90,14 @@ describe("jobEnv", () => {
     const env = jobEnv({ PATH: "x", CARGO_TARGET_DIR: "C:/shared/target" });
     expect(env.CARGO_TARGET_DIR).toBeUndefined();
     expect(env.PATH).toBe("x");
+  });
+});
+
+describe("verifiedMarker: a commit checked once on this OS is not checked again at push time", () => {
+  it("is specific to the exact commit and the OS", () => {
+    const a = verifiedMarker("/repo/.git/ci-check-passed", "abc123", "Windows");
+    expect(a).toBe("/repo/.git/ci-check-passed/abc123.Windows");
+    expect(verifiedMarker("/repo/.git/ci-check-passed", "abc124", "Windows")).not.toBe(a);
+    expect(verifiedMarker("/repo/.git/ci-check-passed", "abc123", "Linux")).not.toBe(a);
   });
 });

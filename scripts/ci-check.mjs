@@ -14,7 +14,7 @@
  * Usage: `npm run ci:check` (checks HEAD), or as the pre-push hook (scripts/hooks/pre-push).
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -119,6 +119,16 @@ export function toLocalCommand(run, platform, worktree) {
   return { command: run, args: [], shell: true };
 }
 
+/**
+ * Where a pass is recorded: one empty file per commit and OS. The same commit on the same OS
+ * gives the same result, so a push of an already-verified commit does not repeat the check.
+ * (A long check during `git push` lost the connection to GitHub twice: git connects before the
+ * pre-push hook runs and sends after it. Run `npm run ci:check`, then push.)
+ */
+export function verifiedMarker(markerDir, sha, runnerOs) {
+  return `${markerDir.replace(/\\/g, "/")}/${sha}.${runnerOs}`;
+}
+
 /** The environment for CI steps: Rust builds in the checkout's own target folder. */
 export function jobEnv(baseEnv) {
   const env = { ...baseEnv };
@@ -180,10 +190,16 @@ function main() {
   const runnerOs = RUNNER_OS[process.platform];
   if (!runnerOs) throw new Error(`ci-check: unsupported platform ${process.platform}`);
 
+  const markerDir = git(["rev-parse", "--path-format=absolute", "--git-path", "ci-check-passed"], repo);
   for (const { sha, files } of pushedRanges(repo, prePush)) {
     const needed = files[0] === "(all)" ? [FRONTEND, RUST] : jobsToRun(files);
     if (needed.length === 0) {
       console.log(`[ci-check] ${sha.slice(0, 7)}: documentation only, no CI steps needed`);
+      continue;
+    }
+    const marker = verifiedMarker(markerDir, sha, runnerOs);
+    if (existsSync(marker)) {
+      console.log(`[ci-check] ${sha.slice(0, 7)}: already verified on ${runnerOs} by an earlier run of this check; not repeated`);
       continue;
     }
     const workflow = git(["show", `${sha}:.github/workflows/ci.yml`], repo);
@@ -196,6 +212,8 @@ function main() {
         process.exit(1);
       }
     }
+    mkdirSync(markerDir, { recursive: true });
+    writeFileSync(marker, "");
     console.log(`[ci-check] ${sha.slice(0, 7)}: all CI steps passed on ${runnerOs}. Other platforms are checked by CI after the push.`);
   }
 }
