@@ -61,6 +61,24 @@ describe("PhaseHistory (GATE-5)", () => {
     expect(prd.getByText(/follows the six sections/)).toBeDefined();
     expect(prd.getByText(/docs\/prd-understanding\.md/)).toBeDefined();
     expect(prd.getByText(/made-up-agent/)).toBeDefined();
+    expect(prd.queryByText(/Stack decision record/)).toBeNull();
+  });
+
+  it("shows the stack decision record handed in with an architecture submission (C16)", () => {
+    render(
+      <PhaseHistory
+        entries={[
+          entry({
+            phase: "architecture",
+            status: "awaiting_review",
+            submissions: [{ time: T, by: agent, documents: ["docs/ARCHITECTURE.md"], skillsUsed: [], stackAdr: "docs/decisions/ADR-001-stack.md" }],
+          }),
+        ]}
+      />,
+    );
+    const arch = within(item("architecture"));
+    expect(arch.getByText(/Stack decision record/)).toBeDefined();
+    expect(arch.getByText("docs/decisions/ADR-001-stack.md")).toBeDefined();
   });
 
   it("shows change requests and the person's decision", () => {

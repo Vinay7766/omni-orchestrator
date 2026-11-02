@@ -38,6 +38,7 @@ function Submissions({ entry }: { entry: PhaseHistoryEntry }) {
             </ul>
           )}
           {s.understandingCheck && <p className="mt-1">Understanding check: <span className="font-mono text-zinc-300">{s.understandingCheck}</span></p>}
+          {s.stackAdr && <p className="mt-1">Stack decision record: <span className="font-mono text-zinc-300 break-all">{s.stackAdr}</span></p>}
           {s.skillsUsed.length > 0 && (
             <ul className="mt-1 ml-4 list-disc" aria-label="Skills used">
               {s.skillsUsed.map((k) => (
