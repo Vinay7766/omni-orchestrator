@@ -353,8 +353,7 @@
   "pendingGaps": [
     "adversarial-security",
     "i18n-l10n",
-    "networking",
-    "stack-selection"
+    "networking"
   ],
   "pendingGapsNote": "Domains not yet covered by a vetted skill (tasks A8-A10). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow.",
   "sources": [

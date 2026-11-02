@@ -1751,5 +1751,27 @@
     "domains": [
       "payments"
     ]
+  },
+  {
+    "id": "stack-selection",
+    "name": "stack-selection",
+    "description": "Choosing a tech stack in the architecture phase: ask the constraints first, compare two or three genuinely different stacks in a decision table with versions checked against official docs, and record the recommendation as an ADR with why the others lost and what would change it. Never a universal \"best\".",
+    "category": "architecture",
+    "attribution": {
+      "name": "OmniOrchestrator (from PRD STK-1 to STK-3)",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/stack-selection",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "architecture"
+    ],
+    "domains": [
+      "stack-selection",
+      "software-architecture"
+    ]
   }
 ]
