@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { FileText, Play } from "lucide-react";
-import { PLANNING_PHASES, type PhaseHistoryEntry } from "@omni/core";
+import { PLANNING_PHASES, STACK_ADR_PHASES, type PhaseHistoryEntry } from "@omni/core";
 
 const RUNNABLE = ["not_started", "in_progress", "changes_requested"];
+
+/** The documents a phase hands in: its own, plus the stack decision record where one is required. */
+const documentsOf = (phase: string) => [`${phase}.md`, ...((STACK_ADR_PHASES as readonly string[]).includes(phase) ? [`${phase}-stack-adr.md`] : [])];
 
 /**
  * E5 (PLAN-1, PLAN-2, GATE-2): the next planning phase of a project. It runs with the person's
@@ -17,17 +20,16 @@ export const PlanningPanel: React.FC<{
   readDocument: (name: string) => Promise<string | null>;
 }> = ({ entry, providerReady, run, readDocument }) => {
   const [running, setRunning] = useState(false);
-  const [document, setDocument] = useState<{ phase: string; text: string | null } | null>(null);
+  const [documents, setDocuments] = useState<{ name: string; text: string | null }[] | null>(null);
   const phase = entry?.phase ?? "";
   const awaiting = entry?.status === "awaiting_review";
 
   useEffect(() => {
     let current = true;
-    setDocument(null);
+    setDocuments(null);
     if (awaiting) {
-      readDocument(`${phase}.md`)
-        .then((text) => current && setDocument({ phase, text }))
-        .catch(() => current && setDocument({ phase, text: null }));
+      Promise.all(documentsOf(phase).map((name) => readDocument(name).then((text) => ({ name, text }), () => ({ name, text: null }))))
+        .then((docs) => current && setDocuments(docs));
     }
     return () => {
       current = false;
@@ -43,12 +45,19 @@ export const PlanningPanel: React.FC<{
           <FileText className="w-4 h-4" aria-hidden="true" /> Ready for your review: {phase}
         </h3>
         <p className="text-xs text-zinc-400">Read it, then approve it or request changes in the phase history below.</p>
-        {document?.text ? (
-          <pre className="whitespace-pre-wrap break-words text-xs text-zinc-200 bg-zinc-950 border border-zinc-800 rounded-lg p-3 max-h-96 overflow-y-auto font-sans">
-            {document.text}
-          </pre>
-        ) : (
-          document && <p className="text-xs text-red-400">docs/planning/{phase}.md was not found in the project.</p>
+        {documents?.map(({ name, text }) =>
+          text ? (
+            <div key={name} className="space-y-1">
+              <p className="text-xs font-mono text-zinc-500">docs/planning/{name}</p>
+              <pre className="whitespace-pre-wrap break-words text-xs text-zinc-200 bg-zinc-950 border border-zinc-800 rounded-lg p-3 max-h-96 overflow-y-auto font-sans">
+                {text}
+              </pre>
+            </div>
+          ) : (
+            <p key={name} className="text-xs text-red-400">
+              docs/planning/{name} was not found in the project.
+            </p>
+          ),
         )}
       </section>
     );

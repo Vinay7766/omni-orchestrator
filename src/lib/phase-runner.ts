@@ -8,6 +8,7 @@
  * Markdown files and parsed for its sections, never executed or rendered as HTML.
  */
 import {
+  checkStackAdr,
   createInvokeFs,
   FLOWS,
   MemoryStore,
@@ -15,6 +16,8 @@ import {
   PhaseEngine,
   PLANNING_PHASES,
   resolvePhaseSkills,
+  STACK_ADR_PHASES,
+  STACK_ADR_SECTIONS,
   validateMemoryFile,
   type CatalogEntry,
   type Event,
@@ -39,6 +42,18 @@ const EARLIER_BUDGET = 60_000;
 const SKILL_BUDGET = 60_000;
 
 export const PLANNING_AGENT_TOOL = "omni-desktop";
+
+/** The title line that starts the stack decision record inside the model's answer. */
+const ADR_TITLE = "# Stack decision record";
+
+const needsStackAdr = (phase: string) => (STACK_ADR_PHASES as readonly string[]).includes(phase);
+
+/** STK-1..3 (C16): what the record must contain, in the order the stack-selection skill writes it. */
+const ADR_RULES = [
+  `- After the document (before the two sections below), write the stack decision record. Start it with the line "${ADR_TITLE}", then these sections, in this order and with exactly these headings: ${STACK_ADR_SECTIONS.map((name) => `"## ${name}"`).join(", ")}.`,
+  '- In "## Decision", call the chosen stack "the best fit for these constraints", never the best in general.',
+  '- In "## Sources", list the official documentation you relied on as https links; they will be checked, so mark any you are unsure of "to verify".',
+];
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : typeof error === "string" ? error : String(error));
 
@@ -86,6 +101,7 @@ export function buildPhasePrompt(input: PromptInput): { prompt: string; trimmed:
       "- After the document, add exactly these two sections:",
       "  - \"## Understanding check\": in a few sentences, what you understood the person wants, and any assumption you made.",
       `  - "## Skills applied": one line per skill you followed, as "- <skill id>: what you did with it". Use only these ids: ${ids}.`,
+      ...(needsStackAdr(input.phase) ? ADR_RULES : []),
     ].join("\n"),
     `## The idea\n\n${input.idea}`,
   ];
@@ -140,6 +156,21 @@ export function parsePhaseOutput(text: string, skillIds: string[]): ParsedOutput
   const document = text.slice(0, Math.min(understanding.start, applied.start)).trim();
   if (!document) return incomplete("it has no document before its sections");
   return { ok: true, document, understanding: understanding.body, skillsUsed };
+}
+
+type Failure = { ok: false; error: string };
+
+/** Separates the stack decision record from the architecture document and checks it (C16). */
+export function splitStackAdr(document: string): { ok: true; document: string; adr: string } | Failure {
+  const lines = document.split(/\r?\n/);
+  const at = lines.findIndex((line) => line.trim().toLowerCase() === ADR_TITLE.toLowerCase());
+  if (at === -1) return incomplete(`it has no stack decision record (a "${ADR_TITLE}" part after the document)`) as Failure;
+  const adr = lines.slice(at).join("\n").trim();
+  const problems = checkStackAdr(adr);
+  if (problems.length > 0) return incomplete(`its stack decision record is not complete (${problems.join("; ")})`) as Failure;
+  const before = lines.slice(0, at).join("\n").trim();
+  if (!before) return incomplete("it has no architecture document before the stack decision record") as Failure;
+  return { ok: true, document: before, adr };
 }
 
 export type RunResult =
@@ -212,6 +243,8 @@ export async function runPhase(invoke: Invoke, rootIn: string, options: { byok: 
     const reply = (await invoke("byok_complete", { request: { prompt, byok: options.byok } })) as { text: string; provider: string; model: string };
     const parsed = parsePhaseOutput(reply.text, skills.map((s) => s.id));
     if (!parsed.ok) return parsed;
+    const split = needsStackAdr(phase) ? splitStackAdr(parsed.document) : { ok: true as const, document: parsed.document, adr: null };
+    if (!split.ok) return split;
 
     const agent = { kind: "agent" as const, tool: PLANNING_AGENT_TOOL, model: reply.model.slice(0, 200) };
     const engine = new PhaseEngine(store);
@@ -221,11 +254,13 @@ export async function runPhase(invoke: Invoke, rootIn: string, options: { byok: 
     }
     const documentPath = `docs/planning/${phase}.md`;
     const understandingPath = `docs/planning/${phase}-understanding.md`;
-    await invoke("write_planning_document", { root, name: `${phase}.md`, content: `${parsed.document}\n` });
+    const adrPath = `docs/planning/${phase}-stack-adr.md`;
+    await invoke("write_planning_document", { root, name: `${phase}.md`, content: `${split.document}\n` });
+    if (split.adr) await invoke("write_planning_document", { root, name: `${phase}-stack-adr.md`, content: `${split.adr}\n` });
     await invoke("write_planning_document", { root, name: `${phase}-understanding.md`, content: `# ${phase}: understanding check\n\n${parsed.understanding}\n` });
-    const updated = await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [documentPath, understandingPath] } });
+    const updated = await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [documentPath, understandingPath, ...(split.adr ? [adrPath] : [])] } });
     if (!updated.ok) return { ok: false, error: updated.issues.map((i) => i.message).join("; ") };
-    const submitted = await engine.submit(agent, { phase, documents: [documentPath], skillsUsed: parsed.skillsUsed, understandingCheck: understandingPath });
+    const submitted = await engine.submit(agent, { phase, documents: [documentPath], skillsUsed: parsed.skillsUsed, understandingCheck: understandingPath, ...(split.adr ? { stackAdr: adrPath } : {}) });
     if (!submitted.ok) return { ok: false, error: submitted.issues.map((i) => i.message).join("; ") };
     return {
       ok: true,

@@ -50,6 +50,15 @@ describe("PlanningPanel", () => {
     expect(screen.queryByRole("button", { name: /run/i })).toBeNull();
   });
 
+  it("shows the stack decision record with the architecture under review", async () => {
+    const readDocument = vi.fn((name: string) => Promise.resolve(name === "architecture.md" ? "# Architecture" : "# Stack decision record\n\nbest fit"));
+    await act(async () => {
+      render(<PlanningPanel entry={entry("architecture", "awaiting_review")} providerReady run={vi.fn()} readDocument={readDocument} />);
+    });
+    expect(readDocument).toHaveBeenCalledWith("architecture-stack-adr.md");
+    expect(screen.getByText(/best fit/)).toBeDefined();
+  });
+
   it("says so when the document under review is missing", async () => {
     await act(async () => {
       render(<PlanningPanel entry={entry("research", "awaiting_review")} providerReady run={vi.fn()} readDocument={vi.fn().mockResolvedValue(null)} />);

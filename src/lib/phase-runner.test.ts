@@ -213,4 +213,78 @@ describe("runPhase", () => {
     if (!r.ok) expect(r.error).toMatch(/no skills/i);
     expect(prompts).toHaveLength(0);
   });
+
+  // E5 slice 4: architecture also needs a complete stack decision record (STK-1..3, C16).
+  describe("architecture", () => {
+    const ARCH_SKILLS = [...SKILLS, skill("prd-writing", ["prd"]), skill("stack-selection", ["architecture"])];
+    const ADR = [
+      "# Stack decision record",
+      "## Status\n\nProposed",
+      "## Context and constraints\n\nSmall team, web first.",
+      "## Options considered\n\nA, B",
+      "## Decision\n\nA is the best fit for these constraints.",
+      "## Why the others lost\n\nB needs a server team.",
+      "## Switch conditions\n\nMove to B past 10k users.",
+      "## Sources\n\nhttps://example.org/docs",
+    ];
+    const archAnswer = (adr: string[]) =>
+      answer(`# Architecture\n\nThree parts.\n\n${adr.join("\n\n")}`, "- stack-selection: compared two stacks against the constraints");
+
+    async function throughPrd() {
+      const replies: Record<string, string> = {
+        "idea-review": answer("# Idea review"),
+        research: answer("# Research", "- market-research: three competitors"),
+        prd: answer("# PRD", "- prd-writing: requirements with ids"),
+      };
+      for (const phase of ["idea-review", "research", "prd"]) {
+        reply = ok(replies[phase]);
+        const r = await runPhase(invoke, root, { byok, skills: ARCH_SKILLS });
+        if (!r.ok) throw new Error(r.error);
+        const store = await open();
+        await new PhaseEngine(store).approve(DESKTOP_PERSON, phase);
+        const next = { "idea-review": "research", research: "prd", prd: "architecture" }[phase]!;
+        await new PhaseEngine(store).start(DESKTOP_PERSON, next);
+      }
+    }
+
+    it("asks for the stack decision record with every section the gate checks", () => {
+      const { prompt } = buildPhasePrompt({ phase: "architecture", projectName: "Orbit", idea: "x", skills: [], earlier: [] });
+      for (const part of ["# Stack decision record", "## Context and constraints", "## Why the others lost", "## Switch conditions", "## Sources", "best fit for these constraints"]) {
+        expect(prompt).toContain(part);
+      }
+    });
+
+    it("writes the record next to the architecture and hands both in", async () => {
+      await throughPrd();
+      reply = ok(archAnswer(ADR));
+      const r = await runPhase(invoke, root, { byok, skills: ARCH_SKILLS });
+      expect(r).toMatchObject({ ok: true, phase: "architecture" });
+      expect(readFileSync(`${root}/docs/planning/architecture.md`, "utf8")).not.toContain("Stack decision record");
+      expect(readFileSync(`${root}/docs/planning/architecture-stack-adr.md`, "utf8")).toContain("best fit for these constraints");
+      const submitted = (await (await open()).readEvents()).events.at(-1)!;
+      expect(submitted.payload).toMatchObject({ phase: "architecture", stackAdr: "docs/planning/architecture-stack-adr.md" });
+    });
+
+    it("records nothing when the record misses a section, and names it", async () => {
+      await throughPrd();
+      const before = (await (await open()).readEvents()).events.length;
+      reply = ok(archAnswer(ADR.filter((s) => !s.startsWith("## Switch conditions"))));
+      const r = await runPhase(invoke, root, { byok, skills: ARCH_SKILLS });
+      expect(r).toMatchObject({ ok: false });
+      if (!r.ok) expect(r.error).toMatch(/Switch conditions/);
+      expect((await (await open()).readEvents()).events.length).toBe(before);
+      expect(existsSync(`${root}/docs/planning/architecture-stack-adr.md`)).toBe(false);
+    });
+
+    it("records nothing when there is no record at all", async () => {
+      await throughPrd();
+      const before = (await (await open()).readEvents()).events.length;
+      reply = ok(answer("# Architecture\n\nNo record.", "- stack-selection: x"));
+      const r = await runPhase(invoke, root, { byok, skills: ARCH_SKILLS });
+      expect(r).toMatchObject({ ok: false });
+      if (!r.ok) expect(r.error).toMatch(/stack decision record/i);
+      expect((await (await open()).readEvents()).events.length).toBe(before);
+      expect(existsSync(`${root}/docs/planning/architecture.md`)).toBe(false);
+    });
+  });
 });
