@@ -7,7 +7,9 @@
  * - One fresh `git worktree` per CI job, as CI gives each job its own checkout: leftovers
  *   from one job (for example dist/ from the frontend build) can't hide a failure in another.
  * - Only this machine's OS is run; other platforms are still CI's job.
- * - Rust build output is cached in a separate folder (CI caches it too, via rust-cache).
+ * - Rust builds inside each checkout and is deleted with it. No shared cache: an interrupted
+ *   build once left a shared cache's debug-symbol files damaged (MSVC LNK1318), which then
+ *   blocked every later push although the code was fine.
  *
  * Usage: `npm run ci:check` (checks HEAD), or as the pre-push hook (scripts/hooks/pre-push).
  */
@@ -117,6 +119,13 @@ export function toLocalCommand(run, platform, worktree) {
   return { command: run, args: [], shell: true };
 }
 
+/** The environment for CI steps: Rust builds in the checkout's own target folder. */
+export function jobEnv(baseEnv) {
+  const env = { ...baseEnv };
+  delete env.CARGO_TARGET_DIR;
+  return env;
+}
+
 const git = (args, cwd) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 
 /** The commits to check: from the pre-push hook's stdin, or HEAD for a manual run. */
@@ -144,7 +153,7 @@ function pushedRanges(repo, prePush) {
 
 function runJob(repo, sha, job) {
   const worktree = mkdtempSync(join(tmpdir(), "omni-ci-check-"));
-  const env = { ...process.env, CARGO_TARGET_DIR: join(tmpdir(), "omni-ci-check-target") };
+  const env = jobEnv(process.env);
   git(["worktree", "add", "--detach", worktree, sha], repo);
   try {
     for (const run of job.runs) {

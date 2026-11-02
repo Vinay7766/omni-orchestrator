@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readCiJobs, jobsToRun, toLocalCommand } from "./ci-check.mjs";
+import { readCiJobs, jobsToRun, toLocalCommand, jobEnv } from "./ci-check.mjs";
 
 // Vitest runs from the repository root.
 const realCi = readFileSync(resolve(process.cwd(), ".github/workflows/ci.yml"), "utf8");
@@ -82,5 +82,13 @@ describe("toLocalCommand", () => {
   it("runs everything else through the shell, as CI does", () => {
     expect(toLocalCommand("npm ci", "win32", "C:/wt")).toEqual({ command: "npm ci", args: [], shell: true });
     expect(toLocalCommand("cargo check", "linux", "/wt")).toEqual({ command: "cargo check", args: [], shell: true });
+  });
+});
+
+describe("jobEnv", () => {
+  it("builds Rust inside each clean checkout: no shared target folder carries over between runs", () => {
+    const env = jobEnv({ PATH: "x", CARGO_TARGET_DIR: "C:/shared/target" });
+    expect(env.CARGO_TARGET_DIR).toBeUndefined();
+    expect(env.PATH).toBe("x");
   });
 });
