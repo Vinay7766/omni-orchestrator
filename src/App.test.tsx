@@ -203,7 +203,9 @@ describe("OmniOrchestrator App", () => {
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
-  });
+    // Real files for create, run, approve and the next start: about 2 s alone, over 5 s when the
+    // full suite runs every package in parallel.
+  }, 20_000);
 
   it("shows the provider error instead of a fabricated report when a pitch teardown fails", async () => {
     mockBackend({
