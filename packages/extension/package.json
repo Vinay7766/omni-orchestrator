@@ -28,6 +28,10 @@
       {
         "command": "omni.requestChanges",
         "title": "OmniOrchestrator: Request changes"
+      },
+      {
+        "command": "omni.decidePhase",
+        "title": "OmniOrchestrator: Decide optional phase"
       }
     ]
   },

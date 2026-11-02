@@ -253,6 +253,7 @@ export interface Event1 {
     | "phase_started"
     | "phase_submitted"
     | "phase_approved"
+    | "phase_skipped"
     | "changes_requested"
     | "task_created"
     | "design_note_submitted"
@@ -335,7 +336,13 @@ export interface State {
   currentPhase: CommonPhaseId | null;
   phases: {
     [k: string]: {
-      status: "not_started" | "in_progress" | "awaiting_review" | "changes_requested" | "approved";
+      status:
+        | "not_started"
+        | "in_progress"
+        | "awaiting_review"
+        | "changes_requested"
+        | "approved"
+        | "skipped";
       submittedAt?: CommonTimestamp;
       decidedAt?: CommonTimestamp;
     };
@@ -526,4 +533,14 @@ export interface EventMemoryUpdated {
    * @minItems 1
    */
   files: [CommonRelPath, ...CommonRelPath[]];
+}
+/**
+ * A person declined an optional phase (schemas/phases.json "optional"; which phases are optional is checked in code).
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "event_phaseSkipped".
+ */
+export interface EventPhaseSkipped {
+  phase: CommonPhaseId;
+  reason?: CommonNonEmptyText;
 }

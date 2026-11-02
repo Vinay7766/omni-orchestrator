@@ -70,6 +70,7 @@ describe("bundled extension", () => {
     expect(manifest.activationEvents).toContain("workspaceContains:.agents/project.json");
     expect(manifest.contributes.commands.map((c: { command: string }) => c.command).sort()).toEqual([
       "omni.approvePhase",
+      "omni.decidePhase",
       "omni.requestChanges",
       "omni.review",
     ]);

@@ -9,6 +9,8 @@
       "architecture",
       "build",
       "review",
+      "security-pass",
+      "release",
       "handover"
     ],
     "pitch": [
@@ -27,5 +29,9 @@
     "prd",
     "architecture"
   ],
-  "planningDescription": "Phases that must include a confirmed Understanding check when submitted (UND-1)."
+  "planningDescription": "Phases that must include a confirmed Understanding check when submitted (UND-1).",
+  "optional": {
+    "security-pass": "The build is done and ready to deploy. Before deploying, run a red-team / blue-team pass to tighten security?"
+  },
+  "optionalDescription": "Phases a person may decline (GATE-1, SEC-1). Each maps to the question the person is asked. Only a person can start (agree to) or skip (decline) one; a skip is recorded."
 }

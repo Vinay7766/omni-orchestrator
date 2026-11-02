@@ -1,4 +1,4 @@
-import { FLOWS, PLANNING_PHASES } from "../generated/contract.js";
+import { FLOWS, OPTIONAL_PHASES, PLANNING_PHASES } from "../generated/contract.js";
 import type { Event, State } from "../generated/types.js";
 import type { MemoryStore, EventInput } from "../memory/store.js";
 import type { ValidationIssue } from "../validate.js";
@@ -15,6 +15,7 @@ export type PhaseAction =
   | { kind: "start"; phase: string }
   | { kind: "submit"; phase: string; documents: string[]; skillsUsed: SkillUse[]; understandingCheck?: string }
   | { kind: "approve"; phase: string }
+  | { kind: "skip"; phase: string; reason?: string }
   | { kind: "request_changes"; phase: string; notes: string };
 
 export interface PhaseContext {
@@ -25,11 +26,22 @@ export interface PhaseContext {
   flows: Flows;
   /** Phases that need an Understanding check when submitted. */
   planning: readonly string[];
+  /** Phases a person may decline, each with the question to ask (GATE-1, SEC-1). */
+  optional?: Readonly<Record<string, string>>;
 }
 
 export type CheckResult = { ok: true } | { ok: false; issues: ValidationIssue[] };
 
 const problem = (message: string): CheckResult => ({ ok: false, issues: [{ path: "", message }] });
+
+/** Approved, or (for an optional phase) skipped by a person: the next phase may start. */
+const isDone = (status: string | undefined) => status === "approved" || status === "skipped";
+
+/** The previous phase that is not done yet, if any. */
+function blockedBy(ctx: PhaseContext, order: readonly string[], phase: string): string | null {
+  const previous = order[order.indexOf(phase) - 1];
+  return previous && !isDone(ctx.state.phases[previous]?.status) ? previous : null;
+}
 
 /** Pure rule check for one phase action (GATE-1..4, UND-1). Used inside the store's lock. */
 export function checkPhaseAction(ctx: PhaseContext, action: PhaseAction, actor: Actor): CheckResult {
@@ -44,10 +56,25 @@ export function checkPhaseAction(ctx: PhaseContext, action: PhaseAction, actor: 
   switch (action.kind) {
     case "start": {
       if (status !== "not_started") return problem(`"${phase}" is already ${status}`);
-      const previous = order[order.indexOf(phase) - 1];
-      if (previous && ctx.state.phases[previous]?.status !== "approved") {
-        return problem(`"${previous}" must be approved before "${phase}" can start`);
+      const previous = blockedBy(ctx, order, phase);
+      if (previous) return problem(`"${previous}" must be approved before "${phase}" can start`);
+      // SEC-1: running an optional phase needs a person's consent; starting it is that consent.
+      const question = ctx.optional?.[phase];
+      if (question !== undefined && actor.kind !== "human") {
+        return problem(
+          `Only a person can decide whether to run "${phase}". Ask the user: "${question}" They start it (yes) or skip it (no) in the extension or desktop app.`,
+        );
       }
+      return { ok: true };
+    }
+    case "skip": {
+      if (ctx.optional?.[phase] === undefined) return problem(`"${phase}" is not optional; it cannot be skipped`);
+      if (actor.kind !== "human") {
+        return problem(`Only a person can skip "${phase}". Ask the user: "${ctx.optional[phase]}"`);
+      }
+      if (status !== "not_started") return problem(`"${phase}" is already ${status}; only a phase that has not started can be skipped`);
+      const previous = blockedBy(ctx, order, phase);
+      if (previous) return problem(`"${previous}" must be approved before "${phase}" can be decided`);
       return { ok: true };
     }
     case "submit": {
@@ -104,14 +131,16 @@ function toEventInput(action: PhaseAction, actor: Actor): EventInput {
       };
     case "approve":
       return { type: "phase_approved", actor, payload: { phase: action.phase } };
+    case "skip":
+      return { type: "phase_skipped", actor, payload: { phase: action.phase, ...(action.reason ? { reason: action.reason } : {}) } };
     case "request_changes":
       return { type: "changes_requested", actor, payload: { phase: action.phase, notes: action.notes } };
   }
 }
 
-/** The first phase of the flow that is not yet approved, or null when all are. */
+/** The first phase of the flow that is not done (approved, or skipped), or null when all are. */
 export function nextPhase(flow: string, state: State, flows: Flows = FLOWS): string | null {
-  return (flows[flow] ?? []).find((phase) => state.phases[phase]?.status !== "approved") ?? null;
+  return (flows[flow] ?? []).find((phase) => !isDone(state.phases[phase]?.status)) ?? null;
 }
 
 export type PhaseResult =
@@ -141,13 +170,15 @@ export async function refreshAfter<R extends { ok: boolean }>(store: MemoryStore
 export class PhaseEngine {
   private readonly flows: Flows;
   private readonly planning: readonly string[];
+  private readonly optional: Readonly<Record<string, string>>;
 
   constructor(
     private readonly store: MemoryStore,
-    options: { flows?: Flows; planning?: readonly string[] } = {},
+    options: { flows?: Flows; planning?: readonly string[]; optional?: Readonly<Record<string, string>> } = {},
   ) {
     this.flows = options.flows ?? FLOWS;
     this.planning = options.planning ?? PLANNING_PHASES;
+    this.optional = options.optional ?? OPTIONAL_PHASES;
   }
 
   start(actor: Actor, phase: string): Promise<PhaseResult> {
@@ -170,6 +201,11 @@ export class PhaseEngine {
     return this.act(actor, { kind: "request_changes", phase, notes });
   }
 
+  /** A person declines an optional phase (SEC-1); recorded with time and actor. */
+  skip(actor: Actor, phase: string, reason?: string): Promise<PhaseResult> {
+    return this.act(actor, { kind: "skip", phase, ...(reason ? { reason } : {}) });
+  }
+
   private async act(actor: Actor, action: PhaseAction): Promise<PhaseResult> {
     const context = (state: State, events: Event[]): PhaseContext => ({
       state,
@@ -177,6 +213,7 @@ export class PhaseEngine {
       flow: state.flow,
       flows: this.flows,
       planning: this.planning,
+      optional: this.optional,
     });
     // Early check for a clear message (for example, an agent trying to approve would
     // otherwise only see the schema's "must be equal to constant").

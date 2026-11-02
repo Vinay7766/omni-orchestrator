@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-02T10:00:00Z",
+  "type": "phase_skipped",
+  "actor": {
+    "kind": "human",
+    "tool": "omni-desktop"
+  },
+  "payload": {
+    "phase": "security-pass",
+    "reason": ""
+  }
+}

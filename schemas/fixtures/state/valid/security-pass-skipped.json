@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "flow": "build",
+  "currentPhase": "release",
+  "phases": {
+    "review": {
+      "status": "approved",
+      "submittedAt": "2026-11-02T09:00:00Z",
+      "decidedAt": "2026-11-02T09:30:00Z"
+    },
+    "security-pass": {
+      "status": "skipped",
+      "decidedAt": "2026-11-02T10:00:00Z"
+    },
+    "release": {
+      "status": "in_progress"
+    }
+  },
+  "tasks": [],
+  "lastEventId": "evt-0050"
+}

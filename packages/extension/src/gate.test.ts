@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MemoryStore, PhaseEngine } from "@omni/core";
+import { MemoryStore, OPTIONAL_PHASES, PhaseEngine } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { approvePhase, requestChanges, type GateUi } from "./gate.js";
+import { approvePhase, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
 import { statusText } from "./status.js";
 
 const fs = createNodeFs();
@@ -21,10 +21,10 @@ beforeEach(async () => {
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-/** Starts `phase` and hands it in, as an agent would. */
+/** Starts `phase` and hands it in, as an agent would (a person starts an optional phase). */
 async function submitted(phase: string) {
   const phases = new PhaseEngine(store);
-  const started = await phases.start(agent, phase);
+  const started = await phases.start(phase in OPTIONAL_PHASES ? person : agent, phase);
   if (!started.ok) throw new Error(JSON.stringify(started));
   await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [".agents/summary.md"] } });
   const r = await phases.submit(agent, { phase, documents: ["docs/idea.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "docs/u.md" });
@@ -32,13 +32,17 @@ async function submitted(phase: string) {
 }
 
 /** A person at the keyboard: answers are scripted, everything shown is recorded. */
-function fakeUi(answers: { confirm?: boolean; notes?: string | undefined } = {}) {
+function fakeUi(answers: { confirm?: boolean; notes?: string | undefined; choice?: string } = {}) {
   const shown: string[] = [];
   const asked: { message: string; detail: string }[] = [];
   const ui: GateUi = {
     confirm: async (message, detail) => {
       asked.push({ message, detail });
       return answers.confirm ?? true;
+    },
+    choose: async (message, detail) => {
+      asked.push({ message, detail });
+      return answers.choice;
     },
     askNotes: async () => answers.notes,
     show: (message) => void shown.push(message),
@@ -71,7 +75,7 @@ describe("approvePhase", () => {
   });
 
   it("approves the last phase without starting anything", async () => {
-    const order = ["idea-review", "research", "prd", "architecture", "build", "review", "handover"];
+    const order = ["idea-review", "research", "prd", "architecture", "build", "review", "security-pass", "release", "handover"];
     for (const phase of order.slice(0, -1)) {
       await submitted(phase);
       await new PhaseEngine(store).approve(person, phase);
@@ -80,7 +84,7 @@ describe("approvePhase", () => {
     const { ui, shown } = fakeUi();
     await approvePhase(store, person, ui);
     expect((await types()).at(-1)).toBe("phase_approved");
-    expect(shown.join(" ")).toMatch(/every phase is approved/i);
+    expect(shown.join(" ")).toMatch(/every phase is done/i);
   });
 
   it("writes nothing when the person does not confirm", async () => {
@@ -138,5 +142,65 @@ describe("statusText", () => {
   it("asks for review when a phase is waiting", async () => {
     await submitted("idea-review");
     expect(statusText(await store.readState())).toBe("Omni: idea-review · review needed");
+  });
+});
+
+// C15 / SEC-1: approving the phase before an optional one must not start it for the person.
+describe("optional phase after an approval (security pass)", () => {
+  const throughReview = ["idea-review", "research", "prd", "architecture", "build", "review"];
+  async function reviewAwaitingApproval() {
+    for (const phase of throughReview.slice(0, -1)) {
+      await submitted(phase);
+      await new PhaseEngine(store).approve(person, phase);
+    }
+    await submitted("review");
+  }
+  const question = () => OPTIONAL_PHASES["security-pass"];
+
+  it("asks the person the question instead of starting it", async () => {
+    await reviewAwaitingApproval();
+    const { ui, asked } = fakeUi({ choice: undefined });
+    await approvePhase(store, person, ui);
+    expect(asked.map((a) => a.message)).toContain(question());
+    expect((await store.readState()).phases["security-pass"]).toBeUndefined();
+  });
+
+  it("starts it when the person chooses to run it", async () => {
+    await reviewAwaitingApproval();
+    await approvePhase(store, person, fakeUi({ choice: "Run it" }).ui);
+    const state = await store.readState();
+    expect(state.phases["security-pass"].status).toBe("in_progress");
+    const { events } = await store.readEvents();
+    expect(events.at(-1)!.actor.kind).toBe("human");
+  });
+
+  it("records the skip and starts the next phase when the person skips it", async () => {
+    await reviewAwaitingApproval();
+    await approvePhase(store, person, fakeUi({ choice: "Skip it" }).ui);
+    const state = await store.readState();
+    expect(state.phases["security-pass"].status).toBe("skipped");
+    expect(state.phases["release"].status).toBe("in_progress");
+  });
+
+  it("decides nothing when the person closes the question, and says it is waiting", async () => {
+    await reviewAwaitingApproval();
+    const { ui, shown } = fakeUi({ choice: undefined });
+    await approvePhase(store, person, ui);
+    expect(await types()).not.toContain("phase_skipped");
+    expect(shown.join(" ")).toMatch(/waits for your decision/);
+  });
+
+  it("lets the person decide later with its own command", async () => {
+    await reviewAwaitingApproval();
+    await approvePhase(store, person, fakeUi({ choice: undefined }).ui);
+    await decideOptionalPhase(store, person, fakeUi({ choice: "Skip it" }).ui);
+    expect((await store.readState()).phases["security-pass"].status).toBe("skipped");
+  });
+
+  it("has nothing to decide when the next phase is not optional", async () => {
+    const { ui, shown, asked } = fakeUi({ choice: "Run it" });
+    await decideOptionalPhase(store, person, ui);
+    expect(asked).toEqual([]);
+    expect(shown.join(" ")).toMatch(/Nothing to decide/);
   });
 });

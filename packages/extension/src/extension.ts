@@ -5,7 +5,7 @@
 import * as vscode from "vscode";
 import { findProject, joinPath, MEMORY_DIR, MemoryStore, normalizePath, watchEvents, type EventWatch } from "@omni/core";
 import { createNodeChangeTrigger, createNodeFs } from "@omni/core/node";
-import { approvePhase, requestChanges, type GateUi } from "./gate.js";
+import { approvePhase, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
 import { idleStatusText, statusText } from "./status.js";
 
 const fs = createNodeFs();
@@ -27,6 +27,8 @@ const ui: GateUi = {
         ignoreFocusOut: true,
       }),
     ),
+  // Modal too: the person, not an agent, decides whether an optional phase runs (SEC-1).
+  choose: (message, detail, options) => Promise.resolve(vscode.window.showWarningMessage(message, { modal: true, detail }, ...options)),
   show: (message) => void vscode.window.showInformationMessage(message),
 };
 
@@ -49,6 +51,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     item,
     vscode.commands.registerCommand("omni.approvePhase", withStore((s) => approvePhase(s, person(), ui))),
     vscode.commands.registerCommand("omni.requestChanges", withStore((s) => requestChanges(s, person(), ui))),
+    vscode.commands.registerCommand("omni.decidePhase", withStore((s) => decideOptionalPhase(s, person(), ui))),
     vscode.commands.registerCommand(
       "omni.review",
       withStore(async (s) => {

@@ -1,5 +1,5 @@
 import type { Event, Project, State } from "../generated/types.js";
-import { FLOWS } from "../generated/contract.js";
+import { FLOWS, OPTIONAL_PHASES } from "../generated/contract.js";
 import type { MemoryStore } from "./store.js";
 
 /**
@@ -39,11 +39,18 @@ function latestProblems(events: Event[]): Event[] {
 function whereWeAre(project: Project, state: State): string {
   const phase = state.currentPhase;
   const status = phase ? state.phases[phase]?.status : undefined;
-  const next = (FLOWS[project.flow] as readonly string[]).find((p) => state.phases[p]?.status !== "approved") ?? null;
+  // Same rule as the phase engine's nextPhase: approved, or skipped by a person, is done.
+  const next = (FLOWS[project.flow] as readonly string[]).find((p) => {
+    const s = state.phases[p]?.status;
+    return s !== "approved" && s !== "skipped";
+  }) ?? null;
   if (phase && status === "in_progress") return `"${phase}" is in progress.`;
   if (phase && status === "awaiting_review") return `"${phase}" is waiting for a person to review it.`;
   if (phase && status === "changes_requested") return `"${phase}" has changes requested; address them and submit it again.`;
-  return next ? `Next: start "${next}".` : "All phases are approved.";
+  if (next && OPTIONAL_PHASES[next] !== undefined) {
+    return `"${next}" needs a decision from a person: "${OPTIONAL_PHASES[next]}" Start it to run it, or skip it.`;
+  }
+  return next ? `Next: start "${next}".` : "All phases are done.";
 }
 
 export function renderSummary(project: Project, state: State, events: Event[]): string {

@@ -30,6 +30,7 @@
         "phase_started",
         "phase_submitted",
         "phase_approved",
+        "phase_skipped",
         "changes_requested",
         "task_created",
         "design_note_submitted",
@@ -148,14 +149,15 @@
           "type": {
             "enum": [
               "phase_approved",
-              "changes_requested"
+              "changes_requested",
+              "phase_skipped"
             ]
           }
         },
         "type": "object"
       },
       "then": {
-        "description": "Only a human can approve a phase or request changes (GATE-2).",
+        "description": "Only a human can approve a phase, request changes, or skip an optional phase (GATE-2, SEC-1).",
         "properties": {
           "actor": {
             "type": "object",
@@ -182,6 +184,24 @@
         "properties": {
           "payload": {
             "$ref": "#/$defs/phaseOnly"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "phase_skipped"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/phaseSkipped"
           }
         },
         "type": "object"
@@ -697,6 +717,22 @@
           "items": {
             "$ref": "urn:omni:schema:common#/$defs/relPath"
           }
+        }
+      }
+    },
+    "phaseSkipped": {
+      "type": "object",
+      "description": "A person declined an optional phase (schemas/phases.json \"optional\"; which phases are optional is checked in code).",
+      "required": [
+        "phase"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "urn:omni:schema:common#/$defs/phaseId"
+        },
+        "reason": {
+          "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
         }
       }
     }

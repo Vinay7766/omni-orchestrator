@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore } from "../memory/store.js";
 import { createNodeFs } from "../memory/node-fs.js";
 import { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./phases.js";
 import { initialState } from "../memory/reduce.js";
+import { FLOWS, OPTIONAL_PHASES } from "../generated/contract.js";
 
 const fs = createNodeFs();
 const person = { kind: "human" as const, tool: "omni-desktop" };
@@ -34,9 +36,10 @@ const messages = (r: { ok: boolean; issues?: { message: string }[] }) => (r.ok ?
 
 async function approvedThrough(phases: string[]) {
   for (const phase of phases) {
-    expect((await engine.start(agent, phase)).ok).toBe(true);
+    // Optional phases (security pass) can only be started by a person (C15).
+    expect((await engine.start(phase in OPTIONAL_PHASES ? person : agent, phase)).ok).toBe(true);
     await memoryUpdate();
-    const planning = phase !== "build" && phase !== "review" && phase !== "handover";
+    const planning = !["build", "review", "security-pass", "release", "handover"].includes(phase);
     const submitted = await engine.submit(agent, {
       phase,
       documents: [`docs/${phase}.md`],
@@ -194,7 +197,94 @@ describe("pure helpers", () => {
   it("names the next phase, or null at the end of the flow", () => {
     const state = initialState("build");
     expect(nextPhase("build", state)).toBe("idea-review");
-    const done = { ...state, phases: Object.fromEntries(["idea-review", "research", "prd", "architecture", "build", "review", "handover"].map((p) => [p, { status: "approved" as const }])) };
+    const done = { ...state, phases: Object.fromEntries(["idea-review", "research", "prd", "architecture", "build", "review", "security-pass", "release", "handover"].map((p) => [p, { status: "approved" as const }])) };
     expect(nextPhase("build", done)).toBeNull();
+    // A skipped optional phase counts as done too.
+    const skippedPass = { ...done, phases: { ...done.phases, "security-pass": { status: "skipped" as const } } };
+    expect(nextPhase("build", skippedPass)).toBeNull();
+  });
+});
+
+// C15 (SEC-1, GATE-1, REL-1): optional phases. Only a person can agree to run one (by
+// starting it) or decline it (by skipping it); either way it is recorded.
+describe("optional phases (security pass)", () => {
+  const throughReview = ["idea-review", "research", "prd", "architecture", "build", "review"];
+
+  it("puts the security pass and release between review and handover", () => {
+    expect(FLOWS.build.slice(-4)).toEqual(["review", "security-pass", "release", "handover"]);
+    expect(Object.keys(OPTIONAL_PHASES)).toEqual(["security-pass"]);
+    expect(OPTIONAL_PHASES["security-pass"]).toMatch(/ready to deploy.*red-team \/ blue-team pass/);
+  });
+
+  it("does not let an agent start an optional phase, and gives it the question to ask", async () => {
+    await approvedThrough(throughReview);
+    const result = await engine.start(agent, "security-pass");
+    expect(result.ok).toBe(false);
+    expect(messages(result)).toMatch(/Only a person can decide/);
+    expect(messages(result)).toContain(OPTIONAL_PHASES["security-pass"]);
+  });
+
+  it("lets a person agree to it by starting it", async () => {
+    await approvedThrough(throughReview);
+    expect((await engine.start(person, "security-pass")).ok).toBe(true);
+    expect((await store.readState()).phases["security-pass"].status).toBe("in_progress");
+  });
+
+  it("does not let an agent skip it", async () => {
+    await approvedThrough(throughReview);
+    const result = await engine.skip(agent, "security-pass");
+    expect(result.ok).toBe(false);
+    expect(messages(result)).toMatch(/Only a person can/);
+  });
+
+  it("records a person's decision to skip it, and the flow continues", async () => {
+    await approvedThrough(throughReview);
+    const skipped = await engine.skip(person, "security-pass", "Internal prototype, not deployed publicly");
+    expect(skipped.ok, messages(skipped)).toBe(true);
+    const state = await store.readState();
+    expect(state.phases["security-pass"].status).toBe("skipped");
+    expect(state.phases["security-pass"].decidedAt).toBeDefined();
+    const { events } = await store.readEvents();
+    const last = events[events.length - 1];
+    expect(last.type).toBe("phase_skipped");
+    expect(last.actor.kind).toBe("human");
+    expect(nextPhase("build", state)).toBe("release");
+    expect((await engine.start(agent, "release")).ok).toBe(true);
+  });
+
+  it("only skips an optional phase", async () => {
+    await approvedThrough(["idea-review", "research", "prd", "architecture", "build"]);
+    const result = await engine.skip(person, "review");
+    expect(result.ok).toBe(false);
+    expect(messages(result)).toMatch(/"review" is not optional/);
+  });
+
+  it("only skips it when it is its turn", async () => {
+    const result = await engine.skip(person, "security-pass");
+    expect(result.ok).toBe(false);
+    expect(messages(result)).toMatch(/"review" must be approved/);
+  });
+
+  it("does not skip a security pass that has already started", async () => {
+    await approvedThrough(throughReview);
+    await engine.start(person, "security-pass");
+    const result = await engine.skip(person, "security-pass");
+    expect(result.ok).toBe(false);
+    expect(messages(result)).toMatch(/already in_progress/);
+  });
+
+  it("keeps an existing project working: the new phases are simply not started", async () => {
+    // A project whose review was approved before these phases existed: same event log.
+    await approvedThrough(throughReview);
+    const state = await store.readState();
+    expect(state.phases["security-pass"]).toBeUndefined();
+    expect(nextPhase("build", state)).toBe("security-pass");
+  });
+
+  it("says in the summary that a person must decide", async () => {
+    await approvedThrough(throughReview);
+    const summary = await readFile(join(root, ".agents", "summary.md"), "utf8");
+    expect(summary).toContain('"security-pass" needs a decision from a person');
+    expect(summary).toContain(OPTIONAL_PHASES["security-pass"]);
   });
 });

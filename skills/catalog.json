@@ -83,6 +83,7 @@
     "license": "MIT",
     "phases": [
       "build",
+      "release",
       "handover"
     ],
     "domains": [
@@ -345,7 +346,8 @@
     "license": "unverified",
     "phases": [
       "architecture",
-      "review"
+      "review",
+      "security-pass"
     ],
     "domains": [
       "software-architecture",
@@ -409,7 +411,8 @@
     "isCustom": false,
     "license": "MIT",
     "phases": [
-      "build"
+      "build",
+      "release"
     ],
     "domains": [
       "version-control"
@@ -778,6 +781,7 @@
     "license": "MIT",
     "phases": [
       "build",
+      "release",
       "handover"
     ],
     "domains": [
@@ -888,7 +892,8 @@
     "license": "unverified",
     "phases": [
       "build",
-      "review"
+      "review",
+      "security-pass"
     ],
     "domains": [
       "security"
@@ -909,7 +914,8 @@
     "isCustom": false,
     "license": "unverified",
     "phases": [
-      "review"
+      "review",
+      "security-pass"
     ],
     "domains": [
       "security"
@@ -930,6 +936,7 @@
     "isCustom": false,
     "license": "MIT",
     "phases": [
+      "release",
       "handover"
     ],
     "domains": [

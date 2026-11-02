@@ -41,6 +41,8 @@ pub enum PhaseStatus {
     AwaitingReview,
     ChangesRequested,
     Approved,
+    /// An optional phase a person declined (C15, SEC-1).
+    Skipped,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -113,6 +115,7 @@ pub enum EventType {
     PhaseStarted,
     PhaseSubmitted,
     PhaseApproved,
+    PhaseSkipped,
     ChangesRequested,
     TaskCreated,
     DesignNoteSubmitted,
@@ -128,12 +131,13 @@ pub enum EventType {
 
 impl EventType {
     /// Every variant, so tests can compare this enum with the schema's list.
-    pub const ALL: [EventType; 16] = [
+    pub const ALL: [EventType; 17] = [
         EventType::ProjectCreated,
         EventType::ToolsSelected,
         EventType::PhaseStarted,
         EventType::PhaseSubmitted,
         EventType::PhaseApproved,
+        EventType::PhaseSkipped,
         EventType::ChangesRequested,
         EventType::TaskCreated,
         EventType::DesignNoteSubmitted,

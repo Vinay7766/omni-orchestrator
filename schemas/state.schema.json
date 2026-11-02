@@ -18,7 +18,7 @@
         "required": ["status"],
         "additionalProperties": false,
         "properties": {
-          "status": { "enum": ["not_started", "in_progress", "awaiting_review", "changes_requested", "approved"] },
+          "status": { "enum": ["not_started", "in_progress", "awaiting_review", "changes_requested", "approved", "skipped"] },
           "submittedAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" },
           "decidedAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" }
         }

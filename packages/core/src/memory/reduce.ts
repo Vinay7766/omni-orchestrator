@@ -41,6 +41,9 @@ export function applyEvent(state: State, event: Event): State {
     case "phase_approved":
       setPhase("approved", { decidedAt: event.time });
       break;
+    case "phase_skipped":
+      setPhase("skipped", { decidedAt: event.time });
+      break;
     case "task_created":
       if (!next.tasks.some((t) => t.id === payload.taskId)) {
         next.tasks.push({ id: payload.taskId, title: payload.title, status: "todo" });
