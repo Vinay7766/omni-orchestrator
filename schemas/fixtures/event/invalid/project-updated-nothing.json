@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-02T10:00:00Z",
+  "type": "project_updated",
+  "actor": {
+    "kind": "human",
+    "tool": "omni-desktop"
+  },
+  "payload": {}
+}

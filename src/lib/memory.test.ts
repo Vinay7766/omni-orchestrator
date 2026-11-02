@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, refreshMemoryDocs } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { addEntry, loadMemoryFiles, MEMORY_FILES } from "./memory";
+import { addEntry, loadMemoryFiles, MEMORY_FILES, updateProjectDetails } from "./memory";
 import { DESKTOP_PERSON } from "./decisions";
 import { fakeInvoke } from "./testing/fake-invoke";
 
@@ -72,5 +72,22 @@ describe("project memory in the app", () => {
     const result = await addEntry(fakeInvoke(), root, { kind: "decision", title: "t", decision: "d", reason: "r", files: [], commits: ["a1b2c3d"] });
     expect(result.ok).toBe(true);
     expect(result.message).toMatch(/a1b2c3d could not be verified/);
+  });
+});
+
+describe("project details (E3 slice 4b)", () => {
+  it("renames the project as the person and refreshes the summary", async () => {
+    const result = await updateProjectDetails(fakeInvoke(), root, { name: "Orbit planner" });
+    expect(result).toEqual({ ok: true, message: "Project details saved." });
+    expect((await store.readEvents()).events.at(-1)).toEqual(expect.objectContaining({ type: "project_updated", actor: DESKTOP_PERSON }));
+    const files = await loadMemoryFiles(fakeInvoke(), root);
+    if (!files.ok) throw new Error(files.error);
+    expect(files.files.find((f) => f.name === "summary.md")!.content).toContain("# Orbit planner");
+  });
+
+  it("refuses an empty name with the reason", async () => {
+    const result = await updateProjectDetails(fakeInvoke(), root, { name: "" });
+    expect(result.ok).toBe(false);
+    expect(result.message.length).toBeGreaterThan(0);
   });
 });

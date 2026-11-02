@@ -33,7 +33,7 @@ export async function loadProjects(invoke: Invoke, folders: string[]): Promise<P
 
 /** One project's phase history for the detail screen (E3, GATE-5). */
 export type ProjectDetailResult =
-  | { ok: true; name: string; flow: string; history: PhaseHistoryEntry[] }
+  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[] }
   | { ok: false; error: string };
 
 export async function loadProjectDetail(invoke: Invoke, root: string): Promise<ProjectDetailResult> {
@@ -41,7 +41,7 @@ export async function loadProjectDetail(invoke: Invoke, root: string): Promise<P
     const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root));
     if (!opened.ok) return { ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
     const project = opened.store.readProject();
-    return { ok: true, name: project.name, flow: project.flow, history: await phaseHistory(opened.store) };
+    return { ok: true, name: project.name, flow: project.flow, mode: project.mode, history: await phaseHistory(opened.store) };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }

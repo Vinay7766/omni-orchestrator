@@ -249,6 +249,7 @@ export interface Event1 {
   time: CommonTimestamp;
   type:
     | "project_created"
+    | "project_updated"
     | "tools_selected"
     | "phase_started"
     | "phase_submitted"
@@ -543,4 +544,14 @@ export interface EventMemoryUpdated {
 export interface EventPhaseSkipped {
   phase: CommonPhaseId;
   reason?: CommonNonEmptyText;
+}
+/**
+ * A person changed the project's name and/or mode (project.json is rewritten with the same values).
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "event_projectUpdated".
+ */
+export interface EventProjectUpdated {
+  name?: string;
+  mode?: "full" | "simple";
 }

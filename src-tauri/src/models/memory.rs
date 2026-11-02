@@ -111,6 +111,8 @@ pub struct Actor {
 #[serde(rename_all = "snake_case")]
 pub enum EventType {
     ProjectCreated,
+    /// A person changed the project's name or mode (E3, APP-2).
+    ProjectUpdated,
     ToolsSelected,
     PhaseStarted,
     PhaseSubmitted,
@@ -131,8 +133,9 @@ pub enum EventType {
 
 impl EventType {
     /// Every variant, so tests can compare this enum with the schema's list.
-    pub const ALL: [EventType; 17] = [
+    pub const ALL: [EventType; 18] = [
         EventType::ProjectCreated,
+        EventType::ProjectUpdated,
         EventType::ToolsSelected,
         EventType::PhaseStarted,
         EventType::PhaseSubmitted,

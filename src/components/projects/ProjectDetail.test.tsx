@@ -5,8 +5,9 @@ import type { ProjectDetailResult } from "../../lib/projects";
 
 const detail: ProjectDetailResult = {
   ok: true,
-  name: "Orbit planner",
+  name: "Orbit",
   flow: "build",
+  mode: "full",
   history: [{ phase: "idea-review", status: "in_progress", isNext: true, submissions: [], changeRequests: [] }],
 };
 
@@ -18,7 +19,7 @@ describe("ProjectDetail", () => {
     expect(screen.getByRole("status").textContent).toMatch(/loading/i);
     expect(load).toHaveBeenCalledWith("C:/work/orbit");
     resolve(detail);
-    expect(await screen.findByRole("heading", { name: "Orbit planner" })).toBeDefined();
+    expect(await screen.findByRole("heading", { name: "Orbit" })).toBeDefined();
     expect(screen.getByRole("list", { name: "Phases" })).toBeDefined();
   });
 
@@ -31,7 +32,7 @@ describe("ProjectDetail", () => {
   it("goes back to the projects list", async () => {
     const onBack = vi.fn();
     render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(detail)} onBack={onBack} />);
-    await screen.findByRole("heading", { name: "Orbit planner" });
+    await screen.findByRole("heading", { name: "Orbit" });
     fireEvent.click(screen.getByRole("button", { name: /back to projects/i }));
     expect(onBack).toHaveBeenCalled();
   });
@@ -42,6 +43,7 @@ describe("ProjectDetail: decisions (E3 slice 3)", () => {
     ok: true,
     name: "Orbit planner",
     flow: "build",
+    mode: "full",
     history: [{ phase: "prd", status: "awaiting_review", isNext: true, submissions: [], changeRequests: [] }],
   };
   const approved: ProjectDetailResult = {
@@ -78,5 +80,19 @@ describe("ProjectDetail: project memory (E3 slice 4a)", () => {
     expect(await screen.findByRole("heading", { name: "Project memory" })).toBeDefined();
     expect((await screen.findByLabelText("summary.md")).textContent).toContain("# Orbit");
     expect(memory.load).toHaveBeenCalledWith("C:/work/orbit");
+  });
+});
+
+describe("ProjectDetail: project details (E3 slice 4b)", () => {
+  it("saves a new name, announces it and shows the renamed project", async () => {
+    const renamed = { ...detail, name: "Orbit planner" } as ProjectDetailResult;
+    const load = vi.fn().mockResolvedValueOnce(detail).mockResolvedValueOnce(renamed);
+    const update = vi.fn(() => Promise.resolve({ ok: true, message: "Project details saved." }));
+    render(<ProjectDetail root="C:/work/orbit" load={load} onBack={vi.fn()} details={{ update }} />);
+    fireEvent.change(await screen.findByLabelText("Project name"), { target: { value: "Orbit planner" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save details" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/Project details saved/);
+    expect(update).toHaveBeenCalledWith("C:/work/orbit", { name: "Orbit planner" });
+    expect(await screen.findByRole("heading", { name: "Orbit planner" })).toBeDefined();
   });
 });

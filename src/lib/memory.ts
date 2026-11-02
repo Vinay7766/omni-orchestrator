@@ -11,6 +11,7 @@ import {
   recordDecision,
   recordLesson,
   recordProblem,
+  refreshMemoryDocs,
   type Invoke,
   type RecordResult,
   type RecordTarget,
@@ -46,6 +47,27 @@ export async function loadMemoryFiles(invoke: Invoke, root: string): Promise<Mem
     return { ok: true, files };
   } catch (error) {
     return { ok: false, error: reason(error) };
+  }
+}
+
+/** The person changes the project's name and/or mode (E3 slice 4b); the summary is refreshed. */
+export async function updateProjectDetails(
+  invoke: Invoke,
+  root: string,
+  changes: { name?: string; mode?: "full" | "simple" },
+): Promise<DecisionResult> {
+  try {
+    const { store } = await open(invoke, root);
+    const result = await store.updateProject(DESKTOP_PERSON, changes);
+    if (!result.ok) return { ok: false, message: result.issues.map((i) => (i.path ? `${i.path} ${i.message}` : i.message)).join("; ") };
+    try {
+      await refreshMemoryDocs(store);
+    } catch (error) {
+      return { ok: true, message: `Project details saved, but the memory documents could not be refreshed: ${reason(error)}` };
+    }
+    return { ok: true, message: "Project details saved." };
+  } catch (error) {
+    return { ok: false, message: reason(error) };
   }
 }
 

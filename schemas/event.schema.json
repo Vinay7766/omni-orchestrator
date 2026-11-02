@@ -26,6 +26,7 @@
     "type": {
       "enum": [
         "project_created",
+        "project_updated",
         "tools_selected",
         "phase_started",
         "phase_submitted",
@@ -93,6 +94,24 @@
       "if": {
         "properties": {
           "type": {
+            "const": "project_updated"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/projectUpdated"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "tools_selected"
           }
         },
@@ -150,14 +169,15 @@
             "enum": [
               "phase_approved",
               "changes_requested",
-              "phase_skipped"
+              "phase_skipped",
+              "project_updated"
             ]
           }
         },
         "type": "object"
       },
       "then": {
-        "description": "Only a human can approve a phase, request changes, or skip an optional phase (GATE-2, SEC-1).",
+        "description": "Only a human can approve a phase, request changes, skip an optional phase, or change the project's name or mode (GATE-2, SEC-1, APP-2).",
         "properties": {
           "actor": {
             "type": "object",
@@ -733,6 +753,25 @@
         },
         "reason": {
           "$ref": "urn:omni:schema:common#/$defs/nonEmptyText"
+        }
+      }
+    },
+    "projectUpdated": {
+      "type": "object",
+      "description": "A person changed the project's name and/or mode (project.json is rewritten with the same values).",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "mode": {
+          "enum": [
+            "full",
+            "simple"
+          ]
         }
       }
     }

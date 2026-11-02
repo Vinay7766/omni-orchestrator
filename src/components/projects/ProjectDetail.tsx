@@ -5,6 +5,7 @@ import type { DecisionResult } from "../../lib/decisions";
 import { PhaseHistory } from "./PhaseHistory";
 import type { PhaseDecisions } from "./PhaseActions";
 import { MemoryPanel } from "./MemoryPanel";
+import { ProjectDetailsForm } from "./ProjectDetailsForm";
 import type { MemoryFilesResult, NewEntry } from "../../lib/memory";
 
 /** How decisions are recorded for a project root (the app passes lib/decisions over invoke). */
@@ -21,6 +22,8 @@ interface ProjectDetailProps {
   onBack: () => void;
   /** When given, the person can decide (approve, request changes, run or skip) here. */
   decide?: DecideFns;
+  /** When given, the person can change the project's name and mode (E3 slice 4b). */
+  details?: { update: (root: string, changes: { name?: string; mode?: "full" | "simple" }) => Promise<DecisionResult> };
   /** When given, the project's memory files and the person's own entries are shown. */
   memory?: {
     load: (root: string) => Promise<MemoryFilesResult>;
@@ -31,7 +34,7 @@ interface ProjectDetailProps {
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, memory }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
 
@@ -96,6 +99,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
             <h2 className="text-base font-semibold text-zinc-100">{detail.name}</h2>
             <p className="text-xs font-mono text-zinc-500 break-all">{root}</p>
           </div>
+          {details && (
+            <ProjectDetailsForm name={detail.name} mode={detail.mode} onSave={(changes) => record(details.update(root, changes))} />
+          )}
           <PhaseHistory entries={detail.history} decisions={decisions} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} />}
         </>

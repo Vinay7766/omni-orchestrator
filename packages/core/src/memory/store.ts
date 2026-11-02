@@ -57,7 +57,7 @@ export class MemoryStore {
   private constructor(
     private readonly fs: MemoryFs,
     readonly dir: string,
-    private readonly project: Project,
+    private project: Project,
     private readonly options: Required<StoreOptions>,
   ) {}
 
@@ -190,6 +190,30 @@ export class MemoryStore {
   /** The project's identity and settings (project.json). */
   readProject(): Project {
     return this.project;
+  }
+
+  /**
+   * A person changes the project's name and/or mode (APP-2). Checked against the project schema;
+   * project.json is rewritten atomically inside the lock, then project_updated is recorded. If
+   * writing the file fails, nothing is recorded; an agent is refused (also by the event schema).
+   */
+  async updateProject(actor: Event["actor"], changes: { name?: string; mode?: Project["mode"] }): Promise<AppendResult> {
+    if (actor.kind !== "human") return { ok: false, issues: [issue("Only a person can change the project's name or mode.")] };
+    const wanted = {
+      ...(changes.name !== undefined ? { name: redactText(changes.name).text } : {}),
+      ...(changes.mode !== undefined ? { mode: changes.mode } : {}),
+    };
+    const payload = Object.fromEntries(Object.entries(wanted).filter(([key, value]) => this.project[key as keyof Project] !== value));
+    if (Object.keys(payload).length === 0) return { ok: false, issues: [issue("nothing to change: the name and mode are already these values")] };
+    const next = { ...this.project, ...payload } as Project;
+    const valid = validateMemoryFile("project", next);
+    if (!valid.ok) return valid;
+
+    const result = await this.appendEvent({ type: "project_updated", actor, payload }, undefined, () =>
+      this.writeFile("project.json", JSON.stringify(next, null, 2) + "\n"),
+    );
+    if (result.ok) this.project = next;
+    return result;
   }
 
   /** Every valid event in order; broken or invalid lines are reported, not fatal. */
