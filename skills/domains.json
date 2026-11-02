@@ -317,17 +317,20 @@
     {
       "id": "algorithms-data-structures",
       "description": "Choosing and implementing algorithms and data structures (SWEBOK: computing foundations)",
-      "function": "engineering"
+      "function": "engineering",
+      "note": "Partly covered: solution-design makes the agent name the problem class and derive time and space complexity before choosing an approach. No vetted skill teaches specific algorithms or data structures."
     },
     {
       "id": "networking",
       "description": "Protocols, sockets, HTTP, latency and offline behaviour",
-      "function": "engineering"
+      "function": "engineering",
+      "note": "No vetted skill yet: the skills found under this name were career-networking or single-project files from unknown authors."
     },
     {
       "id": "i18n-l10n",
       "description": "Internationalisation and localisation: languages, formats, right-to-left text",
-      "function": "ux"
+      "function": "ux",
+      "note": "No vetted skill yet. FormatJS's localization-review was the best candidate, but its repository has no license file, so it cannot be bundled. swiftui-expert-skill covers localization for Apple platforms only."
     },
     {
       "id": "software-maintenance",
@@ -337,23 +340,20 @@
     {
       "id": "configuration-management",
       "description": "Versions, baselines, environments and configuration (SWEBOK: configuration management)",
-      "function": "release"
+      "function": "release",
+      "note": "Versions, release tags and changelogs covered by git-workflow-and-versioning. Environment and runtime configuration management: no vetted skill yet."
     },
     {
       "id": "payments",
       "description": "Taking payments safely: providers, webhooks, refunds, compliance basics",
-      "function": "engineering"
+      "function": "engineering",
+      "note": "Stripe covered by Stripe's own skill. Provider-neutral PCI DSS guidance: no vetted skill yet (wshobson's pci-compliance was rejected because its examples use Stripe's legacy Charges API and a hard-coded global API key)."
     }
   ],
   "pendingGaps": [
     "adversarial-security",
-    "algorithms-data-structures",
-    "configuration-management",
     "i18n-l10n",
-    "low-level-design",
     "networking",
-    "payments",
-    "software-maintenance",
     "stack-selection"
   ],
   "pendingGapsNote": "Domains not yet covered by a vetted skill (tasks A8-A10). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow.",

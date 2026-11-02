@@ -19,7 +19,8 @@
     ],
     "domains": [
       "api-design",
-      "software-architecture"
+      "software-architecture",
+      "low-level-design"
     ]
   },
   {
@@ -108,7 +109,8 @@
       "review"
     ],
     "domains": [
-      "code-quality"
+      "code-quality",
+      "software-maintenance"
     ]
   },
   {
@@ -282,7 +284,8 @@
       "build"
     ],
     "domains": [
-      "software-architecture"
+      "software-architecture",
+      "software-maintenance"
     ]
   },
   {
@@ -393,7 +396,8 @@
       "release"
     ],
     "domains": [
-      "version-control"
+      "version-control",
+      "configuration-management"
     ]
   },
   {
@@ -1159,7 +1163,8 @@
     ],
     "domains": [
       "software-architecture",
-      "code-quality"
+      "code-quality",
+      "algorithms-data-structures"
     ]
   },
   {
@@ -1250,7 +1255,8 @@
     ],
     "domains": [
       "backend",
-      "software-architecture"
+      "software-architecture",
+      "low-level-design"
     ]
   },
   {
@@ -1722,6 +1728,28 @@
     "domains": [
       "end-to-end-and-load-testing",
       "performance"
+    ]
+  },
+  {
+    "id": "stripe-best-practices",
+    "name": "stripe-best-practices",
+    "description": "Building or reviewing a Stripe integration: choosing between Checkout Sessions and PaymentIntents, Connect, subscriptions, tax, webhooks as a requirement, restricted API keys and other security rules.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Stripe (stripe/ai)",
+      "role": "Official Stripe agent skills (2k stars)",
+      "sourceUrl": "https://github.com/stripe/ai",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "architecture",
+      "build"
+    ],
+    "domains": [
+      "payments"
     ]
   }
 ]

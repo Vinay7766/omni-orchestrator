@@ -21,6 +21,7 @@ Skills marked `unverified` in `catalog.json` have not had their license confirme
 | https://github.com/grafana/skills | Apache-2.0 | k6 |
 | https://github.com/google/agents-cli | Apache-2.0 | google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow (identical to commit `bea5875`) || https://github.com/hashicorp/agent-skills | MPL-2.0 | terraform-style-guide |
 | https://github.com/obra/superpowers | MIT | brainstorming |
+| https://github.com/stripe/ai | MIT | stripe-best-practices |
 | https://github.com/rorkai/app-store-connect-cli-skills | MIT | asc-release-flow, asc-submission-health |
 | https://github.com/wshobson/agents | MIT | architecture-patterns, react-native-architecture |
 | https://github.com/yanliudesign/product-teardown-skill | unverified | idea-descriptor, idea-refine, idea-review, interview-me, product-teardown |
@@ -196,6 +197,32 @@ SOFTWARE.
 MIT License
 
 Copyright (c) 2026 Xabier Ariznabarreta Alomar
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## MIT License: stripe/ai
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2024–2025 Stripe
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
