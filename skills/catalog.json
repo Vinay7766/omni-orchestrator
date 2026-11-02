@@ -1391,5 +1391,114 @@
       "product-discovery",
       "requirements"
     ]
+  },
+  {
+    "id": "swiftui-expert-skill",
+    "name": "swiftui-expert-skill",
+    "description": "Writing, reviewing and refactoring SwiftUI code for iOS and macOS: state and @Observable data flow, view composition, layout, performance, lists, accessibility, localization, animation and API migration, with a correctness checklist.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Antoine van der Lee (AvdLee/SwiftUI-Agent-Skill)",
+      "role": "iOS developer and author (3.8k stars)",
+      "sourceUrl": "https://github.com/AvdLee/SwiftUI-Agent-Skill",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "build",
+      "review"
+    ],
+    "domains": [
+      "mobile-native"
+    ]
+  },
+  {
+    "id": "android-cli",
+    "name": "android-cli",
+    "description": "Native Android development with Google's android CLI: create projects, build, install and run apps, manage emulators and the SDK, inspect and drive the UI, run journey tests and search the official Android documentation.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Google (android/skills)",
+      "role": "Official Android skills (10k stars)",
+      "sourceUrl": "https://github.com/android/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "build",
+      "review"
+    ],
+    "domains": [
+      "mobile-native"
+    ]
+  },
+  {
+    "id": "aws-deployment",
+    "name": "aws-deployment",
+    "description": "CI/CD on AWS with CodePipeline, CodeBuild, CodeDeploy, CodeConnections and CodeArtifact: pipelines, buildspec files, blue/green and canary deployments, cross-account deploys, troubleshooting and security rules.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Amazon Web Services (aws/agent-toolkit-for-aws)",
+      "role": "Official AWS skills (3.4k stars)",
+      "sourceUrl": "https://github.com/aws/agent-toolkit-for-aws",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "build",
+      "release"
+    ],
+    "domains": [
+      "cloud",
+      "ci-cd"
+    ]
+  },
+  {
+    "id": "asc-release-flow",
+    "name": "asc-release-flow",
+    "description": "Releasing an app to the Apple App Store with the asc CLI: stage metadata and a build, upload or build, validate, then submit for review, with a dry run before every change.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Rudrank Riyam (rorkai/app-store-connect-cli-skills)",
+      "role": "Community App Store Connect tooling (1.1k stars)",
+      "sourceUrl": "https://github.com/rorkai/app-store-connect-cli-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "release"
+    ],
+    "domains": [
+      "app-distribution"
+    ]
+  },
+  {
+    "id": "asc-submission-health",
+    "name": "asc-submission-health",
+    "description": "Diagnosing App Store submission blockers with the asc CLI: readiness validation, repair routing, review status, cancellation and retry decisions; hands healthy releases back to asc-release-flow.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Rudrank Riyam (rorkai/app-store-connect-cli-skills)",
+      "role": "Community App Store Connect tooling (1.1k stars)",
+      "sourceUrl": "https://github.com/rorkai/app-store-connect-cli-skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "MIT",
+    "phases": [
+      "release"
+    ],
+    "domains": [
+      "app-distribution"
+    ]
   }
 ]

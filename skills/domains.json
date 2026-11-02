@@ -171,7 +171,8 @@
     {
       "id": "cloud",
       "description": "Cloud platforms and managed services",
-      "function": "operations"
+      "function": "operations",
+      "note": "Azure: Microsoft's official azure-deploy skill only works together with azure-prepare and azure-validate (about 200 files), so it is not bundled yet."
     },
     {
       "id": "security",
@@ -251,7 +252,8 @@
     {
       "id": "app-distribution",
       "description": "Publishing to app stores and package registries, store review",
-      "function": "release"
+      "function": "release",
+      "note": "Apple App Store covered (asc skills, which need the unofficial asc CLI and the person's App Store Connect API key). Google Play: no vetted skill yet; Google's play-policy-insights depends on its Python scripts, including a store scraper."
     },
     {
       "id": "incident-response",
@@ -343,7 +345,6 @@
     "accessibility",
     "adversarial-security",
     "algorithms-data-structures",
-    "app-distribution",
     "compliance-privacy",
     "configuration-management",
     "cost-economics",
@@ -352,7 +353,6 @@
     "i18n-l10n",
     "incident-response",
     "low-level-design",
-    "mobile-native",
     "networking",
     "payments",
     "product-analytics",

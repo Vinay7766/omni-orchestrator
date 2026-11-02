@@ -8,15 +8,19 @@ Skills marked `unverified` in `catalog.json` have not had their license confirme
 
 | Source | License | Skills |
 |---|---|---|
+| https://github.com/AvdLee/SwiftUI-Agent-Skill | MIT | swiftui-expert-skill |
 | https://github.com/TexasBedouin/agent-skills | unverified | constraint-driven-development, doubt-driven-development, test-driven-development, vibe-check, vibe-code-rescue |
 | https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/solution-design | Apache-2.0 | solution-design |
 | https://github.com/addyosmani/agent-skills | MIT | api-and-interface-design, browser-testing-with-devtools, ci-cd-and-automation, code-review-and-quality, code-simplification, context-engineering, database-schema-validator, debugging-and-error-recovery, deprecation-and-migration, documentation-and-adrs, frontend-ui-engineering, git-commit-formatter, git-workflow-and-versioning, incremental-implementation, json-to-pydantic, license-header-adder, mcp-server-patterns, observability-and-instrumentation, performance-optimization, planning-and-task-breakdown, shipping-and-launch, source-driven-development, spec-driven-development, unified-memory, using-agent-skills, verification-loop |
+| https://github.com/android/skills | Apache-2.0 | android-cli |
 | https://github.com/anthropics/knowledge-work-plugins | Apache-2.0 | statistical-analysis, system-design |
+| https://github.com/aws/agent-toolkit-for-aws | Apache-2.0 | aws-deployment |
 | https://github.com/coreyhaines31/marketingskills | unverified | cold-email, competitor-profiling, customer-research, lead-magnets |
 | https://github.com/docker/skills | Apache-2.0 | docker-project-foundations |
 | https://github.com/google/skills | unverified | always-verify-gcp, google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow, prompt-caching-strategy, token-budget-advisor |
 | https://github.com/hashicorp/agent-skills | MPL-2.0 | terraform-style-guide |
 | https://github.com/obra/superpowers | MIT | brainstorming |
+| https://github.com/rorkai/app-store-connect-cli-skills | MIT | asc-release-flow, asc-submission-health |
 | https://github.com/wshobson/agents | MIT | architecture-patterns, react-native-architecture |
 | https://github.com/yanliudesign/product-teardown-skill | unverified | idea-descriptor, idea-refine, idea-review, interview-me, product-teardown |
 | https://owasp.org | unverified | security-and-hardening, security-review |
@@ -107,7 +111,68 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Apache License 2.0: anthropics/knowledge-work-plugins and docker/skills
+## MIT License: AvdLee/SwiftUI-Agent-Skill
+
+```
+MIT License
+
+Copyright (c) 2026 Antoine van der Lee
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## MIT License: rorkai/app-store-connect-cli-skills
+
+```
+MIT License
+
+Copyright (c) 2026 Rudrank Riyam
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Apache License 2.0: anthropics/knowledge-work-plugins, docker/skills, android/skills and aws/agent-toolkit-for-aws
+
+NOTICE file of aws/agent-toolkit-for-aws, reproduced as section 4(d) of the license requires:
+
+```
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+```
+
+android/skills, anthropics/knowledge-work-plugins and docker/skills ship no NOTICE file.
+
 
 ```
 Apache License
