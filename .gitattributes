@@ -1,1 +1,3 @@
 skills/** text eol=lf
+# Git hooks run under sh: they must keep LF line endings on every platform.
+scripts/hooks/* text eol=lf

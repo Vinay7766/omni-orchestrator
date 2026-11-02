@@ -9,7 +9,8 @@
     "test": "vitest run && npm run test --workspaces --if-present",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test:app": "vitest run"
+    "test:app": "vitest run",
+    "ci:check": "node scripts/ci-check.mjs"
   },
   "dependencies": {
     "@omni/core": "0.1.0",

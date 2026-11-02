@@ -10,5 +10,13 @@ cmd.exe /c 'call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools
     }
 }
 
-Set-Location "$PSScriptRoot\..\src-tauri"
+# CI's form (--manifest-path src-tauri/Cargo.toml) runs from the repository root;
+# the short form (cargo-dev.ps1 test) runs inside src-tauri.
+if ($CargoArgs -contains '--manifest-path') {
+    Set-Location "$PSScriptRoot\.."
+} else {
+    Set-Location "$PSScriptRoot\..\src-tauri"
+}
 & cargo @CargoArgs
+# Pass cargo's result on: callers (the pre-push check) must see a failure as a failure.
+exit $LASTEXITCODE

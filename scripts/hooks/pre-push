@@ -1,0 +1,5 @@
+#!/bin/sh
+# Blocks a push unless CI's steps pass in clean checkouts on this machine's OS
+# (steps read from .github/workflows/ci.yml; see scripts/ci-check.mjs).
+# Enable once per clone: git config core.hooksPath scripts/hooks
+exec node "$(git rev-parse --show-toplevel)/scripts/ci-check.mjs" --pre-push

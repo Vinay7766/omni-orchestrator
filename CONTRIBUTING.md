@@ -36,6 +36,18 @@ npm run build
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
+### Check the way CI does, before every push
+
+Passing in your working copy is not enough: leftover build output and caches can hide a failure that CI will see. Enable the pre-push check once per clone:
+
+```bash
+git config core.hooksPath scripts/hooks
+```
+
+On every push it runs CI's steps for your OS in fresh checkouts, one per CI job, and blocks the push if any step fails. The steps are read from `.github/workflows/ci.yml`, so the check always matches CI. Documentation-only pushes skip it. You can also run it by hand: `npm run ci:check`.
+
+It only covers your own OS: CI still checks the others after the push. `git push --no-verify` bypasses it; use that only in an emergency, and say so in the pull request.
+
 ---
 
 ## 🔒 Security Vulnerability Reporting

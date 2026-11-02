@@ -22,7 +22,7 @@ export default defineConfig(() => ({
     globals: true,
     pool: "threads",
     // Desktop app tests only; each workspace package runs its own tests.
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
   },
   clearScreen: false,
   server: {
