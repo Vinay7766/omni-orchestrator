@@ -18,6 +18,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_app_settings,
             save_app_settings,
+            // BYOK settings; keys in the OS credential store (NFR-10)
+            get_byok_config,
+            save_byok_config,
             get_custom_skills,
             save_custom_skill,
             delete_custom_skill,

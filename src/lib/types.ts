@@ -87,6 +87,19 @@ export interface BYOKConfig {
   activeProvider?: ByokProvider;
 }
 
+/** Whether API keys are kept between app starts (matches Rust KeyStorageStatus, NFR-10). */
+export interface KeyStorageStatus {
+  available: boolean;
+  /** Why keys are not kept, when `available` is false. */
+  message?: string;
+}
+
+/** BYOK settings with keys from the OS credential store (Rust ByokState). */
+export interface ByokState {
+  config: BYOKConfig;
+  keyStorage: KeyStorageStatus;
+}
+
 /** Protocols BYOK speaks; servers and models are the user's data (matches Rust ByokProvider). */
 export type ByokProvider = "gemini" | "claude" | "openai" | "compatible" | "ollama";
 

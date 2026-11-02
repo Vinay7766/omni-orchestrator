@@ -85,3 +85,39 @@ describe("BYOKSettings", () => {
     expect(mockedInvoke).not.toHaveBeenCalled();
   });
 });
+
+describe("BYOKSettings: where keys are kept (NFR-10)", () => {
+  beforeEach(() => mockedInvoke.mockReset());
+
+  it("says keys are kept in the system credential store when one is available", () => {
+    render(<BYOKSettings config={{}} onChange={vi.fn()} keyStorage={{ available: true }} />);
+    fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
+    expect(screen.getByText(/system credential store/i)).toBeDefined();
+  });
+
+  it("warns that keys last only this session when there is no credential store, with the reason", () => {
+    render(
+      <BYOKSettings config={{}} onChange={vi.fn()} keyStorage={{ available: false, message: "no Secret Service running" }} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
+    const warning = screen.getByRole("alert");
+    expect(warning.textContent).toMatch(/re-enter/i);
+    expect(warning.textContent).toMatch(/no Secret Service running/);
+  });
+
+  it("shows a save failure and stays open", async () => {
+    const onChange = vi.fn().mockRejectedValue("Failed to write settings: access denied");
+    render(<BYOKSettings config={{}} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Save Configuration/ }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/access denied/);
+    expect(screen.getByRole("button", { name: /Save Configuration/ })).toBeDefined();
+  });
+
+  it("shows settings that arrive after it first rendered (loaded at app start)", () => {
+    const { rerender } = render(<BYOKSettings config={{}} onChange={vi.fn()} />);
+    rerender(<BYOKSettings config={{ preferredModel: "made-up-model-7b" }} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
+    expect((screen.getByLabelText("Model") as HTMLInputElement).value).toBe("made-up-model-7b");
+  });
+});

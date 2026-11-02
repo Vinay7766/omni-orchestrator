@@ -25,6 +25,10 @@ serde = { version = "1", features = ["derive"] }
 # preserve_order: editing another tool's JSON config must keep the user's key order (D5).
 serde_json = { version = "1", features = ["preserve_order"] }
 reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], default-features = false }
+# BYOK API keys live in the OS credential store, never in settings.json (NFR-10). Default
+# features ("v1") pick Windows Credential Manager, macOS Keychain, or the Secret Service on
+# Linux. MIT OR Apache-2.0. https://docs.rs/keyring/4.2.0/keyring/v1/index.html
+keyring = "4.2.0"
 
 
 [dev-dependencies]

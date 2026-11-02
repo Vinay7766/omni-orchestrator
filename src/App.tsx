@@ -8,6 +8,8 @@ import type {
   DiscoveredTool,
   LaunchResult,
   BYOKConfig,
+  ByokState,
+  KeyStorageStatus,
 } from "./lib/types";
 import { ChatContainer } from "./components/chat/ChatContainer";
 import { PromptInput } from "./components/chat/PromptInput";
@@ -26,6 +28,8 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [byokConfig, setByokConfig] = useState<BYOKConfig>({});
+  const [keyStorage, setKeyStorage] = useState<KeyStorageStatus | undefined>(undefined);
+  const [byokLoadError, setByokLoadError] = useState<string | undefined>(undefined);
 
   // Modals & Panels
   const [showStaging, setShowStaging] = useState(false);
@@ -46,7 +50,23 @@ export function App() {
     loadInitialData();
   }, []);
 
+  // Saves BYOK settings: keys go to the OS credential store, the rest to settings.json.
+  const saveByok = async (config: BYOKConfig) => {
+    const status = await invoke<KeyStorageStatus>("save_byok_config", { byok: config });
+    setByokConfig(config);
+    setKeyStorage(status);
+    setByokLoadError(undefined);
+  };
+
   const loadInitialData = async () => {
+    try {
+      const state = await invoke<ByokState>("get_byok_config");
+      setByokConfig(state.config);
+      setKeyStorage(state.keyStorage);
+    } catch (e) {
+      setByokLoadError(String(e));
+    }
+
     try {
       const toolList = await invoke<DiscoveredTool[]>("discover_tools");
       setTools(toolList);
@@ -279,7 +299,7 @@ export function App() {
           {currentTrack === "track-b" && (
             <div className="px-4 pb-2 pt-2">
               <ErrorBoundary panelName="BYOK Settings">
-                <BYOKSettings config={byokConfig} onChange={setByokConfig} />
+                <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
               </ErrorBoundary>
             </div>
           )}

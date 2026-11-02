@@ -33,6 +33,52 @@ pub struct BYOKConfig {
     pub active_provider: Option<ByokProvider>,
 }
 
+impl BYOKConfig {
+    /// The fields that hold API keys, by their saved (camelCase) names. They are kept in the
+    /// OS credential store under these names and never written to settings.json (NFR-10).
+    pub const SECRET_FIELDS: [&'static str; 4] = ["geminiApiKey", "anthropicApiKey", "openaiApiKey", "compatibleApiKey"];
+
+    /// The key field called `name` (one of `SECRET_FIELDS`).
+    pub fn secret_mut(&mut self, name: &str) -> Option<&mut Option<String>> {
+        match name {
+            "geminiApiKey" => Some(&mut self.gemini_api_key),
+            "anthropicApiKey" => Some(&mut self.anthropic_api_key),
+            "openaiApiKey" => Some(&mut self.openai_api_key),
+            "compatibleApiKey" => Some(&mut self.compatible_api_key),
+            _ => None,
+        }
+    }
+
+    /// A copy with every key field removed.
+    pub fn without_secrets(&self) -> Self {
+        let mut copy = self.clone();
+        for name in Self::SECRET_FIELDS {
+            if let Some(field) = copy.secret_mut(name) {
+                *field = None;
+            }
+        }
+        copy
+    }
+}
+
+/// Whether API keys can be kept between app starts (NFR-10).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyStorageStatus {
+    pub available: bool,
+    /// Why keys are not kept, when `available` is false.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+/// BYOK settings as the app shows them: saved fields plus keys from the credential store.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ByokState {
+    pub config: BYOKConfig,
+    pub key_storage: KeyStorageStatus,
+}
+
 /// The protocols BYOK speaks. Which servers and models are used is the user's data (TOOL-6):
 /// `Compatible` covers any OpenAI-compatible server.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

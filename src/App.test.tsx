@@ -15,6 +15,7 @@ function mockBackend(overrides: Record<string, () => Promise<unknown>> = {}) {
     discover_tools: () => Promise.resolve([]),
     get_skills: () => Promise.resolve([]),
     get_default_project_path: () => Promise.resolve("C:\\Users\\test\\Projects"),
+    get_byok_config: () => Promise.resolve({ config: {}, keyStorage: { available: true } }),
     ...overrides,
   };
   mockedInvoke.mockImplementation((cmd: string) =>
@@ -133,5 +134,34 @@ describe("OmniOrchestrator App", () => {
     expect(screen.getByText(/OpenAI API error 401 Unauthorized/)).toBeDefined();
     expect(screen.queryByText(/Executive Teardown Complete/)).toBeNull();
     expect(screen.queryByRole("button", { name: /Open Teardown Report/i })).toBeNull();
+  });
+
+  it("loads the saved BYOK settings at start and saves changes through the credential-store command", async () => {
+    const saved: unknown[] = [];
+    mockBackend({
+      get_byok_config: () =>
+        Promise.resolve({ config: { geminiApiKey: "AIza-saved", preferredModel: "made-up-model-7b" }, keyStorage: { available: true } }),
+    });
+    const base = mockedInvoke.getMockImplementation()!;
+    mockedInvoke.mockImplementation((cmd: string, args?: unknown) => {
+      if (cmd === "save_byok_config") {
+        saved.push(args);
+        return Promise.resolve({ available: true });
+      }
+      return base(cmd, args as never);
+    });
+    await renderApp();
+
+    fireEvent.click(screen.getByLabelText("Select Execution Track"));
+    fireEvent.click(screen.getByText(/Track B • Strategic Flywheel/));
+    expect(screen.getByText("Gemini · made-up-model-7b")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "other-model" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Save Configuration/ }));
+    });
+    expect(saved).toEqual([{ byok: { geminiApiKey: "AIza-saved", preferredModel: "other-model" } }]);
+    expect(screen.getByText("Gemini · other-model")).toBeDefined();
   });
 });

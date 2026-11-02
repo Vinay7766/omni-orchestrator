@@ -1,11 +1,16 @@
 import React, { useId, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { BYOKConfig, ByokProvider } from "../../lib/types";
+import type { BYOKConfig, ByokProvider, KeyStorageStatus } from "../../lib/types";
 import { Key, Eye, EyeOff, Save, ChevronDown, RefreshCw } from "lucide-react";
 
 interface BYOKSettingsProps {
   config: BYOKConfig;
-  onChange: (config: BYOKConfig) => void;
+  /** Saves the settings; a rejection is shown and the panel stays open. */
+  onChange: (config: BYOKConfig) => void | Promise<void>;
+  /** Whether keys are kept between app starts (unknown until loaded). */
+  keyStorage?: KeyStorageStatus;
+  /** Why the saved settings could not be loaded, if they couldn't. */
+  loadError?: string;
 }
 
 /** Same order the backend uses when no provider is selected. */
@@ -38,12 +43,22 @@ const inputClass =
 
 type ModelList = { state: "idle" } | { state: "loading" } | { state: "loaded"; models: string[] } | { state: "error"; message: string };
 
-export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange }) => {
+export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange, keyStorage, loadError }) => {
   const id = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
   const [local, setLocal] = useState<BYOKConfig>(config);
   const [modelList, setModelList] = useState<ModelList>({ state: "idle" });
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Opening starts from the saved settings, which may have loaded after the first render.
+  const toggle = () => {
+    if (!isOpen) {
+      setLocal(config);
+      setSaveError(null);
+    }
+    setIsOpen(!isOpen);
+  };
 
   const set = (key: keyof BYOKConfig, value: string) => {
     setLocal((prev) => ({ ...prev, [key]: value === "" && key === "activeProvider" ? undefined : value }));
@@ -51,9 +66,11 @@ export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange }) 
   };
 
   const provider = resolveProvider(local);
-  const providerLabel = PROVIDERS.find((p) => p.id === provider)?.label;
   const providerReady = provider !== undefined && isSet(local[PROVIDERS.find((p) => p.id === provider)!.setUpBy]);
-  const badge = providerLabel ? `${providerLabel}${local.preferredModel ? ` · ${local.preferredModel}` : ""}` : "Not configured";
+  // Closed, the badge shows what is saved; open, what is being edited.
+  const shown = isOpen ? local : config;
+  const shownLabel = PROVIDERS.find((p) => p.id === resolveProvider(shown))?.label;
+  const badge = shownLabel ? `${shownLabel}${shown.preferredModel ? ` · ${shown.preferredModel}` : ""}` : "Not configured";
 
   const loadModels = async () => {
     if (!provider) return;
@@ -66,15 +83,20 @@ export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange }) 
     }
   };
 
-  const handleSave = () => {
-    onChange(local);
-    setIsOpen(false);
+  const handleSave = async () => {
+    setSaveError(null);
+    try {
+      await onChange(local);
+      setIsOpen(false);
+    } catch (e) {
+      setSaveError(String(e));
+    }
   };
 
   return (
     <div className="border border-zinc-800 rounded-xl bg-zinc-900/60 overflow-hidden">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggle}
         aria-expanded={isOpen}
         className="w-full px-4 py-3 flex items-center justify-between text-xs text-zinc-300 hover:bg-zinc-800/60 transition-colors"
       >
@@ -83,7 +105,7 @@ export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange }) 
           <span className="font-medium">BYOK Configuration</span>
           <span
             className={`px-2 py-0.5 rounded font-mono text-[10px] truncate ${
-              providerLabel
+              shownLabel
                 ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/60"
                 : "bg-amber-950/60 text-amber-400 border border-amber-800/60"
             }`}
@@ -96,9 +118,23 @@ export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange }) 
 
       {isOpen && (
         <div className="px-4 pb-4 space-y-3 border-t border-zinc-800 pt-3">
-          <p className="text-[11px] text-zinc-500">
-            Keys are stored locally only and sent only to the provider or endpoint you set up here.
-          </p>
+          {keyStorage?.available === false ? (
+            <p className="text-[11px] text-amber-400 break-words" role="alert">
+              Keys are not saved on this system: re-enter them after a restart. Keys are sent only to the
+              provider or endpoint you set up here. {keyStorage.message}
+            </p>
+          ) : (
+            <p className="text-[11px] text-zinc-500">
+              {keyStorage?.available
+                ? "Keys are kept in your system credential store (Windows Credential Manager, macOS Keychain or Secret Service), never in a settings file, and sent only to the provider or endpoint you set up here."
+                : "Keys are sent only to the provider or endpoint you set up here."}
+            </p>
+          )}
+          {loadError && (
+            <p className="text-[11px] text-red-400 break-words" role="alert">
+              Could not load your saved settings: {loadError}
+            </p>
+          )}
 
           <div className="flex items-center justify-end">
             <button onClick={() => setShowKeys(!showKeys)} className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1">
@@ -174,8 +210,14 @@ export const BYOKSettings: React.FC<BYOKSettingsProps> = ({ config, onChange }) 
             )}
           </div>
 
+          {saveError && (
+            <p className="text-[11px] text-red-400 break-words" role="alert">
+              Could not save: {saveError}
+            </p>
+          )}
+
           <button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             className="w-full py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center gap-1.5 transition-colors"
           >
             <Save className="w-3.5 h-3.5" />

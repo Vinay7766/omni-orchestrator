@@ -1,16 +1,31 @@
-use crate::models::{AppSettings, Skill, ProjectSession};
+use crate::models::{AppSettings, BYOKConfig, ByokState, KeyStorageStatus, Skill, ProjectSession};
+use crate::storage::secrets::KeyringStore;
 use crate::storage::store::StorageManager;
 
+/// App settings without API keys.
 #[tauri::command]
 pub fn get_app_settings() -> Result<AppSettings, String> {
     let storage = StorageManager::default_system();
     storage.load_settings()
 }
 
+/// Saves app settings; BYOK settings are left as saved (they change through `save_byok_config`).
 #[tauri::command]
 pub fn save_app_settings(settings: AppSettings) -> Result<(), String> {
     let storage = StorageManager::default_system();
-    storage.save_settings(&settings)
+    storage.save_settings_keeping_byok(&settings)
+}
+
+/// BYOK settings with keys from the OS credential store, and whether keys can be kept.
+#[tauri::command]
+pub fn get_byok_config() -> Result<ByokState, String> {
+    StorageManager::default_system().load_byok(&KeyringStore)
+}
+
+/// Saves BYOK settings: keys to the OS credential store, the rest to settings.json (NFR-10).
+#[tauri::command]
+pub fn save_byok_config(byok: BYOKConfig) -> Result<KeyStorageStatus, String> {
+    StorageManager::default_system().save_byok(&byok, &KeyringStore)
 }
 
 #[tauri::command]
