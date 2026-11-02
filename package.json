@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test:app": "vitest run",
-    "ci:check": "node scripts/ci-check.mjs"
+    "ci:check": "node scripts/ci-check.mjs",
+    "skills:coverage": "node scripts/skill-coverage.mjs"
   },
   "dependencies": {
     "@omni/core": "0.1.0",
