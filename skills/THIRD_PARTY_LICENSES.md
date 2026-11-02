@@ -18,9 +18,7 @@ Skills marked `unverified` in `catalog.json` have not had their license confirme
 | https://github.com/coreyhaines31/marketingskills | unverified | cold-email, competitor-profiling, customer-research, lead-magnets |
 | https://github.com/docker/skills | Apache-2.0 | docker-project-foundations |
 | https://github.com/affaan-m/ECC | MIT | prompt-caching-strategy, token-budget-advisor (identical to the ECC copies; token-budget-advisor originates from https://github.com/Xabilimon1/TBA-Token-Budget-Advisor-Claude-Code, MIT) |
-| https://github.com/google/agents-cli | Apache-2.0 | google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow (identical to commit `bea5875`) |
-| https://github.com/rominirani/antigravity-skills | none granted | always-verify-gcp (identical to the upstream copy). The repository has no license, so redistribution is not permitted: remove or replace before a public release |
-| https://github.com/hashicorp/agent-skills | MPL-2.0 | terraform-style-guide |
+| https://github.com/google/agents-cli | Apache-2.0 | google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow (identical to commit `bea5875`) || https://github.com/hashicorp/agent-skills | MPL-2.0 | terraform-style-guide |
 | https://github.com/obra/superpowers | MIT | brainstorming |
 | https://github.com/rorkai/app-store-connect-cli-skills | MIT | asc-release-flow, asc-submission-health |
 | https://github.com/wshobson/agents | MIT | architecture-patterns, react-native-architecture |
