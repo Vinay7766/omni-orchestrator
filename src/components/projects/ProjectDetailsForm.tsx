@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useState } from "react";
+import React, { useId, useState } from "react";
 import { Save } from "lucide-react";
 
 type Mode = "full" | "simple";
@@ -16,12 +16,9 @@ export const ProjectDetailsForm: React.FC<{
   const [draftName, setDraftName] = useState(name);
   const [draftMode, setDraftMode] = useState<Mode>(mode);
   const [busy, setBusy] = useState(false);
-
-  // A saved change reloads the project: start again from the new values.
-  useEffect(() => {
-    setDraftName(name);
-    setDraftMode(mode);
-  }, [name, mode]);
+  // The drafts start from the props once. The parent re-creates this form (key) when the saved
+  // name or mode changes; resetting them in an effect could overwrite what the person just typed
+  // if the effect ran late (seen as a timing failure in the clean-checkout check).
 
   const changes = {
     ...(draftName.trim() !== name ? { name: draftName.trim() } : {}),

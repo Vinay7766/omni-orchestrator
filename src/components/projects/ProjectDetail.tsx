@@ -100,7 +100,12 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
             <p className="text-xs font-mono text-zinc-500 break-all">{root}</p>
           </div>
           {details && (
-            <ProjectDetailsForm name={detail.name} mode={detail.mode} onSave={(changes) => record(details.update(root, changes))} />
+            <ProjectDetailsForm
+              key={`${detail.name}|${detail.mode}`}
+              name={detail.name}
+              mode={detail.mode}
+              onSave={(changes) => record(details.update(root, changes))}
+            />
           )}
           <PhaseHistory entries={detail.history} decisions={decisions} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} />}

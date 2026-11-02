@@ -96,3 +96,16 @@ describe("ProjectDetail: project details (E3 slice 4b)", () => {
     expect(await screen.findByRole("heading", { name: "Orbit planner" })).toBeDefined();
   });
 });
+
+describe("ProjectDetail: the details form after a save (E3 slice 4b)", () => {
+  it("shows the saved values, which may differ from what was typed", async () => {
+    const saved = { ...detail, name: "Orbit [REDACTED]" } as ProjectDetailResult;
+    const load = vi.fn().mockResolvedValueOnce(detail).mockResolvedValueOnce(saved);
+    const update = vi.fn(() => Promise.resolve({ ok: true, message: "Project details saved." }));
+    render(<ProjectDetail root="C:/work/orbit" load={load} onBack={vi.fn()} details={{ update }} />);
+    fireEvent.change(await screen.findByLabelText("Project name"), { target: { value: "Orbit sk-not-a-real-key" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save details" }));
+    await screen.findByRole("heading", { name: "Orbit [REDACTED]" });
+    expect((screen.getByLabelText("Project name") as HTMLInputElement).value).toBe("Orbit [REDACTED]");
+  });
+});
