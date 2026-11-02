@@ -152,6 +152,24 @@ transcripts, provider responses, project memory written by an earlier agent.
 |---|---|---|---|---|
 | T7.1 | Project text (ideas, plans, code context) is sent to an AI provider by the app (teardowns, planning) or read by a cloud AI agent through the MCP server | Sending happens only to the provider the person configured and only when they run the feature; nothing is sent in the background (NFR-1) | **proposed accepted risk**: using a cloud AI provider means sharing the text sent to it; the person chooses the provider (a local model keeps it on the machine) | Run the app with network access logged; assert no request leaves except to the configured provider during a feature the person started |
 
+## Latest red-team results
+
+Dry run on 2026-11-02 (`docs/security/red-team-2026-11-02.md`), 11 abuse
+cases from 10 rows, written as tests:
+
+- Controls that held (now tested): T1.1 (no human approval through any MCP
+  route, even when the client calls itself `omni-desktop` or sends extra
+  fields), T1.6 and T4.1 (payloads render as text, in jsdom), T4.2 for
+  `javascript:` links (React strips them), T3.4 (about 30 endpoint forms).
+- Open findings, reproduced: T2.1, T2.2 and T2.5 (approvals forged through
+  the event log or the state snapshot), T3.3 (keys in the model name and the
+  client name are stored unredacted), T4.2 extended (`data:` and `file:`
+  links pass into `href`), T6.2 (`--version` reaches the editor as an
+  option).
+- Noted, not yet tested: an MCP client can name itself `omni-desktop`, so a
+  view that shows only the tool name would show an agent's work as the
+  app's.
+
 ## Decisions needed from the owner (blocking the security pass)
 
 SEC-6 asks that every threat has a mitigation or an accepted risk. Until the
