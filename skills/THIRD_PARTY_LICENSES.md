@@ -13,11 +13,12 @@ Skills marked `unverified` in `catalog.json` have not had their license confirme
 | https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/solution-design | Apache-2.0 | solution-design |
 | https://github.com/addyosmani/agent-skills | MIT | api-and-interface-design, browser-testing-with-devtools, ci-cd-and-automation, code-review-and-quality, code-simplification, context-engineering, database-schema-validator, debugging-and-error-recovery, deprecation-and-migration, documentation-and-adrs, frontend-ui-engineering, git-commit-formatter, git-workflow-and-versioning, incremental-implementation, json-to-pydantic, license-header-adder, mcp-server-patterns, observability-and-instrumentation, performance-optimization, planning-and-task-breakdown, shipping-and-launch, source-driven-development, spec-driven-development, unified-memory, using-agent-skills, verification-loop |
 | https://github.com/android/skills | Apache-2.0 | android-cli |
-| https://github.com/anthropics/knowledge-work-plugins | Apache-2.0 | statistical-analysis, system-design |
-| https://github.com/aws/agent-toolkit-for-aws | Apache-2.0 | aws-deployment |
+| https://github.com/anthropics/knowledge-work-plugins | Apache-2.0 | accessibility-review, compliance-check, create-an-asset, incident-response, metrics-review, research-synthesis, statistical-analysis, system-design, user-research, vendor-review |
+| https://github.com/aws/agent-toolkit-for-aws | Apache-2.0 | aws-billing-and-cost-management, aws-deployment |
 | https://github.com/coreyhaines31/marketingskills | unverified | cold-email, competitor-profiling, customer-research, lead-magnets |
 | https://github.com/docker/skills | Apache-2.0 | docker-project-foundations |
 | https://github.com/affaan-m/ECC | MIT | prompt-caching-strategy, token-budget-advisor (identical to the ECC copies; token-budget-advisor originates from https://github.com/Xabilimon1/TBA-Token-Budget-Advisor-Claude-Code, MIT) |
+| https://github.com/grafana/skills | Apache-2.0 | k6 |
 | https://github.com/google/agents-cli | Apache-2.0 | google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow (identical to commit `bea5875`) || https://github.com/hashicorp/agent-skills | MPL-2.0 | terraform-style-guide |
 | https://github.com/obra/superpowers | MIT | brainstorming |
 | https://github.com/rorkai/app-store-connect-cli-skills | MIT | asc-release-flow, asc-submission-health |
@@ -215,7 +216,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Apache License 2.0: anthropics/knowledge-work-plugins, docker/skills, android/skills, aws/agent-toolkit-for-aws and google/agents-cli
+## Apache License 2.0: anthropics/knowledge-work-plugins, docker/skills, android/skills, aws/agent-toolkit-for-aws, google/agents-cli and grafana/skills
 
 NOTICE file of aws/agent-toolkit-for-aws, reproduced as section 4(d) of the license requires:
 
@@ -223,7 +224,7 @@ NOTICE file of aws/agent-toolkit-for-aws, reproduced as section 4(d) of the lice
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 ```
 
-android/skills, anthropics/knowledge-work-plugins, docker/skills and google/agents-cli ship no NOTICE file.
+android/skills, anthropics/knowledge-work-plugins, docker/skills, google/agents-cli and grafana/skills ship no NOTICE file.
 
 
 ```

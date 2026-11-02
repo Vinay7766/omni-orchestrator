@@ -258,12 +258,14 @@
     {
       "id": "incident-response",
       "description": "On-call, incident handling, postmortems, capacity planning (SRE)",
-      "function": "operations"
+      "function": "operations",
+      "note": "Incident handling, status updates and blameless postmortems covered. System capacity planning: no vetted skill yet (Anthropic's capacity-plan is about team capacity, not systems)."
     },
     {
       "id": "compliance-privacy",
       "description": "Privacy law, audits, licence compliance",
-      "function": "compliance"
+      "function": "compliance",
+      "note": "compliance-check covers GDPR, CCPA/CPRA and other privacy laws but not India's Digital Personal Data Protection Act 2023. Licence compliance: no dedicated skill yet."
     },
     {
       "id": "ux-research",
@@ -278,7 +280,8 @@
     {
       "id": "end-to-end-and-load-testing",
       "description": "End-to-end test strategy, load and stress testing",
-      "function": "qa"
+      "function": "qa",
+      "note": "Load, stress and functional checks covered by k6. Microsoft's playwright-cli is not bundled: its end-to-end test generation and test running live in reference files that would not ship, and it overlaps browser-testing-with-devtools."
     },
     {
       "id": "product-analytics",
@@ -293,7 +296,8 @@
     {
       "id": "cost-economics",
       "description": "Cost estimates, cloud cost, build-versus-buy (SWEBOK: software engineering economics)",
-      "function": "finance"
+      "function": "finance",
+      "note": "Vendor total cost of ownership (vendor-review) and AWS cost (aws-billing-and-cost-management) covered. Build-versus-buy for in-house work and other clouds: no vetted skill yet."
     },
     {
       "id": "stack-selection",
@@ -342,23 +346,15 @@
     }
   ],
   "pendingGaps": [
-    "accessibility",
     "adversarial-security",
     "algorithms-data-structures",
-    "compliance-privacy",
     "configuration-management",
-    "cost-economics",
-    "end-to-end-and-load-testing",
     "i18n-l10n",
-    "incident-response",
     "low-level-design",
     "networking",
     "payments",
-    "product-analytics",
-    "sales-enablement",
     "software-maintenance",
-    "stack-selection",
-    "ux-research"
+    "stack-selection"
   ],
   "pendingGapsNote": "Domains not yet covered by a vetted skill (tasks A8-A10). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow.",
   "sources": [

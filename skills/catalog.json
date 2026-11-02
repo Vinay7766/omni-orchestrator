@@ -1500,5 +1500,228 @@
     "domains": [
       "desktop-apps"
     ]
+  },
+  {
+    "id": "incident-response",
+    "name": "incident-response",
+    "description": "Running an incident from detection to postmortem: severity (SEV1-4), roles, status updates on a cadence, mitigation timeline, and a blameless postmortem with 5 whys and owned action items.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, engineering)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "release",
+      "handover"
+    ],
+    "domains": [
+      "incident-response",
+      "observability"
+    ]
+  },
+  {
+    "id": "accessibility-review",
+    "name": "accessibility-review",
+    "description": "Auditing a design or page against WCAG 2.1 AA: contrast, keyboard access and focus, labels and errors, name/role/value, screen reader behaviour, with findings by severity and criterion.",
+    "category": "testing",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, design)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "build",
+      "review"
+    ],
+    "domains": [
+      "accessibility"
+    ]
+  },
+  {
+    "id": "user-research",
+    "name": "user-research",
+    "description": "Planning user research: choosing a method (interviews, usability tests, surveys, card sorting, diary studies, A/B tests), sample sizes, an interview guide and analysis frameworks.",
+    "category": "strategy",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, design)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "research",
+      "prd"
+    ],
+    "domains": [
+      "ux-research"
+    ]
+  },
+  {
+    "id": "research-synthesis",
+    "name": "research-synthesis",
+    "description": "Turning interview notes, survey results, usability findings or support tickets into themes with quoted evidence, opportunities, segments and prioritised recommendations.",
+    "category": "strategy",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, design)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "research",
+      "prd"
+    ],
+    "domains": [
+      "ux-research"
+    ]
+  },
+  {
+    "id": "metrics-review",
+    "name": "metrics-review",
+    "description": "Reviewing product metrics: a North Star and lifecycle metrics, trends against targets, cohorts and funnels, dashboards and alerts, with a scorecard and recommended actions.",
+    "category": "strategy",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, product-management)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "prd",
+      "handover"
+    ],
+    "domains": [
+      "product-analytics"
+    ]
+  },
+  {
+    "id": "compliance-check",
+    "name": "compliance-check",
+    "description": "Checking a feature or initiative against privacy and data protection rules (GDPR, CCPA/CPRA and others): requirements, risks, approvals, DPA review and data subject requests. Not legal advice.",
+    "category": "security",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, legal)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "prd",
+      "security-pass",
+      "release"
+    ],
+    "domains": [
+      "compliance-privacy"
+    ]
+  },
+  {
+    "id": "create-an-asset",
+    "name": "create-an-asset",
+    "description": "Building a prospect-specific one-pager, deck or leave-behind from approved material and account facts, with every claim sourced, no invented numbers and internal-only content kept out.",
+    "category": "marketing",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, sales)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "presentation",
+      "outreach"
+    ],
+    "domains": [
+      "sales-enablement"
+    ]
+  },
+  {
+    "id": "vendor-review",
+    "name": "vendor-review",
+    "description": "Evaluating a vendor or comparing vendors: total cost of ownership over three years, risk, performance against SLAs, a recommendation and negotiation points.",
+    "category": "strategy",
+    "attribution": {
+      "name": "Anthropic (knowledge-work-plugins, operations)",
+      "role": "Official Anthropic plugin skills",
+      "sourceUrl": "https://github.com/anthropics/knowledge-work-plugins",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "architecture"
+    ],
+    "domains": [
+      "cost-economics"
+    ]
+  },
+  {
+    "id": "aws-billing-and-cost-management",
+    "name": "aws-billing-and-cost-management",
+    "description": "Analysing and reducing AWS cost: Cost Explorer, budgets, Savings Plans and Reserved Instances, right-sizing, pricing lookup and anomaly checks, with all arithmetic done in scripts.",
+    "category": "engineering",
+    "attribution": {
+      "name": "Amazon Web Services (aws/agent-toolkit-for-aws)",
+      "role": "Official AWS skills (3.4k stars)",
+      "sourceUrl": "https://github.com/aws/agent-toolkit-for-aws",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "architecture",
+      "handover"
+    ],
+    "domains": [
+      "cost-economics",
+      "cloud"
+    ]
+  },
+  {
+    "id": "k6",
+    "name": "k6",
+    "description": "Writing, validating and reviewing k6 load, stress, spike, soak, smoke and functional test scripts: executors, thresholds, checks and custom metrics, with every script validated before use.",
+    "category": "testing",
+    "attribution": {
+      "name": "Grafana Labs (grafana/skills)",
+      "role": "Official Grafana skills",
+      "sourceUrl": "https://github.com/grafana/skills",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "review",
+      "release"
+    ],
+    "domains": [
+      "end-to-end-and-load-testing",
+      "performance"
+    ]
   }
 ]
