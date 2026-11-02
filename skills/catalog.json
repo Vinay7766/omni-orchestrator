@@ -1773,5 +1773,52 @@
       "stack-selection",
       "software-architecture"
     ]
+  },
+  {
+    "id": "red-team",
+    "name": "red-team",
+    "description": "Trying to break your own project in the security pass, with the person's consent: work from the threat model, write each abuse case as a test against local code, and report findings for the blue team. Own project only, run locally; never other systems, live services or real credentials.",
+    "category": "security",
+    "attribution": {
+      "name": "OmniOrchestrator (from PRD SEC-1 to SEC-4, SEC-6)",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/red-team",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "security-pass"
+    ],
+    "domains": [
+      "adversarial-security",
+      "security",
+      "testing"
+    ]
+  },
+  {
+    "id": "blue-team",
+    "name": "blue-team",
+    "description": "Answering a red-team report: fix each finding test-first or record it as a risk the person accepts, add monitoring that shows the attack, write the incident response plan, and re-run every red-team test.",
+    "category": "security",
+    "attribution": {
+      "name": "OmniOrchestrator (from PRD SEC-3, SEC-4)",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/blue-team",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "security-pass",
+      "release"
+    ],
+    "domains": [
+      "adversarial-security",
+      "security",
+      "incident-response"
+    ]
   }
 ]
