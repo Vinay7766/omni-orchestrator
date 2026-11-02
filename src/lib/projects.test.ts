@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, PhaseEngine, type Invoke } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { loadProjects } from "./projects";
+import { loadProjectDetail, loadProjects } from "./projects";
 
 const node = createNodeFs();
 const agent = { kind: "agent" as const, tool: "made-up-agent" };
@@ -83,5 +83,25 @@ describe("loadProjects", () => {
   it("does not ask the backend anything when no folders are configured", async () => {
     const result = await loadProjects(() => Promise.reject("must not be called"), []);
     expect(result).toEqual({ projects: [], errors: [] });
+  });
+});
+
+describe("loadProjectDetail (E3)", () => {
+  it("reads a real project's name and phase history over the app's file commands", async () => {
+    const root = await project("orbit", "idea-review");
+    const detail = await loadProjectDetail(fakeInvoke([]), root);
+    if (!detail.ok) throw new Error(detail.error);
+    expect(detail.name).toBe("orbit");
+    expect(detail.history.map((h) => h.phase)[0]).toBe("idea-review");
+    expect(detail.history[0].status).toBe("in_progress");
+    expect(detail.history[0].started?.by).toEqual(agent);
+  });
+
+  it("reports the real reason when a folder is not a readable project", async () => {
+    const empty = join(base, "not-a-project");
+    mkdirSync(empty);
+    const detail = await loadProjectDetail(fakeInvoke([]), empty);
+    expect(detail.ok).toBe(false);
+    if (!detail.ok) expect(detail.error.length).toBeGreaterThan(0);
   });
 });

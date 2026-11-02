@@ -2,23 +2,18 @@ import React, { useCallback, useEffect, useId, useState } from "react";
 import { AlertTriangle, FolderOpen, Plus, RefreshCw, X } from "lucide-react";
 import type { ProjectOverview } from "@omni/core";
 import type { ProjectRow, ProjectsResult } from "../../lib/projects";
+import { statusWords } from "../../lib/phase-status";
 
 interface ProjectsListProps {
   /** Folders to look in (AppSettings.projectFolders). */
   folders: string[];
   onFoldersChange: (folders: string[]) => void;
   load: (folders: string[]) => Promise<ProjectsResult>;
+  /** Opens a project's phase history (E3). */
+  onOpen?: (root: string) => void;
   /** Injectable clock, for tests. */
   now?: () => number;
 }
-
-const STATUS_WORDS: Record<string, string> = {
-  not_started: "not started",
-  in_progress: "in progress",
-  awaiting_review: "review needed",
-  changes_requested: "changes requested",
-  approved: "approved",
-};
 
 /** "5 min ago", "3 h ago", "2 days ago". */
 export function timeAgo(iso: string, now: number): string {
@@ -32,7 +27,7 @@ export function timeAgo(iso: string, now: number): string {
 
 function phaseLine(o: ProjectOverview): string {
   if (!o.phase.id) return "No phase started";
-  return `${o.phase.id} · ${STATUS_WORDS[o.phase.status ?? "not_started"] ?? o.phase.status}`;
+  return `${o.phase.id} · ${statusWords(o.phase.status ?? "not_started")}`;
 }
 
 function tasksLine(o: ProjectOverview): string {
@@ -41,7 +36,7 @@ function tasksLine(o: ProjectOverview): string {
   return `${o.tasks.done} of ${o.tasks.total} tasks done${doing}`;
 }
 
-function Row({ row, now }: { row: ProjectRow; now: number }) {
+function Row({ row, now, onOpen }: { row: ProjectRow; now: number; onOpen?: (root: string) => void }) {
   if (!row.ok) {
     return (
       <li className="px-4 py-3 border-b border-zinc-800 last:border-b-0">
@@ -60,7 +55,17 @@ function Row({ row, now }: { row: ProjectRow; now: number }) {
   return (
     <li className="px-4 py-3 border-b border-zinc-800 last:border-b-0">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="text-sm font-medium text-zinc-100 truncate">{o.name}</span>
+        {onOpen ? (
+          <button
+            onClick={() => onOpen(row.root)}
+            aria-label={`Open ${o.name}`}
+            className="text-sm font-medium text-zinc-100 truncate hover:text-indigo-300 hover:underline text-left"
+          >
+            {o.name}
+          </button>
+        ) : (
+          <span className="text-sm font-medium text-zinc-100 truncate">{o.name}</span>
+        )}
         <span className={`text-xs shrink-0 ${review ? "text-amber-300" : "text-zinc-400"}`}>{phaseLine(o)}</span>
       </div>
       <p className="mt-0.5 text-xs font-mono text-zinc-500 break-all">{row.root}</p>
@@ -81,7 +86,7 @@ function Row({ row, now }: { row: ProjectRow; now: number }) {
   );
 }
 
-export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersChange, load, now = Date.now }) => {
+export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersChange, load, onOpen, now = Date.now }) => {
   const inputId = useId();
   const [result, setResult] = useState<ProjectsResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -206,7 +211,7 @@ export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersCh
       {result && result.projects.length > 0 && (
         <ul className="rounded-xl border border-zinc-800 bg-zinc-900/40" aria-label="Projects">
           {result.projects.map((row) => (
-            <Row key={row.root} row={row} now={now()} />
+            <Row key={row.root} row={row} now={now()} onOpen={onOpen} />
           ))}
         </ul>
       )}

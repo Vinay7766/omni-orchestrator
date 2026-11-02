@@ -100,3 +100,25 @@ describe("timeAgo", () => {
     expect(at("2026-11-01T10:05:00.000Z")).toBe("1 day ago");
   });
 });
+
+describe("ProjectsList: opening a project (E3)", () => {
+  it("opens a project's phase history", async () => {
+    const onOpen = vi.fn();
+    render(
+      <ProjectsList
+        folders={["C:/work"]}
+        onFoldersChange={vi.fn()}
+        load={() => Promise.resolve({ projects: [{ root: "C:/work/orbit", ok: true, overview: overview() }], errors: [] })}
+        onOpen={onOpen}
+        now={() => NOW}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Open Orbit planner" }));
+    expect(onOpen).toHaveBeenCalledWith("C:/work/orbit");
+  });
+
+  it("words a skipped optional phase", async () => {
+    setup(["C:/work"], { projects: [{ root: "C:/work/orbit", ok: true, overview: overview({ phase: { id: "security-pass", status: "skipped" } }) }], errors: [] });
+    expect(await screen.findByText("security-pass · skipped")).toBeDefined();
+  });
+});
