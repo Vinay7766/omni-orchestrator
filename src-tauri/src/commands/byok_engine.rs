@@ -73,6 +73,11 @@ struct GeminiResponsePart {
 
 // ── Anthropic Claude API shapes ────────────────────────────────
 
+/// Claude API version sent on every Anthropic request (raw HTTP: the `anthropic-version`
+/// header). 2026-10-21 rejects temperature / top_p / top_k, which these requests don't send.
+/// https://platform.claude.com/docs/en/api/migration-2026-10-21
+const ANTHROPIC_VERSION: &str = "2026-10-21";
+
 #[derive(Serialize)]
 struct ClaudeRequest {
     model: String,
@@ -367,7 +372,7 @@ impl ByokEngine {
                         .get(format!("{}/v1/models", self.bases.anthropic.trim_end_matches('/')))
                         .query(&query)
                         .header("x-api-key", credential)
-                        .header("anthropic-version", "2023-06-01");
+                        .header("anthropic-version", ANTHROPIC_VERSION);
                     let page: AnthropicModelPage = send_json(request, "Claude", Some(credential))?;
                     names.extend(page.data.into_iter().map(|m| m.id));
                     match (page.has_more, page.last_id) {
@@ -461,7 +466,7 @@ impl ByokEngine {
         let request = http_client(30)?
             .post(format!("{}/v1/messages", self.bases.anthropic.trim_end_matches('/')))
             .header("x-api-key", api_key)
-            .header("anthropic-version", "2023-06-01")
+            .header("anthropic-version", ANTHROPIC_VERSION)
             .header("Content-Type", "application/json")
             .json(&body);
         let parsed: ClaudeResponse = send_json(request, "Claude", Some(api_key))?;

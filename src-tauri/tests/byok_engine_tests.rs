@@ -413,3 +413,37 @@ fn baseline_blocking_call_duration() {
     let _ = engine.generate_teardown(&compatible(&base, None, Some("made-up-model")));
     println!("blocking call held the caller for {:?}", started.elapsed());
 }
+
+// G4: the Claude calls send API version 2026-10-21. Raw HTTP, so the version is the
+// anthropic-version header. On 2026-10-21 temperature / top_p / top_k return a 400, so the
+// Claude request must not send them. https://platform.claude.com/docs/en/api/migration-2026-10-21
+
+#[test]
+fn the_claude_request_sends_api_version_2026_10_21_and_no_sampling_fields() {
+    let (base, requests) = fake_server(vec![(200, r##"{"content":[{"type":"text","text":"# Made-up teardown"}]}"##)]);
+    let byok = BYOKConfig {
+        anthropic_api_key: Some("k".into()),
+        preferred_model: Some("made-up-model".into()),
+        active_provider: Some(ByokProvider::Claude),
+        ..Default::default()
+    };
+    let response = engine_at(&base).generate_teardown(&request_with(byok)).expect("teardown succeeds");
+    assert_eq!(response.source, "claude");
+
+    let raw = requests.recv().unwrap();
+    let lower = raw.to_ascii_lowercase();
+    assert!(raw.starts_with("POST /anthropic/v1/messages "), "{raw}");
+    assert!(lower.contains("\r\nanthropic-version: 2026-10-21\r\n"), "{raw}");
+    let body = &raw[raw.find("\r\n\r\n").unwrap() + 4..];
+    for removed in ["temperature", "top_p", "top_k"] {
+        assert!(!body.contains(removed), "{removed} sent: {body}");
+    }
+}
+
+#[test]
+fn the_claude_model_list_sends_api_version_2026_10_21() {
+    let (base, requests) = fake_server(vec![(200, r#"{"data":[{"type":"model","id":"made-up-a"}],"has_more":false}"#)]);
+    let byok = BYOKConfig { anthropic_api_key: Some("k".into()), ..Default::default() };
+    engine_at(&base).list_models(&byok, ByokProvider::Claude).unwrap();
+    assert!(requests.recv().unwrap().to_ascii_lowercase().contains("\r\nanthropic-version: 2026-10-21\r\n"));
+}
