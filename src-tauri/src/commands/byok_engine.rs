@@ -13,6 +13,23 @@ pub struct TeardownRequest {
     pub byok: BYOKConfig,
 }
 
+/// A prompt for the user's own model (E5 planning workspace). The prompt is sent as given.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionRequest {
+    pub prompt: String,
+    pub byok: BYOKConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionResponse {
+    pub text: String,
+    /// "gemini" | "claude" | "openai" | "compatible" | "ollama"
+    pub provider: String,
+    pub model: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeardownResponse {
@@ -206,6 +223,27 @@ fn credential(byok: &BYOKConfig, provider: ByokProvider) -> Option<&str> {
     }
 }
 
+/// The provider a call goes to: the one the user selected, else the first one set up.
+fn chosen_provider(byok: &BYOKConfig) -> Option<ByokProvider> {
+    byok.active_provider.or_else(|| PROVIDER_ORDER.into_iter().find(|p| credential(byok, *p).is_some()))
+}
+
+const NO_PROVIDER: &str =
+    "No AI provider is set up: add a key, or a local model's address, in Settings.";
+
+/// How long an answer may be and how long to wait for it. Cloud and local differ: local models
+/// on an ordinary machine are much slower.
+#[derive(Clone, Copy)]
+struct Limits {
+    max_tokens: u32,
+    cloud_timeout_secs: u64,
+    local_timeout_secs: u64,
+}
+
+const TEARDOWN_LIMITS: Limits = Limits { max_tokens: 2048, cloud_timeout_secs: 30, local_timeout_secs: 120 };
+/// A PRD or architecture document is long; a local model may take minutes to write one.
+const PLANNING_LIMITS: Limits = Limits { max_tokens: 16000, cloud_timeout_secs: 300, local_timeout_secs: 900 };
+
 fn require_credential(byok: &BYOKConfig, provider: ByokProvider) -> Result<&str, String> {
     credential(byok, provider).ok_or_else(|| {
         format!("{} is selected but not set up: add its key or address in BYOK settings.", label(provider))
@@ -300,14 +338,24 @@ impl ByokEngine {
     /// provider is called. The offline template is used only when nothing is set up.
     pub fn generate_teardown(&self, req: &TeardownRequest) -> Result<TeardownResponse, String> {
         let name = &req.target_product_or_company;
-        let byok = &req.byok;
-        let provider = match byok.active_provider {
-            Some(p) => p,
-            None => match PROVIDER_ORDER.into_iter().find(|p| credential(byok, *p).is_some()) {
-                Some(p) => p,
-                None => return Ok(self.generate_offline_template(req)),
-            },
-        };
+        if chosen_provider(&req.byok).is_none() {
+            return Ok(self.generate_offline_template(req));
+        }
+        let prompt = build_teardown_prompt(name, &req.analysis_type);
+        let (report, source, _model) = self.dispatch(&req.byok, &prompt, TEARDOWN_LIMITS)?;
+        Ok(build_response(name, report, source))
+    }
+
+    /// Sends `prompt` to the selected provider (or the first one set up) and returns its text
+    /// (E5, PLAN-1). Never answers from a template: no provider set up is an error.
+    pub fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, String> {
+        let (text, provider, model) = self.dispatch(&req.byok, &req.prompt, PLANNING_LIMITS)?;
+        Ok(CompletionResponse { text, provider: provider.to_string(), model: model.to_string() })
+    }
+
+    /// One call to one provider; only that provider is called, with the chosen model.
+    fn dispatch<'a>(&self, byok: &'a BYOKConfig, prompt: &str, limits: Limits) -> Result<(String, &'static str, &'a str), String> {
+        let provider = chosen_provider(byok).ok_or_else(|| NO_PROVIDER.to_string())?;
         let credential = require_credential(byok, provider)?;
         let model = configured(&byok.preferred_model).ok_or_else(|| {
             format!(
@@ -315,18 +363,17 @@ impl ByokEngine {
                 label(provider)
             )
         })?;
-        let prompt = build_teardown_prompt(name, &req.analysis_type);
-        let (report, source) = match provider {
-            ByokProvider::Gemini => (self.call_gemini(credential, model, &prompt)?, "gemini"),
-            ByokProvider::Claude => (self.call_claude(credential, model, &prompt)?, "claude"),
-            ByokProvider::Openai => (chat_openai_compatible(&self.bases.openai, Some(credential), model, &prompt)?, "openai"),
+        let (text, source) = match provider {
+            ByokProvider::Gemini => (self.call_gemini(credential, model, prompt, limits)?, "gemini"),
+            ByokProvider::Claude => (self.call_claude(credential, model, prompt, limits)?, "claude"),
+            ByokProvider::Openai => (chat_openai_compatible(&self.bases.openai, Some(credential), model, prompt, limits)?, "openai"),
             ByokProvider::Compatible => {
                 let key = configured(&byok.compatible_api_key);
-                (chat_openai_compatible(credential, key, model, &prompt)?, "compatible")
+                (chat_openai_compatible(credential, key, model, prompt, limits)?, "compatible")
             }
-            ByokProvider::Ollama => (self.call_ollama(credential, model, &prompt)?, "ollama"),
+            ByokProvider::Ollama => (self.call_ollama(credential, model, prompt, limits)?, "ollama"),
         };
-        Ok(build_response(name, report, source))
+        Ok((text, source, model))
     }
 
     /// The models a provider offers, read from the provider itself (TOOL-6: no model list in
@@ -417,7 +464,7 @@ impl ByokEngine {
 
     // ── Gemini API ────────────────────────────────────────────
 
-    fn call_gemini(&self, api_key: &str, model: &str, prompt: &str) -> Result<String, String> {
+    fn call_gemini(&self, api_key: &str, model: &str, prompt: &str, limits: Limits) -> Result<String, String> {
         // The model name goes into the URL path, so it may not carry path or query characters.
         if !model.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_')) || model.starts_with('.') {
             return Err(format!(
@@ -435,10 +482,10 @@ impl ByokEngine {
             }],
             generation_config: GeminiGenerationConfig {
                 temperature: 0.7,
-                max_output_tokens: 2048,
+                max_output_tokens: limits.max_tokens,
             },
         };
-        let request = http_client(30)?
+        let request = http_client(limits.cloud_timeout_secs)?
             .post(&url)
             .header("x-goog-api-key", api_key)
             .header("Content-Type", "application/json")
@@ -454,16 +501,16 @@ impl ByokEngine {
 
     // ── Anthropic Claude API ──────────────────────────────────
 
-    fn call_claude(&self, api_key: &str, model: &str, prompt: &str) -> Result<String, String> {
+    fn call_claude(&self, api_key: &str, model: &str, prompt: &str, limits: Limits) -> Result<String, String> {
         let body = ClaudeRequest {
             model: model.to_string(),
-            max_tokens: 2048,
+            max_tokens: limits.max_tokens,
             messages: vec![ClaudeMessage {
                 role: "user".to_string(),
                 content: prompt.to_string(),
             }],
         };
-        let request = http_client(30)?
+        let request = http_client(limits.cloud_timeout_secs)?
             .post(format!("{}/v1/messages", self.bases.anthropic.trim_end_matches('/')))
             .header("x-api-key", api_key)
             .header("anthropic-version", ANTHROPIC_VERSION)
@@ -480,14 +527,14 @@ impl ByokEngine {
 
     // ── Ollama (local) ────────────────────────────────────────
 
-    fn call_ollama(&self, endpoint: &str, model: &str, prompt: &str) -> Result<String, String> {
+    fn call_ollama(&self, endpoint: &str, model: &str, prompt: &str, limits: Limits) -> Result<String, String> {
         let url = endpoint_base(endpoint, false)?;
         let body = OllamaRequest {
             model: model.to_string(),
             prompt: prompt.to_string(),
             stream: false,
         };
-        let request = http_client(120)? // local models can be slow
+        let request = http_client(limits.local_timeout_secs)? // local models can be slow
             .post(format!("{}/api/generate", url.as_str().trim_end_matches('/')))
             .header("Content-Type", "application/json")
             .json(&body);
@@ -626,13 +673,13 @@ pub fn endpoint_base(base: &str, has_key: bool) -> Result<reqwest::Url, String> 
 }
 
 /// One chat completion against an OpenAI-compatible server at `base` (e.g. ".../v1").
-fn chat_openai_compatible(base: &str, api_key: Option<&str>, model: &str, prompt: &str) -> Result<String, String> {
+fn chat_openai_compatible(base: &str, api_key: Option<&str>, model: &str, prompt: &str, limits: Limits) -> Result<String, String> {
     let url = endpoint_base(base, api_key.is_some())?;
     let body = OpenAiRequest {
         model: model.to_string(),
         messages: vec![OpenAiMessage { role: "user".to_string(), content: prompt.to_string() }],
     };
-    let mut request = http_client(120)? // local runners can be slow
+    let mut request = http_client(limits.local_timeout_secs)? // local runners can be slow
         .post(format!("{}/chat/completions", url.as_str().trim_end_matches('/')))
         .header("Content-Type", "application/json")
         .json(&body);
@@ -709,6 +756,15 @@ pub async fn list_byok_models(byok: BYOKConfig, provider: ByokProvider) -> Resul
 #[tauri::command]
 pub async fn execute_strategic_teardown(request: TeardownRequest) -> Result<TeardownResponse, String> {
     tauri::async_runtime::spawn_blocking(move || ByokEngine::new().generate_teardown(&request))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// One prompt to the user's own model for a planning phase (E5). Off the main thread, like the
+/// teardown: a long document can take minutes.
+#[tauri::command]
+pub async fn byok_complete(request: CompletionRequest) -> Result<CompletionResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || ByokEngine::new().complete(&request))
         .await
         .map_err(|e| e.to_string())?
 }

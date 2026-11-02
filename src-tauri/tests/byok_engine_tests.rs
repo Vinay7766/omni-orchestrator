@@ -447,3 +447,84 @@ fn the_claude_model_list_sends_api_version_2026_10_21() {
     engine_at(&base).list_models(&byok, ByokProvider::Claude).unwrap();
     assert!(requests.recv().unwrap().to_ascii_lowercase().contains("\r\nanthropic-version: 2026-10-21\r\n"));
 }
+
+// ── General completion for the planning workspace (E5 slice 1, PLAN-1) ──
+
+use tauri_app_lib::commands::byok_engine::CompletionRequest;
+
+fn completion(byok: BYOKConfig, prompt: &str) -> CompletionRequest {
+    CompletionRequest { prompt: prompt.to_string(), byok }
+}
+
+#[test]
+fn a_completion_without_any_provider_is_an_error_never_a_template() {
+    let err = ByokEngine::new().complete(&completion(BYOKConfig::default(), "Review this idea")).unwrap_err();
+    assert!(err.contains("No AI provider is set up"), "{err}");
+}
+
+#[test]
+fn a_completion_returns_the_models_text_with_provider_and_model() {
+    let (base, requests) = fake_endpoint(200, REPLY);
+    let byok = BYOKConfig {
+        compatible_base_url: Some(base),
+        preferred_model: Some("nebula-7b".into()),
+        ..Default::default()
+    };
+    let response = ByokEngine::new().complete(&completion(byok, "Write the PRD for a plant-watering app")).unwrap();
+    assert_eq!(response.text, "# Made-up teardown");
+    assert_eq!(response.provider, "compatible");
+    assert_eq!(response.model, "nebula-7b");
+    let raw = requests.recv().unwrap();
+    assert!(raw.contains("Write the PRD for a plant-watering app"), "the prompt is sent as given: {raw}");
+}
+
+#[test]
+fn a_completion_uses_only_the_selected_provider() {
+    let (base, requests) = fake_server(vec![(500, r#"{"error":"down"}"#)]);
+    let byok = BYOKConfig {
+        anthropic_api_key: Some("k".into()),
+        openai_api_key: Some("k".into()),
+        active_provider: Some(ByokProvider::Openai),
+        preferred_model: Some("orbit-large".into()),
+        ..Default::default()
+    };
+    let err = engine_at(&base).complete(&completion(byok, "p")).unwrap_err();
+    assert!(err.contains("500"), "{err}");
+    assert!(requests.recv().unwrap().starts_with("POST /openai/"));
+    assert!(requests.try_recv().is_err(), "no other provider was called");
+}
+
+#[test]
+fn a_completion_needs_a_chosen_model() {
+    let byok = BYOKConfig { anthropic_api_key: Some("k".into()), ..Default::default() };
+    let err = engine_at("http://127.0.0.1:9").complete(&completion(byok, "p")).unwrap_err();
+    assert!(err.contains("Choose a model"), "{err}");
+}
+
+#[test]
+fn a_completion_error_never_contains_the_key() {
+    let (base, _requests) = fake_endpoint(401, r#"{"error":"bad key sk-secret-123"}"#);
+    let byok = BYOKConfig {
+        compatible_base_url: Some(base),
+        compatible_api_key: Some("sk-secret-123".into()),
+        preferred_model: Some("m".into()),
+        ..Default::default()
+    };
+    let err = ByokEngine::new().complete(&completion(byok, "p")).unwrap_err();
+    assert!(err.contains("401"), "{err}");
+    assert!(!err.contains("sk-secret-123"), "{err}");
+}
+
+#[test]
+fn a_planning_completion_allows_long_documents() {
+    let (base, requests) = fake_server(vec![(200, r##"{"content":[{"type":"text","text":"# PRD"}]}"##)]);
+    let byok = BYOKConfig {
+        anthropic_api_key: Some("k".into()),
+        preferred_model: Some("made-up-model".into()),
+        ..Default::default()
+    };
+    engine_at(&base).complete(&completion(byok, "p")).unwrap();
+    let raw = requests.recv().unwrap();
+    let body = &raw[raw.find("\r\n\r\n").unwrap() + 4..];
+    assert!(body.contains("\"max_tokens\":16000"), "{body}");
+}
