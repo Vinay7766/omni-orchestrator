@@ -1,8 +1,16 @@
 import React from "react";
-import type { ChatMessage } from "../../lib/types";
-import { Terminal, Compass, Layers, CheckCircle, FileText } from "lucide-react";
+import type { ChatMessage, TrackType } from "../../lib/types";
+import { Compass, Layers, CheckCircle, FileText } from "lucide-react";
+
+/** What each area does, shown before its first message. */
+const EMPTY_TEXT: Record<TrackType, string> = {
+  "track-a": "Describe the product you want to build. You get a project brief, then choose the folder, tool and skills before anything is launched.",
+  "track-b": "Name a company or product to get a teardown and outreach drafts from your own model (set it up in Settings).",
+};
 
 interface ChatContainerProps {
+  /** Which area this conversation belongs to. */
+  track: TrackType;
   messages: ChatMessage[];
   onOpenStaging?: (prompt: string) => void;
   onOpenTeardown?: (productName: string) => void;
@@ -10,6 +18,7 @@ interface ChatContainerProps {
 }
 
 export const ChatContainer: React.FC<ChatContainerProps> = ({
+  track,
   messages,
   onOpenStaging,
   onOpenTeardown,
@@ -18,34 +27,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-4xl mx-auto w-full">
       {messages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center h-[55vh] max-w-lg mx-auto space-y-4">
-          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shadow-sm">
-            <Terminal className="w-5 h-5 text-zinc-300" />
+        <div className="flex flex-col items-center justify-center text-center h-[45vh] max-w-lg mx-auto space-y-3">
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+            {track === "track-a" ? <Layers className="w-5 h-5 text-zinc-300" aria-hidden="true" /> : <Compass className="w-5 h-5 text-zinc-300" aria-hidden="true" />}
           </div>
-          <div>
-            <h3 className="text-base font-semibold text-zinc-100 tracking-tight">
-              OmniOrchestrator
-            </h3>
-            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              Open-source desktop engine automating high-discipline agentic software engineering and strategic product teardowns.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 w-full pt-2">
-            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-left">
-              <span className="text-[11px] font-semibold text-zinc-200 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-zinc-400" /> Track A
-              </span>
-              <p className="text-xs text-zinc-300 font-medium mt-1.5">Autonomous Builder</p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">Tiered skills, PRD & 1-click IDE launch</p>
-            </div>
-            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-left">
-              <span className="text-[11px] font-semibold text-zinc-200 flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-zinc-400" /> Track B
-              </span>
-              <p className="text-xs text-zinc-300 font-medium mt-1.5">Strategic Flywheel</p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">In-app teardowns & cold outreach</p>
-            </div>
-          </div>
+          <p className="text-xs text-zinc-400 leading-relaxed">{EMPTY_TEXT[track]}</p>
         </div>
       ) : (
         messages.map((msg) => {
@@ -60,9 +46,6 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
               <div className="flex items-center gap-2 px-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   {isUser ? "You" : "Orchestrator"}
-                </span>
-                <span className="text-[9px] px-2 py-0.5 rounded font-mono font-medium bg-zinc-900 text-zinc-400 border border-zinc-800">
-                  {isTrackA ? "Track A" : "Track B"}
                 </span>
                 <span className="text-[10px] text-zinc-600 font-mono">{msg.timestamp}</span>
               </div>

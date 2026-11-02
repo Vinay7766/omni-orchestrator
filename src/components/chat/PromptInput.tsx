@@ -1,18 +1,15 @@
 import React, { useState, KeyboardEvent } from "react";
 import type { TrackType } from "../../lib/types";
-import { TrackDropdown } from "./TrackDropdown";
 import { ArrowRight, Sparkles, Loader2 } from "lucide-react";
 
 interface PromptInputProps {
   currentTrack: TrackType;
-  onTrackChange: (track: TrackType) => void;
   onSubmit: (prompt: string, track: TrackType) => void;
   isLoading?: boolean;
 }
 
 export const PromptInput: React.FC<PromptInputProps> = ({
   currentTrack,
-  onTrackChange,
   onSubmit,
   isLoading = false,
 }) => {
@@ -52,7 +49,6 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 
       <div className="flex items-center justify-between border-t border-zinc-800/80 pt-2.5 mt-1 px-1">
         <div className="flex items-center gap-2">
-          <TrackDropdown currentTrack={currentTrack} onTrackChange={onTrackChange} />
           <span className="text-[11px] text-zinc-500 hidden sm:inline">
             Press <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 font-mono">↵ Enter</kbd> to submit
           </span>

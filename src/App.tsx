@@ -11,22 +11,21 @@ import type {
   ByokState,
   KeyStorageStatus,
 } from "./lib/types";
-import { ChatContainer } from "./components/chat/ChatContainer";
-import { PromptInput } from "./components/chat/PromptInput";
+import { ChatArea } from "./components/chat/ChatArea";
 import { PreLaunchStagingModal } from "./components/track-a/PreLaunchStagingModal";
 import { TeardownViewer } from "./components/track-b/TeardownViewer";
 import { BYOKSettings } from "./components/track-b/BYOKSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { SkillCard } from "./components/skills/SkillCard";
-import { SkillDetailModal } from "./components/skills/SkillDetailModal";
-import { Terminal, Search, Sliders, X, FolderOpen, MessageSquare } from "lucide-react";
+import { SkillCatalog } from "./components/skills/SkillCatalog";
+import { Terminal } from "lucide-react";
 import { ProjectsView } from "./components/projects/ProjectsView";
+import { AreaNav, type Area } from "./components/layout/AreaNav";
 
 export function App() {
-  const [currentTrack, setCurrentTrack] = useState<TrackType>("track-a");
-  const [view, setView] = useState<"workspace" | "projects">("workspace");
+  const [area, setArea] = useState<Area>("projects");
+  // One list for both conversations; each area shows only its own track's messages.
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingTrack, setLoadingTrack] = useState<TrackType | null>(null);
   const [byokConfig, setByokConfig] = useState<BYOKConfig>({});
   const [keyStorage, setKeyStorage] = useState<KeyStorageStatus | undefined>(undefined);
   const [byokLoadError, setByokLoadError] = useState<string | undefined>(undefined);
@@ -35,10 +34,6 @@ export function App() {
   const [showStaging, setShowStaging] = useState(false);
   const [stagingPrompt, setStagingPrompt] = useState("");
   const [currentTeardown, setCurrentTeardown] = useState<TeardownResponse | null>(null);
-  const [showSkillsModal, setShowSkillsModal] = useState(false);
-  const [selectedSkillForDetail, setSelectedSkillForDetail] = useState<Skill | null>(null);
-  const [skillModalMode, setSkillModalMode] = useState<"view" | "edit">("view");
-  const [skillSearchQuery, setSkillSearchQuery] = useState("");
 
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -106,7 +101,7 @@ export function App() {
 
   const handleSaveSkillModification = async (
     skillId: string,
-    newContent: String,
+    newContent: string,
     newDescription: string
   ) => {
     try {
@@ -120,7 +115,7 @@ export function App() {
       setSkills((prev) =>
         prev.map((s) =>
           s.id === skillId
-            ? { ...s, content: newContent as string, description: newDescription, isCustom: true }
+            ? { ...s, content: newContent, description: newDescription, isCustom: true }
             : s
         )
       );
@@ -138,7 +133,7 @@ export function App() {
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
+    setLoadingTrack(track);
 
     if (track === "track-a") {
       try {
@@ -165,7 +160,7 @@ export function App() {
         };
         setMessages((prev) => [...prev, errorMsg]);
       } finally {
-        setIsLoading(false);
+        setLoadingTrack(null);
       }
     } else {
       try {
@@ -200,7 +195,7 @@ export function App() {
         };
         setMessages((prev) => [...prev, errorMsg]);
       } finally {
-        setIsLoading(false);
+        setLoadingTrack(null);
       }
     }
   };
@@ -210,101 +205,76 @@ export function App() {
     setShowStaging(true);
   };
 
-  const filteredSkillsForModal = skills.filter((s) => {
-    if (!skillSearchQuery) return true;
-    const q = skillSearchQuery.toLowerCase();
-    return s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
-  });
-
   return (
     <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white antialiased">
-      {/* Top Navbar */}
-      <header className="h-14 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shadow-sm">
-            <Terminal className="w-4 h-4 text-zinc-300" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold tracking-tight text-white flex items-center gap-2">
-              OmniOrchestrator
-              <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-zinc-900 text-zinc-400 border border-zinc-800 font-normal">
-                Apache 2.0
-              </span>
-            </h1>
-          </div>
+      <header className="h-12 border-b border-zinc-800 bg-zinc-950 px-4 flex items-center gap-3 shrink-0">
+        <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+          <Terminal className="w-4 h-4 text-zinc-300" aria-hidden="true" />
         </div>
-
-        {/* Center Indicators */}
-        <div className="hidden md:flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>Target Tool:</span>
-            <span className="font-semibold text-white">{activeTool}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[11px]">
-            <span>Ledger:</span>
-            <span className="text-zinc-200">.agents/session-state.json</span>
-          </div>
-        </div>
-
-        {/* Right Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setView(view === "projects" ? "workspace" : "projects")}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5"
-          >
-            {view === "projects" ? <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" /> : <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />}
-            <span>{view === "projects" ? "Workspace" : "Projects"}</span>
-          </button>
-          <button
-            onClick={() => setShowSkillsModal(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5"
-            aria-label="Open Skill Catalog"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Skills</span>
-            <span className="px-1.5 py-0.2 bg-zinc-800 rounded text-[10px] font-mono text-emerald-400">
-              {skills.filter((s) => s.enabled).length}
-            </span>
-          </button>
-        </div>
+        <h1 className="text-sm font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
+          OmniOrchestrator
+          <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-zinc-900 text-zinc-400 border border-zinc-800 font-normal">
+            Apache 2.0
+          </span>
+        </h1>
       </header>
 
-      {view === "projects" && (
-        <main className="flex-1 overflow-y-auto">
-          <ErrorBoundary panelName="Projects">
-            <ProjectsView />
-          </ErrorBoundary>
-        </main>
-      )}
+      <div className="flex flex-1 min-h-0">
+        <AreaNav current={area} onChange={setArea} />
 
-      {/* Main Content Area with Chat Flow */}
-      <main className={`flex-1 flex flex-col overflow-hidden relative ${view === "projects" ? "hidden" : ""}`}>
-        <ChatContainer
-          messages={messages}
-          onOpenStaging={() => handleOpenStaging(stagingPrompt || "Autonomous build task")}
-          onOpenTeardown={() => currentTeardown && setCurrentTeardown({ ...currentTeardown })}
-          onSelectPhaseAction={(action) => handleSubmitPrompt(action, currentTrack)}
-        />
-
-        {/* Bottom Floating Prompt Bar */}
-        <div className="p-4 bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent shrink-0">
-          <PromptInput
-            currentTrack={currentTrack}
-            onTrackChange={setCurrentTrack}
-            onSubmit={handleSubmitPrompt}
-            isLoading={isLoading}
-          />
-          {currentTrack === "track-b" && (
-            <div className="px-4 pb-2 pt-2">
-              <ErrorBoundary panelName="BYOK Settings">
-                <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {area === "projects" && (
+            <div className="flex-1 overflow-y-auto">
+              <ErrorBoundary panelName="Projects">
+                <ProjectsView />
               </ErrorBoundary>
             </div>
           )}
-        </div>
-      </main>
+
+          {(area === "idea" || area === "pitch") && (
+            <ChatArea
+              track={area === "idea" ? "track-a" : "track-b"}
+              messages={messages}
+              loading={loadingTrack}
+              onSubmit={handleSubmitPrompt}
+              onOpenStaging={() => handleOpenStaging(stagingPrompt || "Autonomous build task")}
+              onOpenTeardown={() => currentTeardown && setCurrentTeardown({ ...currentTeardown })}
+              aside={
+                area === "idea" ? (
+                  <p className="text-xs text-zinc-400 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                    Tool to launch: <span className="font-semibold text-zinc-100">{activeTool}</span>
+                  </p>
+                ) : (
+                  <ErrorBoundary panelName="BYOK Settings">
+                    <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
+                  </ErrorBoundary>
+                )
+              }
+            />
+          )}
+
+          {area === "skills" && (
+            <div className="flex-1 overflow-y-auto">
+              <SkillCatalog skills={skills} onToggle={handleToggleSkill} onSave={handleSaveSkillModification} />
+            </div>
+          )}
+
+          {area === "settings" && (
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-4xl mx-auto w-full p-6 space-y-4">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-100">Settings</h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">Your own model provider (BYOK), used by pitch mode and planning. Project folders are set in Projects.</p>
+                </div>
+                <ErrorBoundary panelName="BYOK Settings">
+                  <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
+                </ErrorBoundary>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Track A Pre-Launch Staging Modal */}
       <PreLaunchStagingModal
@@ -370,73 +340,6 @@ export function App() {
         </div>
       )}
 
-      {/* Skills Catalog Modal with Search, View & Edit */}
-      {showSkillsModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-4xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[88vh]">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <span>Engineering Skill Catalog</span>
-                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-zinc-900 border border-zinc-800 text-emerald-400">
-                    {skills.length} Loaded
-                  </span>
-                </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Inspect, toggle, or modify any skill with author attributions.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowSkillsModal(false)}
-                className="p-1 text-zinc-400 hover:text-white rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Search within Skills */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                type="text"
-                value={skillSearchQuery}
-                onChange={(e) => setSkillSearchQuery(e.target.value)}
-                placeholder={`Search across all ${skills.length} loaded skills (e.g. TDD, Spec, GCP, Security, Vibe)...`}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            {/* Skill Cards Grid */}
-            <div className="overflow-y-auto space-y-3 pr-1 max-h-[55vh]">
-              {filteredSkillsForModal.map((skill) => (
-                <SkillCard
-                  key={skill.id}
-                  skill={skill}
-                  onToggle={handleToggleSkill}
-                  onView={(s) => {
-                    setSelectedSkillForDetail(s);
-                    setSkillModalMode("view");
-                  }}
-                  onEdit={(s) => {
-                    setSelectedSkillForDetail(s);
-                    setSkillModalMode("edit");
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Skill Detail / Viewer / Editor Modal */}
-      {selectedSkillForDetail && (
-        <SkillDetailModal
-          skill={selectedSkillForDetail}
-          onClose={() => setSelectedSkillForDetail(null)}
-          onSave={handleSaveSkillModification}
-          initialEditMode={skillModalMode === "edit"}
-        />
-      )}
     </div>
   );
 }

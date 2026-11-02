@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
 
@@ -9,17 +9,21 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const mockedInvoke = vi.mocked(invoke);
 
+const SETTINGS = { defaultTrack: "track-a", theme: "dark", byok: {}, projectFolders: ["C:/work"] };
+
 // Resolves the Tauri commands App calls on mount; tests override individual commands.
-function mockBackend(overrides: Record<string, () => Promise<unknown>> = {}) {
-  const handlers: Record<string, () => Promise<unknown>> = {
+function mockBackend(overrides: Record<string, (args?: unknown) => Promise<unknown>> = {}) {
+  const handlers: Record<string, (args?: unknown) => Promise<unknown>> = {
     discover_tools: () => Promise.resolve([]),
     get_skills: () => Promise.resolve([]),
     get_default_project_path: () => Promise.resolve("C:\\Users\\test\\Projects"),
     get_byok_config: () => Promise.resolve({ config: {}, keyStorage: { available: true } }),
+    get_app_settings: () => Promise.resolve(SETTINGS),
+    find_projects: () => Promise.resolve({ roots: [], errors: [] }),
     ...overrides,
   };
-  mockedInvoke.mockImplementation((cmd: string) =>
-    handlers[cmd] ? handlers[cmd]() : Promise.reject(`Unexpected command: ${cmd}`)
+  mockedInvoke.mockImplementation((cmd: string, args?: unknown) =>
+    handlers[cmd] ? handlers[cmd](args) : Promise.reject(`Unexpected command: ${cmd}`)
   );
 }
 
@@ -30,82 +34,81 @@ async function renderApp() {
   });
 }
 
+const nav = () => within(screen.getByRole("navigation", { name: "Areas" }));
+
+async function openArea(name: string) {
+  await act(async () => {
+    fireEvent.click(nav().getByRole("button", { name }));
+  });
+}
+
 describe("OmniOrchestrator App", () => {
   beforeEach(() => {
     mockedInvoke.mockReset();
     mockBackend();
   });
 
-  it("renders navbar branding and target tool indicator", async () => {
+  it("opens on the projects list, marked as the current area", async () => {
     await renderApp();
 
     expect(screen.getAllByText("OmniOrchestrator")[0]).toBeDefined();
-    expect(screen.getByText("Apache 2.0")).toBeDefined();
-    expect(screen.getByText(".agents/session-state.json")).toBeDefined();
-    // No tool name is assumed when discovery found nothing.
-    expect(screen.getByText("None found")).toBeDefined();
-  });
-
-  it("renders the prompt input bar with inline track dropdown", async () => {
-    await renderApp();
-
-    const promptInput = screen.getByLabelText("Prompt Input");
-    expect(promptInput).toBeDefined();
-
-    const trackButton = screen.getByLabelText("Select Execution Track");
-    expect(trackButton).toBeDefined();
-    expect(screen.getByText(/Track A: Autonomous Builder/i)).toBeDefined();
-  });
-
-  it("opens skills modal when Skills button is clicked", async () => {
-    await renderApp();
-
-    const skillsBtn = screen.getByRole("button", { name: /Open Skill Catalog/i });
-    fireEvent.click(skillsBtn);
-
-    expect(screen.getByText(/Engineering Skill Catalog/i)).toBeDefined();
-  });
-
-  it("opens the projects list with the saved folders and saves a new folder", async () => {
-    const saved: unknown[] = [];
-    const settings = { defaultTrack: "track-a", theme: "dark", byok: {}, projectFolders: ["C:/work"] };
-    mockedInvoke.mockImplementation((cmd: string, args?: unknown) => {
-      const handlers: Record<string, () => Promise<unknown>> = {
-        discover_tools: () => Promise.resolve([]),
-        get_skills: () => Promise.resolve([]),
-        get_default_project_path: () => Promise.resolve("C:\\Users\\test\\Projects"),
-        get_app_settings: () => Promise.resolve(settings),
-        save_app_settings: () => {
-          saved.push(args);
-          return Promise.resolve(null);
-        },
-        find_projects: () => Promise.resolve({ roots: [], errors: [] }),
-      };
-      return handlers[cmd] ? handlers[cmd]() : Promise.reject(`Unexpected command: ${cmd}`);
-    });
-    await renderApp();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /^Projects$/ }));
-    });
     expect(await screen.findByText(/No projects found in C:\/work/)).toBeDefined();
+    expect(nav().getByRole("button", { name: "Projects" }).getAttribute("aria-current")).toBe("page");
+  });
 
+  it("reaches every area from the navigation and marks only the open one as current", async () => {
+    await renderApp();
+
+    for (const area of ["Start from an idea", "Pitch mode", "Skills", "Settings", "Projects"]) {
+      await openArea(area);
+      const current = nav()
+        .getAllByRole("button")
+        .filter((b) => b.getAttribute("aria-current") === "page")
+        .map((b) => b.textContent);
+      expect(current).toEqual([area]);
+    }
+  });
+
+  it("has no track picker and no made-up ledger file name", async () => {
+    await renderApp();
+    await openArea("Start from an idea");
+
+    expect(screen.queryByLabelText("Select Execution Track")).toBeNull();
+    expect(screen.queryByText(/Ledger/)).toBeNull();
+    expect(screen.queryByText(/session-state\.json/)).toBeNull();
+  });
+
+  it("saves a new project folder from the projects area", async () => {
+    const saved: unknown[] = [];
+    mockBackend({
+      save_app_settings: (args) => {
+        saved.push(args);
+        return Promise.resolve(null);
+      },
+    });
+    await renderApp();
+
+    expect(await screen.findByText(/No projects found in C:\/work/)).toBeDefined();
     fireEvent.change(screen.getByLabelText("Folder to add"), { target: { value: "D:/more" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /add folder/i }));
     });
-    expect(saved).toEqual([{ settings: { ...settings, projectFolders: ["C:/work", "D:/more"] } }]);
-
-    // Back to the workspace view.
-    fireEvent.click(screen.getByRole("button", { name: /^Workspace$/ }));
-    expect(screen.getByRole("button", { name: /^Projects$/ })).toBeDefined();
+    expect(saved).toEqual([{ settings: { ...SETTINGS, projectFolders: ["C:/work", "D:/more"] } }]);
   });
 
-  it("shows the backend error instead of a fabricated brief when Track A fails", async () => {
+  it("shows the detected tool in Start from an idea, and none when discovery found nothing", async () => {
+    await renderApp();
+    await openArea("Start from an idea");
+
+    expect(screen.getByText("None found")).toBeDefined();
+  });
+
+  it("shows the backend error instead of a fabricated brief when the idea brief fails", async () => {
     mockBackend({
       generate_project_brief: () => Promise.reject("Failed to write brief: access denied"),
     });
     await renderApp();
+    await openArea("Start from an idea");
 
     fireEvent.change(screen.getByLabelText("Prompt Input"), { target: { value: "Todo app" } });
     await act(async () => {
@@ -117,15 +120,13 @@ describe("OmniOrchestrator App", () => {
     expect(screen.queryByRole("button", { name: /Configure & Stage Run/i })).toBeNull();
   });
 
-  it("shows the provider error instead of a fabricated report when a teardown fails", async () => {
+  it("shows the provider error instead of a fabricated report when a pitch teardown fails", async () => {
     mockBackend({
-      execute_strategic_teardown: () =>
-        Promise.reject("OpenAI API error 401 Unauthorized: invalid api key"),
+      execute_strategic_teardown: () => Promise.reject("OpenAI API error 401 Unauthorized: invalid api key"),
     });
     await renderApp();
+    await openArea("Pitch mode");
 
-    fireEvent.click(screen.getByLabelText("Select Execution Track"));
-    fireEvent.click(screen.getByText(/Track B • Strategic Flywheel/));
     fireEvent.change(screen.getByLabelText("Prompt Input"), { target: { value: "Notion" } });
     await act(async () => {
       fireEvent.click(screen.getByLabelText("Submit Prompt"));
@@ -136,32 +137,72 @@ describe("OmniOrchestrator App", () => {
     expect(screen.queryByRole("button", { name: /Open Teardown Report/i })).toBeNull();
   });
 
-  it("loads the saved BYOK settings at start and saves changes through the credential-store command", async () => {
+  it("keeps each area's conversation when switching areas", async () => {
+    mockBackend({
+      execute_strategic_teardown: () => Promise.reject("provider down"),
+    });
+    await renderApp();
+    await openArea("Pitch mode");
+    fireEvent.change(screen.getByLabelText("Prompt Input"), { target: { value: "Notion" } });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Submit Prompt"));
+    });
+
+    await openArea("Start from an idea");
+    expect(screen.queryByText(/provider down/)).toBeNull();
+    await openArea("Pitch mode");
+    expect(screen.getByText(/provider down/)).toBeDefined();
+  });
+
+  it("loads the saved BYOK settings in Settings and saves changes through the credential-store command", async () => {
     const saved: unknown[] = [];
     mockBackend({
       get_byok_config: () =>
         Promise.resolve({ config: { geminiApiKey: "AIza-saved", preferredModel: "made-up-model-7b" }, keyStorage: { available: true } }),
-    });
-    const base = mockedInvoke.getMockImplementation()!;
-    mockedInvoke.mockImplementation((cmd: string, args?: unknown) => {
-      if (cmd === "save_byok_config") {
+      save_byok_config: (args) => {
         saved.push(args);
         return Promise.resolve({ available: true });
-      }
-      return base(cmd, args as never);
+      },
     });
     await renderApp();
+    await openArea("Settings");
 
-    fireEvent.click(screen.getByLabelText("Select Execution Track"));
-    fireEvent.click(screen.getByText(/Track B • Strategic Flywheel/));
     expect(screen.getByText("Gemini · made-up-model-7b")).toBeDefined();
-
     fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "other-model" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Save Configuration/ }));
     });
     expect(saved).toEqual([{ byok: { geminiApiKey: "AIza-saved", preferredModel: "other-model" } }]);
+
+    // Pitch mode uses the same saved settings.
+    await openArea("Pitch mode");
     expect(screen.getByText("Gemini · other-model")).toBeDefined();
+  });
+
+  it("shows the BYOK load error in Settings", async () => {
+    mockBackend({ get_byok_config: () => Promise.reject("credential store locked") });
+    await renderApp();
+    await openArea("Settings");
+    fireEvent.click(screen.getByRole("button", { name: /BYOK Configuration/ }));
+
+    expect(screen.getByText(/credential store locked/)).toBeDefined();
+  });
+
+  it("lists and filters the skill catalog in the Skills area", async () => {
+    const skill = (id: string, name: string, description: string) => ({
+      id, name, description, content: "", category: "engineering", enabled: true, isCustom: false, phases: [],
+      attribution: { name: "Some Author", sourceUrl: "https://example.org", verified: false },
+    });
+    mockBackend({
+      get_skills: () => Promise.resolve([skill("tdd", "Test-driven development", "Red green refactor"), skill("sec", "Security hardening", "OWASP")]),
+    });
+    await renderApp();
+    await openArea("Skills");
+
+    expect(screen.getByText("Test-driven development")).toBeDefined();
+    fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "owasp" } });
+    expect(screen.queryByText("Test-driven development")).toBeNull();
+    expect(screen.getByText("Security hardening")).toBeDefined();
   });
 });

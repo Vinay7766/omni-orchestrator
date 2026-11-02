@@ -1,0 +1,72 @@
+import React, { useState } from "react";
+import { Search } from "lucide-react";
+import type { Skill } from "../../lib/types";
+import { SkillCard } from "./SkillCard";
+import { SkillDetailModal } from "./SkillDetailModal";
+
+interface SkillCatalogProps {
+  skills: Skill[];
+  onToggle: (id: string, enabled: boolean) => void;
+  onSave: (skillId: string, newContent: string, newDescription: string) => Promise<void>;
+}
+
+/** The skill catalog area: search, toggle, view and edit every loaded skill. */
+export const SkillCatalog: React.FC<SkillCatalogProps> = ({ skills, onToggle, onSave }) => {
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<{ skill: Skill; mode: "view" | "edit" } | null>(null);
+
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? skills.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
+    : skills;
+
+  return (
+    <div className="max-w-4xl mx-auto w-full p-6 space-y-4">
+      <div>
+        <h2 className="text-base font-semibold text-zinc-100">Skill catalog</h2>
+        <p className="text-xs text-zinc-400 mt-0.5">
+          {skills.length} skills loaded. Inspect, turn on or off, or edit any skill; authors are credited on each.
+        </p>
+      </div>
+
+      <div className="relative">
+        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search skills"
+          placeholder="Search by name, description or id"
+          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+        />
+      </div>
+
+      {skills.length === 0 ? (
+        <p role="status" className="text-xs text-zinc-400">No skills were loaded.</p>
+      ) : shown.length === 0 ? (
+        <p role="status" className="text-xs text-zinc-400">No skill matches "{query}".</p>
+      ) : (
+        <div className="space-y-3">
+          {shown.map((skill) => (
+            <SkillCard
+              key={skill.id}
+              skill={skill}
+              onToggle={onToggle}
+              onView={(s) => setSelected({ skill: s, mode: "view" })}
+              onEdit={(s) => setSelected({ skill: s, mode: "edit" })}
+            />
+          ))}
+        </div>
+      )}
+
+      {selected && (
+        <SkillDetailModal
+          skill={selected.skill}
+          onClose={() => setSelected(null)}
+          onSave={onSave}
+          initialEditMode={selected.mode === "edit"}
+        />
+      )}
+    </div>
+  );
+};
