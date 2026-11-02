@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings } from "../../lib/types";
 import { loadProjectDetail, loadProjects } from "../../lib/projects";
 import { ProjectsList } from "./ProjectsList";
-import { ProjectDetail, type DecideFns } from "./ProjectDetail";
+import { ProjectDetail, type DecideFns, type PlanningFns } from "./ProjectDetail";
 import { approve, requestChanges, runOptional, skipOptional } from "../../lib/decisions";
 import { addEntry, loadMemoryFiles, updateProjectDetails } from "../../lib/memory";
 import type { Invoke } from "@omni/core";
@@ -28,7 +28,7 @@ const memory = {
 };
 
 /** `openRoot`: a project to show straight away (one just created from an idea). */
-export const ProjectsView: React.FC<{ openRoot?: string }> = ({ openRoot }) => {
+export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns }> = ({ openRoot, planning }) => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [opened, setOpened] = useState<string | null>(openRoot ?? null);
@@ -67,6 +67,6 @@ export const ProjectsView: React.FC<{ openRoot?: string }> = ({ openRoot }) => {
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   TrackType,
@@ -20,6 +20,8 @@ import { ProjectsView } from "./components/projects/ProjectsView";
 import { AreaNav, type Area } from "./components/layout/AreaNav";
 import { StartFromIdea } from "./components/planning/StartFromIdea";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
+import { runPhase } from "./lib/phase-runner";
+import type { PlanningFns } from "./components/projects/ProjectDetail";
 
 const tauri = (command: string, args?: Record<string, unknown>) => invoke(command, args);
 
@@ -176,6 +178,18 @@ export function App() {
     }
   };
 
+  // Planning phases run with the model set up in Settings and the skill catalog (E5).
+  const planning = useMemo<PlanningFns>(() => ({
+    providerReady: hasProvider(byokConfig),
+    run: async (root) => {
+      const r = await runPhase(tauri, root, { byok: byokConfig, skills });
+      if (!r.ok) return { ok: false, message: r.error };
+      const note = r.trimmed.length > 0 ? ` Left out of the prompt for length: ${r.trimmed.join(", ")}.` : "";
+      return { ok: true, message: r.message + note };
+    },
+    readDocument: (root, name) => invoke<string | null>("read_planning_document", { root, name }),
+  }), [byokConfig, skills]);
+
   return (
     <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white antialiased">
       <header className="h-12 border-b border-zinc-800 bg-zinc-950 px-4 flex items-center gap-3 shrink-0">
@@ -203,7 +217,7 @@ export function App() {
           {area === "projects" && (
             <div className="flex-1 overflow-y-auto">
               <ErrorBoundary panelName="Projects">
-                <ProjectsView openRoot={openRoot} />
+                <ProjectsView openRoot={openRoot} planning={planning} />
               </ErrorBoundary>
             </div>
           )}

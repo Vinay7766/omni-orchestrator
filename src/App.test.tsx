@@ -151,6 +151,60 @@ describe("OmniOrchestrator App", () => {
     }
   });
 
+  it("runs a planning phase with the person's model, shows its document, and the person approves it", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-run-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const prompts: string[] = [];
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      const ideaSkill = {
+        id: "idea-review", name: "Idea review", description: "Reviews ideas honestly", category: "strategy",
+        attribution: { name: "Made-up Author", sourceUrl: "https://example.org", verified: true },
+        enabled: true, content: "IDEA REVIEW METHOD", isCustom: false, phases: ["idea-review"], license: "MIT",
+      };
+      mockBackend({
+        get_default_project_path: () => Promise.resolve(base),
+        get_skills: () => Promise.resolve([ideaSkill]),
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" }, keyStorage: { available: true } }),
+        save_app_settings: () => Promise.resolve(),
+        byok_complete: (args) => {
+          prompts.push((args as { request: { prompt: string } }).request.prompt);
+          return Promise.resolve({
+            text: "# Idea review\n\nVerdict: build it.\n\n## Understanding check\n\nA list families share.\n\n## Skills applied\n\n- idea-review: checked problem and users\n",
+            provider: "ollama",
+            model: "made-up-model",
+          });
+        },
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /create project/i }));
+      });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 5000 });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /run idea-review/i }));
+      });
+      expect(await screen.findByText(/Verdict: build it\./, {}, { timeout: 5000 })).toBeDefined();
+      expect(prompts[0]).toContain("IDEA REVIEW METHOD");
+      expect(prompts[0]).toContain("A shared shopping list");
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /approve/i }));
+      });
+      expect(await screen.findByText(/"idea-review" approved/, {}, { timeout: 5000 })).toBeDefined();
+      expect(await screen.findByRole("button", { name: /run research/i }, { timeout: 5000 })).toBeDefined();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
   it("shows the provider error instead of a fabricated report when a pitch teardown fails", async () => {
     mockBackend({
       execute_strategic_teardown: () => Promise.reject("OpenAI API error 401 Unauthorized: invalid api key"),

@@ -7,6 +7,14 @@ import type { PhaseDecisions } from "./PhaseActions";
 import { MemoryPanel } from "./MemoryPanel";
 import { ProjectDetailsForm } from "./ProjectDetailsForm";
 import type { MemoryFilesResult, NewEntry } from "../../lib/memory";
+import { PlanningPanel } from "../planning/PlanningPanel";
+
+/** Planning phases run with the person's own model (E5). */
+export interface PlanningFns {
+  run: (root: string) => Promise<DecisionResult>;
+  providerReady: boolean;
+  readDocument: (root: string, name: string) => Promise<string | null>;
+}
 
 /** How decisions are recorded for a project root (the app passes lib/decisions over invoke). */
 export interface DecideFns {
@@ -29,12 +37,14 @@ interface ProjectDetailProps {
     load: (root: string) => Promise<MemoryFilesResult>;
     add: (root: string, entry: NewEntry) => Promise<DecisionResult>;
   };
+  /** When given, the next planning phase runs here and its document is shown for review. */
+  planning?: PlanningFns;
 }
 
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
 
@@ -72,6 +82,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
     [decide, record, root],
   );
 
+  const readDocument = useCallback((name: string) => (planning ? planning.readDocument(root, name) : Promise.resolve(null)), [planning, root]);
+
   return (
     <section className="w-full max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
       <button onClick={onBack} className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5">
@@ -105,6 +117,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               name={detail.name}
               mode={detail.mode}
               onSave={(changes) => record(details.update(root, changes))}
+            />
+          )}
+          {planning && (
+            <PlanningPanel
+              entry={detail.history.find((e) => e.isNext)}
+              providerReady={planning.providerReady}
+              run={() => record(planning.run(root))}
+              readDocument={readDocument}
             />
           )}
           <PhaseHistory entries={detail.history} decisions={decisions} />
