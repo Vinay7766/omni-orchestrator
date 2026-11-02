@@ -5,9 +5,9 @@
     "description": "A workflow skill for all Google Cloud resource management tasks (create, delete, modify). This skill ensures that the correct CLI tool (`gcloud`, `bq`, `gsutil`) is chosen and that its commands are verified against the latest official documentation before execution.",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "rominirani/antigravity-skills",
+      "role": "Community skill collection (609 stars); the repository grants no license",
+      "sourceUrl": "https://github.com/rominirani/antigravity-skills",
       "verified": true
     },
     "enabled": true,
@@ -424,14 +424,14 @@
     "description": "This skill should be used when the user wants to \"write agent code\", \"build an agent with ADK\", \"add a tool\", \"create a callback\", \"define an agent\", \"use state management\" — in a project that needs ADK (Agent Development Kit) API patterns and code examples. It provides a quick reference for agent types, tool definitions, orchestration patterns, callbacks, state management, the graph Workflow API, and reference recipes to study. Do NOT use for scaffolding (use google-agents-cli-scaffold) or deployment (use google-agents-cli-deploy).",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "build"
     ],
@@ -445,14 +445,14 @@
     "description": "This skill should be used when the user wants to \"deploy an agent\", \"deploy my ADK agent\", \"set up CI/CD\", \"configure secrets\", \"troubleshoot a deployment\", or needs guidance on Agent Runtime, Cloud Run, or GKE deployment targets, or binding an agent to an Agent Gateway. Covers deployment workflows, service accounts, rollback, and production infrastructure. Applies to any framework agents-cli deploys (ADK, LangChain, ...). Part of the agents-cli skills suite. Do NOT use for agent API code patterns (ADK: use google-agents-cli-adk-code), evaluation (use google-agents-cli-eval), or project scaffolding (use google-agents-cli-scaffold).",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "handover"
     ],
@@ -467,14 +467,14 @@
     "description": "This skill should be used when the user wants to \"run an evaluation\", \"evaluate my agent\", \"evaluate my ADK agent\", \"write an eval dataset\", \"analyze eval failures\", \"compare eval results\", \"optimize agent\", or needs guidance on the Gemini platform eval methodology and the Quality Flywheel. Covers eval metrics, dataset schema, LLM-as-judge scoring, and common failure causes. Applies to any agents-cli project, whatever framework the agent is written in. Do NOT use for agent API code patterns (ADK: use google-agents-cli-adk-code), deployment (use google-agents-cli-deploy), or project scaffolding (use google-agents-cli-scaffold).",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "review"
     ],
@@ -489,14 +489,14 @@
     "description": "This skill should be used when the user wants to \"set up tracing\", \"monitor my agent\", \"configure logging\", \"add observability\", \"debug production traffic\", or needs guidance on monitoring deployed agents, including ADK (Agent Development Kit) agents. Covers Cloud Trace, prompt-response logging, BigQuery Agent Analytics, third-party integrations (AgentOps, Phoenix, MLflow, etc.), and troubleshooting. Part of the agents-cli skills suite. Do NOT use for deployment setup (use google-agents-cli-deploy) or API code patterns (use google-agents-cli-adk-code).",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "handover"
     ],
@@ -511,14 +511,14 @@
     "description": "This skill should be used when the user wants to \"publish an agent\", \"publish my ADK agent\", \"register an agent with Gemini\", \"publish to Gemini\" (formerly Gemini Enterprise), or needs guidance on the agents-cli publish gemini command. Also use when the user wants to \"manage agents in Agent Registry\", \"list/update/delete registered agents\", or \"register an MCP server\". Covers ADK vs A2A registration modes, programmatic and interactive usage, flag reference, auto-detection from deployment metadata, Agent Registry fleet management, and troubleshooting. Part of the agents-cli skills suite. Do NOT use for deployment (use google-agents-cli-deploy).",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "handover"
     ],
@@ -532,14 +532,14 @@
     "description": "This skill should be used when the user wants to \"create an agent project\", \"start a new ADK project\", \"build me a new agent\", \"add CI/CD to my project\", \"add deployment\", \"enhance my project\", or \"upgrade my project\". Part of the agents-cli skills suite. Covers `agents-cli scaffold create`, `scaffold enhance`, and `scaffold upgrade` commands, template options, deployment targets, and the prototype-first workflow. Do NOT use for writing agent code (ADK projects: use google-agents-cli-adk-code) or deployment operations (use google-agents-cli-deploy).",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "architecture"
     ],
@@ -553,14 +553,14 @@
     "description": "This skill should be used when the user wants to \"develop an agent\", \"build an agent using ADK\", \"run the agent locally\", \"debug agent code\", \"test an agent\", \"deploy an agent\", \"publish an agent\", \"monitor an agent\", or needs the ADK (Agent Development Kit) development lifecycle and coding guidelines. Entrypoint for building ADK agents. Always active — provides the full workflow (scaffold, build, evaluate, deploy, publish, observe), code preservation rules, model selection guidance, and troubleshooting steps for ADK or any agent development.",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Google (google/agents-cli)",
+      "role": "Official Agent Development Kit CLI skills (6.3k stars)",
+      "sourceUrl": "https://github.com/google/agents-cli",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "Apache-2.0",
     "phases": [
       "build"
     ],
@@ -859,14 +859,14 @@
     "description": "Optimize LLM prompt caching hit rate to reduce API costs and improve latency. Analyzes prompt structure, identifies cacheable vs non-cacheable content, and recommends restructuring to maximize cache reuse. TRIGGER when: user says \"prompt cache\", \"cache hit rate\", \"reduce LLM cost\", \"optimize token usage\", \"cheaper LLM calls\", or asks about prompt caching strategies for OpenAI/Anthropic/other providers. DO NOT TRIGGER when: user just wants to optimize a single prompt's quality (use prompt-optimizer instead), or asks about general caching infrastructure.",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "cyberspace-cs, via affaan-m/ECC",
+      "role": "Community skill collection (295k stars)",
+      "sourceUrl": "https://github.com/affaan-m/ECC",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "MIT",
     "phases": [
       "architecture",
       "build"
@@ -1013,14 +1013,14 @@
     "description": "Offer a choice of response depth (25%/50%/75%/100%) with token estimates before answering, then answer at that level. Use when the user asks to control response length or token budget, such as 'token budget', 'short version', 'brief answer', 'respuesta corta vs larga', 'cuántos tokens', 'ahorrar tokens', 'responde al 50%', 'dame la versión corta', 'quiero controlar cuánto usas'. Skip if depth is already set this session or 'token' means an auth/payment token.",
     "category": "engineering",
     "attribution": {
-      "name": "Google Agents & Cloud Team",
-      "role": "Senior Engineering Specialist",
-      "sourceUrl": "https://github.com/google/skills",
+      "name": "Xabilimon1 (TBA), via affaan-m/ECC",
+      "role": "Community skill collection (295k stars)",
+      "sourceUrl": "https://github.com/affaan-m/ECC",
       "verified": true
     },
     "enabled": true,
     "isCustom": false,
-    "license": "unverified",
+    "license": "MIT",
     "phases": [
       "all"
     ],

@@ -17,7 +17,9 @@ Skills marked `unverified` in `catalog.json` have not had their license confirme
 | https://github.com/aws/agent-toolkit-for-aws | Apache-2.0 | aws-deployment |
 | https://github.com/coreyhaines31/marketingskills | unverified | cold-email, competitor-profiling, customer-research, lead-magnets |
 | https://github.com/docker/skills | Apache-2.0 | docker-project-foundations |
-| https://github.com/google/skills | unverified | always-verify-gcp, google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow, prompt-caching-strategy, token-budget-advisor |
+| https://github.com/affaan-m/ECC | MIT | prompt-caching-strategy, token-budget-advisor (identical to the ECC copies; token-budget-advisor originates from https://github.com/Xabilimon1/TBA-Token-Budget-Advisor-Claude-Code, MIT) |
+| https://github.com/google/agents-cli | Apache-2.0 | google-agents-cli-adk-code, google-agents-cli-deploy, google-agents-cli-eval, google-agents-cli-observability, google-agents-cli-publish, google-agents-cli-scaffold, google-agents-cli-workflow (identical to commit `bea5875`) |
+| https://github.com/rominirani/antigravity-skills | none granted | always-verify-gcp (identical to the upstream copy). The repository has no license, so redistribution is not permitted: remove or replace before a public release |
 | https://github.com/hashicorp/agent-skills | MPL-2.0 | terraform-style-guide |
 | https://github.com/obra/superpowers | MIT | brainstorming |
 | https://github.com/rorkai/app-store-connect-cli-skills | MIT | asc-release-flow, asc-submission-health |
@@ -163,7 +165,59 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Apache License 2.0: anthropics/knowledge-work-plugins, docker/skills, android/skills and aws/agent-toolkit-for-aws
+## MIT License: affaan-m/ECC
+
+```
+MIT License
+
+Copyright (c) 2026 Affaan Mustafa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## MIT License: Xabilimon1/TBA-Token-Budget-Advisor-Claude-Code
+
+```
+MIT License
+
+Copyright (c) 2026 Xabier Ariznabarreta Alomar
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Apache License 2.0: anthropics/knowledge-work-plugins, docker/skills, android/skills, aws/agent-toolkit-for-aws and google/agents-cli
 
 NOTICE file of aws/agent-toolkit-for-aws, reproduced as section 4(d) of the license requires:
 
@@ -171,7 +225,7 @@ NOTICE file of aws/agent-toolkit-for-aws, reproduced as section 4(d) of the lice
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 ```
 
-android/skills, anthropics/knowledge-work-plugins and docker/skills ship no NOTICE file.
+android/skills, anthropics/knowledge-work-plugins, docker/skills and google/agents-cli ship no NOTICE file.
 
 
 ```
