@@ -245,3 +245,77 @@ fn test_embedded_catalog_content_matches_skill_files_on_disk() {
         assert!(!skill.content.contains('\r'), "{} content must be LF-normalised", skill.id);
     }
 }
+
+// A7 / SKL-9: phases are organised like a company's teams. Each domain belongs to a function
+// (product, UX, engineering, QA, security, release, operations, ...; the list can grow), each
+// function works in named phases, and every phase of every flow has at least one function.
+
+fn domains_doc() -> serde_json::Value {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("skills").join("domains.json");
+    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+}
+
+fn function_ids(doc: &serde_json::Value) -> std::collections::BTreeSet<String> {
+    doc["functions"]
+        .as_array()
+        .expect("domains.json has a functions array")
+        .iter()
+        .map(|f| f["id"].as_str().expect("each function has a string id").to_string())
+        .collect()
+}
+
+#[test]
+fn test_every_domain_belongs_to_a_known_function() {
+    let doc = domains_doc();
+    let functions = function_ids(&doc);
+    for domain in doc["domains"].as_array().unwrap() {
+        let id = domain["id"].as_str().unwrap();
+        let function = domain["function"].as_str().unwrap_or_else(|| panic!("domain \"{}\" has no function", id));
+        assert!(functions.contains(function), "domain \"{}\" names unknown function \"{}\"", id, function);
+    }
+}
+
+#[test]
+fn test_every_function_has_a_domain_and_known_phases() {
+    let doc = domains_doc();
+    let phases = all_phase_ids();
+    for function in doc["functions"].as_array().unwrap() {
+        let id = function["id"].as_str().unwrap();
+        assert!(
+            doc["domains"].as_array().unwrap().iter().any(|d| d["function"] == function["id"]),
+            "function \"{}\" has no domain",
+            id
+        );
+        let listed = function["phases"].as_array().unwrap_or_else(|| panic!("function \"{}\" has no phases", id));
+        assert!(!listed.is_empty(), "function \"{}\" works in no phase", id);
+        for phase in listed {
+            let phase = phase.as_str().unwrap();
+            assert!(phases.contains(phase), "function \"{}\" names unknown phase \"{}\"", id, phase);
+        }
+    }
+}
+
+#[test]
+fn test_every_phase_of_every_flow_has_a_function() {
+    let doc = domains_doc();
+    for phase in all_phase_ids() {
+        let staffed = doc["functions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["phases"].as_array().map(|p| p.iter().any(|x| x == phase.as_str())).unwrap_or(false));
+        assert!(staffed, "phase \"{}\" has no function working in it", phase);
+    }
+}
+
+#[test]
+fn test_the_domain_list_cites_its_yardsticks() {
+    let doc = domains_doc();
+    let sources = doc["sources"].as_array().expect("domains.json lists the yardsticks it was checked against");
+    assert!(!sources.is_empty());
+    for source in sources {
+        let url = source["url"].as_str().expect("each source has a url");
+        assert!(url.starts_with("https://"), "source url must be https: {}", url);
+        assert!(source["name"].as_str().map(|n| !n.is_empty()).unwrap_or(false), "each source has a name");
+    }
+}

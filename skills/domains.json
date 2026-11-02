@@ -1,116 +1,396 @@
 {
-  "version": 1,
-  "description": "Engineering and product domains the skill catalog must cover. This list is meant to grow: add a domain here and the coverage test fails until a skill covers it.",
-  "domains": [
+  "version": 2,
+  "description": "Engineering and product domains the skill catalog must cover. This list is meant to grow: add a domain here and the coverage test fails until a skill covers it. Each domain belongs to a company function; each function works in named phases (SKL-9). Both lists can grow.",
+  "functions": [
     {
-      "id": "product-discovery",
-      "description": "Clarifying, describing and reviewing ideas"
+      "id": "product",
+      "description": "Product management: ideas, research, requirements, planning, analytics",
+      "phases": [
+        "idea-description",
+        "idea-review",
+        "research",
+        "prd"
+      ]
     },
     {
-      "id": "market-research",
-      "description": "Customers, competitors, evidence"
+      "id": "ux",
+      "description": "User experience: research, design, accessibility",
+      "phases": [
+        "prd",
+        "architecture",
+        "build",
+        "review"
+      ]
     },
     {
-      "id": "requirements",
-      "description": "Specs, PRDs, quality bars"
+      "id": "engineering",
+      "description": "Software engineering: architecture, building, documentation",
+      "phases": [
+        "architecture",
+        "build",
+        "review",
+        "handover"
+      ]
     },
     {
-      "id": "project-planning",
-      "description": "Task breakdown, sequencing, scope"
-    },
-    {
-      "id": "system-design",
-      "description": "Designing whole systems: components, data flow, scaling, reliability, trade-offs"
-    },
-    {
-      "id": "software-architecture",
-      "description": "Module boundaries, decisions, design within a codebase"
-    },
-    {
-      "id": "api-design",
-      "description": "Interfaces, contracts, protocols"
-    },
-    {
-      "id": "frontend",
-      "description": "Web UI, accessibility, browser behaviour"
-    },
-    {
-      "id": "mobile",
-      "description": "iOS, Android and cross-platform apps"
-    },
-    {
-      "id": "backend",
-      "description": "Server-side services, request handling, background jobs"
-    },
-    {
-      "id": "databases",
-      "description": "Data modelling, schema design, queries, migrations"
-    },
-    {
-      "id": "devops-infrastructure",
-      "description": "Containers, orchestration, infrastructure as code"
-    },
-    {
-      "id": "ci-cd",
-      "description": "Build, test and release automation"
-    },
-    {
-      "id": "cloud",
-      "description": "Cloud platforms and managed services"
+      "id": "qa",
+      "description": "Quality assurance: testing, review",
+      "phases": [
+        "build",
+        "review"
+      ]
     },
     {
       "id": "security",
-      "description": "Threats, hardening, secure coding, audits"
+      "description": "Security: hardening, review, red / blue team",
+      "phases": [
+        "architecture",
+        "build",
+        "review",
+        "security-pass"
+      ]
+    },
+    {
+      "id": "release",
+      "description": "Release: CI/CD, versioning, distribution",
+      "phases": [
+        "build",
+        "release"
+      ]
+    },
+    {
+      "id": "operations",
+      "description": "Operations / SRE: infrastructure, observability, incidents",
+      "phases": [
+        "architecture",
+        "release",
+        "handover"
+      ]
+    },
+    {
+      "id": "compliance",
+      "description": "Compliance and audit: privacy, licences, audits",
+      "phases": [
+        "prd",
+        "review",
+        "release"
+      ]
+    },
+    {
+      "id": "data",
+      "description": "Data and ML: pipelines, analytics, models",
+      "phases": [
+        "architecture",
+        "build"
+      ]
+    },
+    {
+      "id": "marketing-sales",
+      "description": "Marketing and sales: positioning, outreach, pitching",
+      "phases": [
+        "research",
+        "presentation",
+        "outreach"
+      ]
+    },
+    {
+      "id": "finance",
+      "description": "Finance: cost and economics",
+      "phases": [
+        "prd",
+        "architecture"
+      ]
+    }
+  ],
+  "domains": [
+    {
+      "id": "product-discovery",
+      "description": "Clarifying, describing and reviewing ideas",
+      "function": "product"
+    },
+    {
+      "id": "market-research",
+      "description": "Customers, competitors, evidence",
+      "function": "product"
+    },
+    {
+      "id": "requirements",
+      "description": "Specs, PRDs, quality bars",
+      "function": "product"
+    },
+    {
+      "id": "project-planning",
+      "description": "Task breakdown, sequencing, scope",
+      "function": "product"
+    },
+    {
+      "id": "system-design",
+      "description": "Designing whole systems: components, data flow, scaling, reliability, trade-offs",
+      "function": "engineering"
+    },
+    {
+      "id": "software-architecture",
+      "description": "Module boundaries, decisions, design within a codebase",
+      "function": "engineering"
+    },
+    {
+      "id": "api-design",
+      "description": "Interfaces, contracts, protocols",
+      "function": "engineering"
+    },
+    {
+      "id": "frontend",
+      "description": "Web UI, accessibility, browser behaviour",
+      "function": "engineering"
+    },
+    {
+      "id": "mobile",
+      "description": "iOS, Android and cross-platform apps",
+      "function": "engineering"
+    },
+    {
+      "id": "backend",
+      "description": "Server-side services, request handling, background jobs",
+      "function": "engineering"
+    },
+    {
+      "id": "databases",
+      "description": "Data modelling, schema design, queries, migrations",
+      "function": "engineering"
+    },
+    {
+      "id": "devops-infrastructure",
+      "description": "Containers, orchestration, infrastructure as code",
+      "function": "operations"
+    },
+    {
+      "id": "ci-cd",
+      "description": "Build, test and release automation",
+      "function": "release"
+    },
+    {
+      "id": "cloud",
+      "description": "Cloud platforms and managed services",
+      "function": "operations"
+    },
+    {
+      "id": "security",
+      "description": "Threats, hardening, secure coding, audits",
+      "function": "security"
     },
     {
       "id": "testing",
-      "description": "Test strategy and test writing"
+      "description": "Test strategy and test writing",
+      "function": "qa"
     },
     {
       "id": "performance",
-      "description": "Measuring and improving speed and resource use"
+      "description": "Measuring and improving speed and resource use",
+      "function": "engineering"
     },
     {
       "id": "systems-and-hardware",
-      "description": "Memory, CPU, concurrency, OS and hardware awareness"
+      "description": "Memory, CPU, concurrency, OS and hardware awareness",
+      "function": "engineering"
     },
     {
       "id": "observability",
-      "description": "Logging, metrics, tracing, alerting"
+      "description": "Logging, metrics, tracing, alerting",
+      "function": "operations"
     },
     {
       "id": "data-and-ml",
-      "description": "Data pipelines, analytics, machine learning"
+      "description": "Data pipelines, analytics, machine learning",
+      "function": "data"
     },
     {
       "id": "ai-agents",
-      "description": "Building and operating LLM agents and tools"
+      "description": "Building and operating LLM agents and tools",
+      "function": "engineering"
     },
     {
       "id": "documentation",
-      "description": "Docs, ADRs, READMEs"
+      "description": "Docs, ADRs, READMEs",
+      "function": "engineering"
     },
     {
       "id": "version-control",
-      "description": "Git workflow, commits, releases"
+      "description": "Git workflow, commits, releases",
+      "function": "engineering"
     },
     {
       "id": "debugging",
-      "description": "Finding and fixing defects"
+      "description": "Finding and fixing defects",
+      "function": "engineering"
     },
     {
       "id": "code-quality",
-      "description": "Review, simplification, standards"
+      "description": "Review, simplification, standards",
+      "function": "qa"
     },
     {
       "id": "presentation",
-      "description": "Slide decks and pitch presentations"
+      "description": "Slide decks and pitch presentations",
+      "function": "marketing-sales"
     },
     {
       "id": "marketing-outreach",
-      "description": "Cold outreach, lead generation, positioning"
+      "description": "Cold outreach, lead generation, positioning",
+      "function": "marketing-sales"
+    },
+    {
+      "id": "mobile-native",
+      "description": "Native iOS (Swift) and Android (Kotlin) apps",
+      "function": "engineering"
+    },
+    {
+      "id": "desktop-apps",
+      "description": "Desktop app packaging, code signing, installers and updates",
+      "function": "engineering"
+    },
+    {
+      "id": "app-distribution",
+      "description": "Publishing to app stores and package registries, store review",
+      "function": "release"
+    },
+    {
+      "id": "incident-response",
+      "description": "On-call, incident handling, postmortems, capacity planning (SRE)",
+      "function": "operations"
+    },
+    {
+      "id": "compliance-privacy",
+      "description": "Privacy law, audits, licence compliance",
+      "function": "compliance"
+    },
+    {
+      "id": "ux-research",
+      "description": "User research, wireframes, usability testing",
+      "function": "ux"
+    },
+    {
+      "id": "accessibility",
+      "description": "Accessibility audits and testing (WCAG conformance checks)",
+      "function": "ux"
+    },
+    {
+      "id": "end-to-end-and-load-testing",
+      "description": "End-to-end test strategy, load and stress testing",
+      "function": "qa"
+    },
+    {
+      "id": "product-analytics",
+      "description": "Measuring product use: events, funnels, experiments",
+      "function": "product"
+    },
+    {
+      "id": "sales-enablement",
+      "description": "Sales material, demos, objection handling",
+      "function": "marketing-sales"
+    },
+    {
+      "id": "cost-economics",
+      "description": "Cost estimates, cloud cost, build-versus-buy (SWEBOK: software engineering economics)",
+      "function": "finance"
+    },
+    {
+      "id": "stack-selection",
+      "description": "Choosing a tech stack from the project's constraints, recorded as an ADR (STK)",
+      "function": "engineering"
+    },
+    {
+      "id": "adversarial-security",
+      "description": "Red-team / blue-team passes on the project itself (SEC)",
+      "function": "security"
+    },
+    {
+      "id": "low-level-design",
+      "description": "Class and sequence design, design patterns, module internals (LLD)",
+      "function": "engineering"
+    },
+    {
+      "id": "algorithms-data-structures",
+      "description": "Choosing and implementing algorithms and data structures (SWEBOK: computing foundations)",
+      "function": "engineering"
+    },
+    {
+      "id": "networking",
+      "description": "Protocols, sockets, HTTP, latency and offline behaviour",
+      "function": "engineering"
+    },
+    {
+      "id": "i18n-l10n",
+      "description": "Internationalisation and localisation: languages, formats, right-to-left text",
+      "function": "ux"
+    },
+    {
+      "id": "software-maintenance",
+      "description": "Maintaining and evolving existing and legacy code (SWEBOK: software maintenance)",
+      "function": "engineering"
+    },
+    {
+      "id": "configuration-management",
+      "description": "Versions, baselines, environments and configuration (SWEBOK: configuration management)",
+      "function": "release"
+    },
+    {
+      "id": "payments",
+      "description": "Taking payments safely: providers, webhooks, refunds, compliance basics",
+      "function": "engineering"
     }
   ],
-  "pendingGaps": [],
-  "pendingGapsNote": "Domains not yet covered (task A5). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow."
+  "pendingGaps": [
+    "accessibility",
+    "adversarial-security",
+    "algorithms-data-structures",
+    "app-distribution",
+    "compliance-privacy",
+    "configuration-management",
+    "cost-economics",
+    "desktop-apps",
+    "end-to-end-and-load-testing",
+    "i18n-l10n",
+    "incident-response",
+    "low-level-design",
+    "mobile-native",
+    "networking",
+    "payments",
+    "product-analytics",
+    "sales-enablement",
+    "software-maintenance",
+    "stack-selection",
+    "ux-research"
+  ],
+  "pendingGapsNote": "Domains not yet covered by a vetted skill (tasks A8-A10). The coverage test requires uncovered domains to match this list exactly, so it must shrink as gaps are filled and can never silently grow.",
+  "sources": [
+    {
+      "name": "SWEBOK v4 (IEEE Computer Society, 2024): 18 knowledge areas",
+      "url": "https://www.computer.org/education/bodies-of-knowledge/software-engineering"
+    },
+    {
+      "name": "ISO/IEC/IEEE 12207 software life cycle processes (summary; the ISO site refuses automated reads)",
+      "url": "https://en.wikipedia.org/wiki/ISO/IEC_12207"
+    },
+    {
+      "name": "Microsoft Security Development Lifecycle practices",
+      "url": "https://www.microsoft.com/en-us/securityengineering/sdl/practices"
+    },
+    {
+      "name": "OWASP SAMM model: 5 business functions, 15 practices",
+      "url": "https://owaspsamm.org/model/"
+    },
+    {
+      "name": "NIST Secure Software Development Framework (PO, PS, PW, RV)",
+      "url": "https://csrc.nist.gov/projects/ssdf"
+    },
+    {
+      "name": "Google SRE book, introduction (what SRE teams own)",
+      "url": "https://sre.google/sre-book/introduction/"
+    },
+    {
+      "name": "NIST glossary: red team / blue team",
+      "url": "https://csrc.nist.gov/glossary/term/red_team"
+    }
+  ],
+  "sourcesNote": "Checked against these on 2026-11-02 (owner's reviews of question 4 and of the second question set). The gap list came from that comparison."
 }
