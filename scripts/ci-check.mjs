@@ -121,9 +121,8 @@ export function toLocalCommand(run, platform, worktree) {
 
 /**
  * Where a pass is recorded: one empty file per commit and OS. The same commit on the same OS
- * gives the same result, so a push of an already-verified commit does not repeat the check.
- * (A long check during `git push` lost the connection to GitHub twice: git connects before the
- * pre-push hook runs and sends after it. Run `npm run ci:check`, then push.)
+ * gives the same result, so a push of an already-verified commit, or a retried push, does not
+ * repeat the check. Routine: `npm run ci:check`, then `git push`.
  */
 export function verifiedMarker(markerDir, sha, runnerOs) {
   return `${markerDir.replace(/\\/g, "/")}/${sha}.${runnerOs}`;

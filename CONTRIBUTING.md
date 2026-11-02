@@ -46,7 +46,7 @@ git config core.hooksPath scripts/hooks
 
 On every push it runs CI's steps for your OS in fresh checkouts, one per CI job, and blocks the push if any step fails. The steps are read from `.github/workflows/ci.yml`, so the check always matches CI. Documentation-only pushes skip it.
 
-Recommended routine: run `npm run ci:check` first, then `git push`. A commit that passed is recorded (in `.git/ci-check-passed/`, per commit and OS), so the push of that same commit is not checked again. This matters because git connects to the remote before the hook runs: a long check during the push can lose that connection (seen as an SSL error), although the check itself passed.
+Recommended routine: run `npm run ci:check` first, then `git push`. A commit that passed is recorded (in `.git/ci-check-passed/`, per commit and OS), so the push of that same commit is not checked again, and a push that has to be retried (for example after a network error) does not repeat the check.
 
 It only covers your own OS: CI still checks the others after the push. `git push --no-verify` bypasses it; use that only in an emergency, and say so in the pull request.
 
