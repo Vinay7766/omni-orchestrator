@@ -19,6 +19,8 @@ export { renderSummary, renderDecisions, renderProblems, renderLessons, refreshM
 export { findProject, LINK_FILE } from "./memory/discover.js";
 export { projectOverview } from "./memory/overview.js";
 export type { ProjectOverview } from "./memory/overview.js";
+export { phaseHistory, buildPhaseHistory } from "./memory/history.js";
+export type { PhaseHistoryEntry } from "./memory/history.js";
 export type { FindProjectResult } from "./memory/discover.js";
 export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/paths.js";
 export { checkRefs } from "./memory/refs.js";
