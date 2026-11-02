@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import type { CommitChecker, GitLookup } from "./refs.js";
+import type { CommitChecker, GitLookup, RepositoryLocation } from "./refs.js";
 
 /** Maps git's exit code and error output to a lookup result. */
 export function interpretGitResult(exitCode: number, stderr: string): Exclude<GitLookup, "unavailable"> {
@@ -33,10 +33,13 @@ export function createGitCommitChecker(
     ? { ...process.env, GIT_CEILING_DIRECTORIES: options.ceilingDirectories.join(process.platform === "win32" ? ";" : ":") }
     : undefined;
   return {
-    repositoryRoot(projectRoot) {
-      return new Promise<string | null>((resolve) => {
-        execFile(gitPath, ["rev-parse", "--show-toplevel"], { cwd: projectRoot, timeout, windowsHide: true, env }, (error, stdout) => {
-          resolve(error ? null : String(stdout).trim() || null);
+    locateRepository(projectRoot) {
+      return new Promise<RepositoryLocation | null>((resolve) => {
+        // One line each: the repository root, then the project's path inside it (empty
+        // line at the root). git works this out itself, so links and short names don't matter.
+        execFile(gitPath, ["rev-parse", "--show-toplevel", "--show-prefix"], { cwd: projectRoot, timeout, windowsHide: true, env }, (error, stdout) => {
+          const [root = "", prefix = ""] = String(stdout).split(/\r?\n/);
+          resolve(error || !root.trim() ? null : { root: root.trim(), prefix: prefix.trim() });
         });
       });
     },

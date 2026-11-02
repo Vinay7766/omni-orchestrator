@@ -16,8 +16,19 @@ export type GitLookup = "yes" | "no" | "ambiguous" | "not-a-repository" | "unava
  */
 export interface CommitChecker {
   exists(projectRoot: string, sha: string): Promise<GitLookup>;
-  /** Root folder of the repository commits are checked against, or null if there is none. */
-  repositoryRoot?(projectRoot: string): Promise<string | null>;
+  /** The repository commits are checked against, or null if there is none. */
+  locateRepository?(projectRoot: string): Promise<RepositoryLocation | null>;
+}
+
+/**
+ * Where the project sits in its repository. `prefix` is the project folder's path inside
+ * the repository ("" when the project is the repository root). The checker reports it, so
+ * no path spellings are compared: links (/var -> /private/var on macOS), Windows short names
+ * and junctions all name the same folder in different ways.
+ */
+export interface RepositoryLocation {
+  root: string;
+  prefix: string;
 }
 
 /** Which repository commits were checked against, so a wrong one is visible. */
@@ -26,13 +37,6 @@ export interface RepositoryInfo {
   /** True when the repository lives in a parent folder of the project. */
   aboveProject: boolean;
   message?: string;
-}
-
-/** Windows drive paths compare case-insensitively; others exactly. */
-function samePath(a: string, b: string): boolean {
-  const x = normalizePath(a);
-  const y = normalizePath(b);
-  return /^[A-Za-z]:\//.test(x) ? x.toLowerCase() === y.toLowerCase() : x === y;
 }
 
 export type RefStatus = "ok" | "missing" | "outside-project" | "invalid" | "ambiguous" | "unverified";
@@ -99,14 +103,15 @@ export async function checkRefs(
   }
 
   let repository: RepositoryInfo | undefined;
-  if ((refs.commits?.length ?? 0) > 0 && commits?.repositoryRoot) {
-    const top = await commits.repositoryRoot(root);
-    const aboveProject = top !== null && !samePath(top, root);
+  if ((refs.commits?.length ?? 0) > 0 && commits?.locateRepository) {
+    const found = await commits.locateRepository(root);
+    const top = found === null ? null : normalizePath(found.root);
+    const aboveProject = found !== null && found.prefix !== "";
     repository = {
-      root: top === null ? null : normalizePath(top),
+      root: top,
       aboveProject,
       ...(aboveProject
-        ? { message: `commits were checked against the repository in a parent folder (${normalizePath(top!)}); fine for a monorepo, but make sure it is the right one` }
+        ? { message: `commits were checked against the repository in a parent folder (${top}); fine for a monorepo, but make sure it is the right one` }
         : {}),
     };
   }

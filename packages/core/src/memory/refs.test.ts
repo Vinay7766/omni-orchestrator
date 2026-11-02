@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -107,17 +107,42 @@ describe("checkRefs: commits with real git", () => {
 });
 
 describe("checkRefs: which repository was used", () => {
+  // git reports the real path: macOS temp folders sit under a /var -> /private/var link,
+  // and Windows temp paths can use short 8.3 names (C:/Users/RUNNER~1). Compare real paths.
+  const realRepo = () => normalizePath(realpathSync.native(repo));
+
   it("reports the repository and that it is the project itself", async () => {
     const result = await checkRefs(fs, repo, { commits: [sha] }, createGitCommitChecker());
-    expect(result.repository?.root).toBe(normalizePath(repo));
+    expect(result.repository?.root).toBe(realRepo());
     expect(result.repository?.aboveProject).toBe(false);
+  });
+
+  it("decides 'parent folder' from the project's place in the repository, not by comparing path spellings", async () => {
+    const checker: CommitChecker = {
+      exists: async () => "yes",
+      locateRepository: async () => ({ root: "/private/var/folders/x/project", prefix: "" }),
+    };
+    const result = await checkRefs(fs, repo, { commits: [sha] }, checker);
+    expect(result.repository).toEqual({ root: "/private/var/folders/x/project", aboveProject: false });
+  });
+
+  it("does not flag a project opened through a link to the repository folder", async () => {
+    const link = join(notRepo, "linked-project");
+    symlinkSync(repo, link, process.platform === "win32" ? "junction" : "dir");
+    try {
+      const result = await checkRefs(fs, link, { commits: [sha] }, createGitCommitChecker());
+      expect(result.repository?.aboveProject).toBe(false);
+      expect(result.repository?.message).toBeUndefined();
+    } finally {
+      rmSync(link, { recursive: true, force: true });
+    }
   });
 
   it("flags a repository in a parent folder (a monorepo, or a home folder kept in git)", async () => {
     const sub = join(repo, "packages", "app");
     mkdirSync(sub, { recursive: true });
     const result = await checkRefs(fs, sub, { commits: [sha] }, createGitCommitChecker());
-    expect(result.repository?.root).toBe(normalizePath(repo));
+    expect(result.repository?.root).toBe(realRepo());
     expect(result.repository?.aboveProject).toBe(true);
     expect(result.repository?.message).toMatch(/parent folder/);
   });

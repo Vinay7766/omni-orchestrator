@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -43,7 +43,9 @@ describe("stdio server", () => {
       const result = await client.callTool({ name: "get_context", arguments: {} });
       expect(result.isError).toBeFalsy();
       const ctx = result.structuredContent as { project: { root: string }; phase: { id: string }; skills: { reason: string }[]; warnings: string[] };
-      expect(ctx.project.root).toBe(root);
+      // Same folder, compared as real paths: on macOS the child's working folder is reported
+      // as /private/var/... (the temp folder sits under the /var link).
+      expect(realpathSync.native(ctx.project.root)).toBe(realpathSync.native(root));
       expect(ctx.phase.id).toBe("build");
       // The real catalog maps skills to the build phase (A4 guarantees every phase has some).
       expect(ctx.skills.some((s) => s.reason === "phase")).toBe(true);
