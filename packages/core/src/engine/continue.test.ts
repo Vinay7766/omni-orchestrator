@@ -6,7 +6,7 @@ import { MemoryStore } from "../memory/store.js";
 import { createNodeFs } from "../memory/node-fs.js";
 import { PhaseEngine } from "./phases.js";
 import { continueAfterDecision } from "./continue.js";
-import { OPTIONAL_PHASES } from "../generated/contract.js";
+import { OPTIONAL_PHASES, STACK_ADR_PHASES } from "../generated/contract.js";
 
 // What happens after a person approves or skips a phase, shared by the extension and the app:
 // the next phase starts, unless it is optional (only the person decides that, SEC-1).
@@ -31,7 +31,13 @@ async function approved(phase: string) {
   await engine.start(phase in OPTIONAL_PHASES ? person : agent, phase);
   await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [".agents/summary.md"] } });
   const planning = !["build", "review", "security-pass", "release", "handover"].includes(phase);
-  await engine.submit(agent, { phase, documents: ["d.md"], skillsUsed: [{ skill: "x", evidence: "y" }], ...(planning ? { understandingCheck: "u.md" } : {}) });
+  await engine.submit(agent, {
+    phase,
+    documents: ["d.md"],
+    skillsUsed: [{ skill: "x", evidence: "y" }],
+    ...(planning ? { understandingCheck: "u.md" } : {}),
+    ...(STACK_ADR_PHASES.includes(phase as never) ? { stackAdr: "adr.md" } : {}),
+  });
   await engine.approve(person, phase);
 }
 

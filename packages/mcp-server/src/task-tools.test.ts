@@ -148,7 +148,7 @@ async function buildPhaseWithTask() {
   for (const phase of ["idea-review", "research", "prd", "architecture"]) {
     if (phase !== "idea-review") await phases.start(actor, phase);
     await store.appendEvent({ type: "memory_updated", actor, payload: { files: [".agents/summary.md"] } });
-    await phases.submit(actor, { phase, documents: ["a.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "u.md" });
+    await phases.submit(actor, { phase, documents: ["a.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "u.md", stackAdr: "adr.md" });
     const approved = await phases.approve(person, phase);
     if (!approved.ok) throw new Error(JSON.stringify(approved));
   }

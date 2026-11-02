@@ -2,10 +2,12 @@
 import {
   checkPhaseAction,
   checkRefs,
+  checkStackAdr,
   FLOWS,
   joinPath,
   PhaseEngine,
   PLANNING_PHASES,
+  STACK_ADR_PHASES,
   type Event,
   type ResolvedSkill,
 } from "@omni/core";
@@ -62,6 +64,8 @@ export interface SubmitInput {
   skillsUsed: { skill: string; evidence: string }[];
   /** Project-relative file with the confirmed Understanding check (planning phases, UND-1). */
   understandingCheck?: string;
+  /** Project-relative stack ADR written with the stack-selection skill (architecture phase, STK-1..3). */
+  stackAdr?: string;
   /** Memory files updated for this phase; recorded as memory_updated before the submission (GATE-3). */
   memoryUpdate?: { files: string[] };
 }
@@ -87,7 +91,12 @@ export async function submitPhase(deps: ToolDeps, actor: Event["actor"], input: 
   if (!opened.ok) return opened;
   const { store, root } = opened;
 
-  const files = [...input.documents, ...(input.understandingCheck ? [input.understandingCheck] : []), ...(input.memoryUpdate?.files ?? [])];
+  const files = [
+    ...input.documents,
+    ...(input.understandingCheck ? [input.understandingCheck] : []),
+    ...(input.stackAdr ? [input.stackAdr] : []),
+    ...(input.memoryUpdate?.files ?? []),
+  ];
   const refs = await checkRefs(deps.fs, root, { files: [...new Set(files)] });
   const bad = refs.results.filter((r) => r.status !== "ok");
   if (bad.length > 0) {
@@ -103,11 +112,23 @@ export async function submitPhase(deps: ToolDeps, actor: Event["actor"], input: 
     }
   }
 
+  if (input.stackAdr) {
+    // STK-1..3: a referenced ADR must be complete, whichever phase it comes with.
+    const problems = checkStackAdr((await deps.fs.readText(joinPath(root, input.stackAdr))) ?? "");
+    if (problems.length > 0) {
+      return {
+        ok: false,
+        message: `${input.stackAdr} is not a complete stack ADR: ${problems.join("; ")}. Finish it with the stack-selection skill, then submit again.`,
+      };
+    }
+  }
+
   const submission = {
     phase: input.phase,
     documents: input.documents,
     skillsUsed: input.skillsUsed,
     ...(input.understandingCheck ? { understandingCheck: input.understandingCheck } : {}),
+    ...(input.stackAdr ? { stackAdr: input.stackAdr } : {}),
   };
   const state = await store.readState();
   const { events } = await store.readEvents();
@@ -117,7 +138,7 @@ export async function submitPhase(deps: ToolDeps, actor: Event["actor"], input: 
     ? [...events, { type: "memory_updated", actor, payload: { files: input.memoryUpdate.files } } as unknown as Event]
     : events;
   const rules = checkPhaseAction(
-    { state, events: wouldBe, flow: state.flow, flows: FLOWS, planning: PLANNING_PHASES },
+    { state, events: wouldBe, flow: state.flow, flows: FLOWS, planning: PLANNING_PHASES, stackAdr: STACK_ADR_PHASES },
     { kind: "submit", ...submission },
     actor,
   );

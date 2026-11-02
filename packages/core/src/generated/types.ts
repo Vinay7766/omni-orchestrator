@@ -112,6 +112,10 @@ export type SkillCatalog = {
  * Path relative to the project root, forward slashes, never absolute, never leaving the project.
  */
 export type CommonRelPath1 = string;
+/**
+ * Path relative to the project root, forward slashes, never absolute, never leaving the project.
+ */
+export type CommonRelPath2 = string;
 
 /**
  * Every project-memory file type, keyed by schema name.
@@ -438,6 +442,7 @@ export interface EventPhaseSubmitted {
    */
   skillsUsed: [CommonSkillUse, ...CommonSkillUse[]];
   understandingCheck?: CommonRelPath1;
+  stackAdr?: CommonRelPath2;
 }
 /**
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema

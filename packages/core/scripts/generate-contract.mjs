@@ -114,6 +114,8 @@ function buildContract(fileNames) {
     `export const PHASE_IDS = ${JSON.stringify(phaseIds)} as const;\n` +
     `/** Phases that need a confirmed Understanding check when submitted (UND-1). */\n` +
     `export const PLANNING_PHASES = ${JSON.stringify(phases.planning ?? [])} as const;\n` +
+    `/** Phases whose submission must reference a complete stack ADR (STK-1..3). */\n` +
+    `export const STACK_ADR_PHASES = ${JSON.stringify(phases.stackAdr ?? [])} as const;\n` +
     `/** Phases a person may decline, each with the question the person is asked (GATE-1, SEC-1). */\n` +
     `export const OPTIONAL_PHASES: Readonly<Record<string, string>> = ${JSON.stringify(phases.optional ?? {})};\n`
   );

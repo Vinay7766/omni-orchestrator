@@ -30,6 +30,7 @@ export type { CommitChecker, GitLookup, RefResult, RefStatus, RepositoryInfo, Re
 
 export { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./engine/phases.js";
 export type { PhaseAction, PhaseContext, PhaseResult, CheckResult } from "./engine/phases.js";
+export { checkStackAdr, STACK_ADR_SECTIONS } from "./engine/stack-adr.js";
 export { continueAfterDecision } from "./engine/continue.js";
 export type { ContinueResult } from "./engine/continue.js";
 export type { EventGuard } from "./memory/store.js";
@@ -38,5 +39,5 @@ export type { CatalogEntry, SkillSource, ResolvedSkill } from "./skills/resolve.
 export { TaskEngine, checkTaskAction, designNotePath } from "./engine/tasks.js";
 export type { TaskAction, TaskResult } from "./engine/tasks.js";
 
-export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES, OPTIONAL_PHASES } from "./generated/contract.js";
+export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES, STACK_ADR_PHASES, OPTIONAL_PHASES } from "./generated/contract.js";
 export type * from "./generated/types.js";

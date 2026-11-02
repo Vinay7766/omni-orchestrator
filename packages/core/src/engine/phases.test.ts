@@ -7,7 +7,7 @@ import { MemoryStore } from "../memory/store.js";
 import { createNodeFs } from "../memory/node-fs.js";
 import { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./phases.js";
 import { initialState } from "../memory/reduce.js";
-import { FLOWS, OPTIONAL_PHASES } from "../generated/contract.js";
+import { FLOWS, OPTIONAL_PHASES, PLANNING_PHASES, STACK_ADR_PHASES } from "../generated/contract.js";
 
 const fs = createNodeFs();
 const person = { kind: "human" as const, tool: "omni-desktop" };
@@ -39,12 +39,12 @@ async function approvedThrough(phases: string[]) {
     // Optional phases (security pass) can only be started by a person (C15).
     expect((await engine.start(phase in OPTIONAL_PHASES ? person : agent, phase)).ok).toBe(true);
     await memoryUpdate();
-    const planning = !["build", "review", "security-pass", "release", "handover"].includes(phase);
     const submitted = await engine.submit(agent, {
       phase,
       documents: [`docs/${phase}.md`],
       skillsUsed,
-      ...(planning ? { understandingCheck: `docs/${phase}-understanding.md` } : {}),
+      ...(PLANNING_PHASES.includes(phase as never) ? { understandingCheck: `docs/${phase}-understanding.md` } : {}),
+      ...(STACK_ADR_PHASES.includes(phase as never) ? { stackAdr: `docs/decisions/ADR-001-${phase}.md` } : {}),
     });
     expect(submitted.ok, messages(submitted)).toBe(true);
     expect((await engine.approve(person, phase)).ok).toBe(true);
@@ -120,6 +120,53 @@ describe("submitting phases", () => {
     await memoryUpdate();
     const result = await engine.submit(agent, { phase: "build", documents: ["src/index.ts"], skillsUsed });
     expect(result.ok, messages(result)).toBe(true);
+  });
+
+  it("requires a stack decision record when submitting the architecture phase (STK-1..3, C16)", async () => {
+    expect(STACK_ADR_PHASES).toEqual(["architecture"]);
+    await approvedThrough(["idea-review", "research", "prd"]);
+    await engine.start(agent, "architecture");
+    await memoryUpdate();
+    const before = (await store.readEvents()).events.length;
+    const result = await engine.submit(agent, {
+      phase: "architecture",
+      documents: ["docs/ARCHITECTURE.md"],
+      skillsUsed,
+      understandingCheck: "docs/u.md",
+    });
+    expect(result.ok).toBe(false);
+    expect(messages(result)).toBe(
+      `"architecture" needs a stack decision record: include the ADR (stackAdr) written with the stack-selection skill`,
+    );
+    expect((await store.readEvents()).events.length).toBe(before);
+  });
+
+  it("records the stack ADR with the architecture submission", async () => {
+    await approvedThrough(["idea-review", "research", "prd"]);
+    await engine.start(agent, "architecture");
+    await memoryUpdate();
+    const result = await engine.submit(agent, {
+      phase: "architecture",
+      documents: ["docs/ARCHITECTURE.md"],
+      skillsUsed,
+      understandingCheck: "docs/u.md",
+      stackAdr: "docs/decisions/ADR-001-stack.md",
+    });
+    if (!result.ok) throw new Error(messages(result));
+    expect(result.event.payload).toMatchObject({ phase: "architecture", stackAdr: "docs/decisions/ADR-001-stack.md" });
+  });
+
+  it("applies the stack ADR rule to whichever phases are configured, not to a phase name", () => {
+    const flows = { custom: ["alpha", "beta"] };
+    const state = { ...initialState("build"), phases: { alpha: { status: "in_progress" as const } } };
+    const events = [{ type: "memory_updated" } as never];
+    const ctx = { state, events, flow: "custom", flows, planning: [], stackAdr: ["alpha"] };
+    const action = { kind: "submit" as const, phase: "alpha", documents: ["a.md"], skillsUsed };
+    const without = checkPhaseAction(ctx, action, agent);
+    expect(without.ok).toBe(false);
+    expect(messages(without)).toMatch(/"alpha" needs a stack decision record/);
+    expect(checkPhaseAction(ctx, { ...action, stackAdr: "adr.md" }, agent).ok).toBe(true);
+    expect(checkPhaseAction({ ...ctx, stackAdr: [] }, action, agent).ok).toBe(true);
   });
 
   it("requires evidence for every skill used (schema rule)", async () => {

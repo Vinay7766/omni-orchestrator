@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0001",
+  "time": "2026-11-02T10:00:00Z",
+  "type": "phase_submitted",
+  "actor": {
+    "kind": "agent",
+    "tool": "some-future-ai-tool",
+    "model": "any-model-name"
+  },
+  "payload": {
+    "phase": "architecture",
+    "documents": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "skillsUsed": [
+      {
+        "skill": "stack-selection",
+        "evidence": "ADR written"
+      }
+    ],
+    "understandingCheck": "docs/understanding-check.md",
+    "stackAdr": "../elsewhere/ADR-001-stack.md"
+  }
+}

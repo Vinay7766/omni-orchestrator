@@ -21,6 +21,8 @@ export interface PhaseHistoryEntry {
     documents: string[];
     skillsUsed: { skill: string; evidence: string }[];
     understandingCheck?: string;
+    /** The stack ADR referenced (architecture phase, STK-1..3). */
+    stackAdr?: string;
   }[];
   changeRequests: { time: string; by: Actor; notes: string }[];
   decision?: { kind: "approved" | "skipped"; time: string; by: Actor; reason?: string };
@@ -68,6 +70,7 @@ export function buildPhaseHistory(
           documents: (payload.documents as string[] | undefined) ?? [],
           skillsUsed: (payload.skillsUsed as { skill: string; evidence: string }[] | undefined) ?? [],
           ...(typeof payload.understandingCheck === "string" ? { understandingCheck: payload.understandingCheck } : {}),
+          ...(typeof payload.stackAdr === "string" ? { stackAdr: payload.stackAdr } : {}),
         });
         break;
       case "changes_requested":

@@ -27,7 +27,7 @@ async function submitted(phase: string) {
   const started = await phases.start(phase in OPTIONAL_PHASES ? person : agent, phase);
   if (!started.ok) throw new Error(JSON.stringify(started));
   await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [".agents/summary.md"] } });
-  const r = await phases.submit(agent, { phase, documents: ["docs/idea.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "docs/u.md" });
+  const r = await phases.submit(agent, { phase, documents: ["docs/idea.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "docs/u.md", stackAdr: "docs/adr.md" });
   if (!r.ok) throw new Error(JSON.stringify(r));
 }
 

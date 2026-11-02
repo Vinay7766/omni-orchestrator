@@ -534,6 +534,10 @@
         "understandingCheck": {
           "$ref": "urn:omni:schema:common#/$defs/relPath",
           "description": "Path to the confirmed Understanding check. Required for planning phases (UND-1); which phases count as planning is checked in code."
+        },
+        "stackAdr": {
+          "$ref": "urn:omni:schema:common#/$defs/relPath",
+          "description": "Path to the stack decision record (STK-1..3). Required for the phases listed under stackAdr in phases.json; its sections are checked when it is submitted."
         }
       }
     },

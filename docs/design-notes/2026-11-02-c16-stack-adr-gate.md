@@ -1,0 +1,17 @@
+## C16: the architecture submission must reference a complete stack ADR (2026-11-02)
+
+Problem: an agent can hand in the architecture phase without the stack decision STK-1..3 require (constraints, 2-3 options, sources, switch condition), so the person reviews an architecture whose stack choice was never recorded.
+Inputs: `submit_phase` (MCP) with documents, skills used, an Understanding check and now a project-relative `stackAdr` path. Output: the submission is recorded, or rejected with a message that names what is missing.
+Constraints: phases.json is the single source of truth for phase rules (no phase names in rules, UND-3); the engine is pure and has no file access (like the Understanding check, file contents are checked where files are read: the MCP server); a rejected submission writes nothing; existing projects keep loading; the path must stay inside the project (checkRefs already enforces relative, no `..`, not absolute, exists).
+Approaches considered:
+- A: a new optional `stackAdr` field on the submission; phases.json lists the phases that need one (`stackAdr: ["architecture"]`); the engine requires the field for those phases; the MCP server reads the file and runs the ADR check. Mirrors `understandingCheck`; one place to change which phases need it.
+- B: find the ADR among `documents` by file name (`docs/decisions/ADR-*`). No schema change, but it hard-codes a path convention the stack-selection skill says to adapt to the project, and a renamed file silently passes or fails.
+- C: the engine reads the file itself. Breaks the pure engine (it runs in the browser too) and needs fs plumbing through the store.
+Chosen: A, because it reuses the proven Understanding-check pattern, keeps the rule data-driven and the engine pure.
+Switch if: other decision kinds (data store, hosting) need their own gate; then turn the list into `phase -> decision kind` with one checker per kind.
+Shape: `checkStackAdr(text)` moves from scripts/adr-check.mjs into core (`engine/stack-adr.ts`, exported) so the repo test and the MCP server share one rule set. Sections required: Status, Context and constraints, Options considered, Decision, Why the others lost, Switch conditions, Sources; Sources needs an https link; Decision must say "best fit for these constraints". CRLF is normalised before checking. The event schema gains optional `stackAdr` (relPath).
+Rules: missing field on a stack-ADR phase -> "\"architecture\" needs a stack decision record: include the ADR (stackAdr) made with the stack-selection skill"; file missing or outside the project -> the checkRefs message; file incomplete -> "<path> is not a complete stack ADR: missing section: Sources; ...".
+Not checked: Status value (the ADR stays Proposed until the person accepts it at this gate, so requiring Accepted would deadlock); whether the options table has 2-3 columns (a heading check cannot judge it; the person's review does).
+Edge cases tested: architecture without stackAdr (engine and MCP); stackAdr on a phase that does not need one (accepted, recorded); missing file; path with `..`; empty file; each missing section named; no https link; universal-best claim; CRLF file passes; schema fixture with and without stackAdr; nothing written on rejection.
+Generalisation check: no phase name in the rule; a made-up phase listed in `stackAdr` gets the same rule (engine test with custom options).
+Assumptions to confirm: none.

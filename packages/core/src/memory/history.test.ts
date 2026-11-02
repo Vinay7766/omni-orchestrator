@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { MemoryStore } from "./store.js";
 import { createNodeFs } from "./node-fs.js";
 import { PhaseEngine } from "../engine/phases.js";
-import { FLOWS, OPTIONAL_PHASES } from "../generated/contract.js";
+import { FLOWS, OPTIONAL_PHASES, STACK_ADR_PHASES } from "../generated/contract.js";
 import { phaseHistory } from "./history.js";
 
 // E3 / GATE-5: for every phase, what was produced and what the person decided.
@@ -33,7 +33,13 @@ const memoryUpdate = () => store.appendEvent({ type: "memory_updated", actor: ag
 async function submit(phase: string, documents: string[]) {
   await memoryUpdate();
   const planning = !["build", "review", "security-pass", "release", "handover"].includes(phase);
-  const r = await engine.submit(agent, { phase, documents, skillsUsed, ...(planning ? { understandingCheck: `docs/${phase}-u.md` } : {}) });
+  const r = await engine.submit(agent, {
+    phase,
+    documents,
+    skillsUsed,
+    ...(planning ? { understandingCheck: `docs/${phase}-u.md` } : {}),
+    ...(STACK_ADR_PHASES.includes(phase as never) ? { stackAdr: `docs/decisions/ADR-001-${phase}.md` } : {}),
+  });
   if (!r.ok) throw new Error(JSON.stringify(r));
 }
 
@@ -75,6 +81,13 @@ describe("phaseHistory", () => {
     expect(entry.changeRequests).toEqual([expect.objectContaining({ notes: "Add the competitors section", by: person })]);
     expect(entry.decision).toEqual(expect.objectContaining({ kind: "approved", by: person }));
     expect(Date.parse(entry.decision!.time)).not.toBeNaN();
+  });
+
+  it("shows the stack ADR referenced by the architecture submission, and none elsewhere (C16)", async () => {
+    await approvedThrough(["idea-review", "research", "prd", "architecture"]);
+    const history = await phaseHistory(store);
+    expect(history.find((h) => h.phase === "architecture")!.submissions[0].stackAdr).toBe("docs/decisions/ADR-001-architecture.md");
+    expect(history.find((h) => h.phase === "prd")!.submissions[0].stackAdr).toBeUndefined();
   });
 
   it("records a person's skip of an optional phase with the reason, and moves 'next' past it", async () => {

@@ -1,4 +1,4 @@
-import { FLOWS, OPTIONAL_PHASES, PLANNING_PHASES } from "../generated/contract.js";
+import { FLOWS, OPTIONAL_PHASES, PLANNING_PHASES, STACK_ADR_PHASES } from "../generated/contract.js";
 import type { Event, State } from "../generated/types.js";
 import type { MemoryStore, EventInput } from "../memory/store.js";
 import type { ValidationIssue } from "../validate.js";
@@ -13,7 +13,7 @@ type SkillUse = { skill: string; evidence: string };
 
 export type PhaseAction =
   | { kind: "start"; phase: string }
-  | { kind: "submit"; phase: string; documents: string[]; skillsUsed: SkillUse[]; understandingCheck?: string }
+  | { kind: "submit"; phase: string; documents: string[]; skillsUsed: SkillUse[]; understandingCheck?: string; stackAdr?: string }
   | { kind: "approve"; phase: string }
   | { kind: "skip"; phase: string; reason?: string }
   | { kind: "request_changes"; phase: string; notes: string };
@@ -26,6 +26,8 @@ export interface PhaseContext {
   flows: Flows;
   /** Phases that need an Understanding check when submitted. */
   planning: readonly string[];
+  /** Phases whose submission must reference a stack ADR (STK-1..3); none when left out. */
+  stackAdr?: readonly string[];
   /** Phases a person may decline, each with the question to ask (GATE-1, SEC-1). */
   optional?: Readonly<Record<string, string>>;
 }
@@ -95,6 +97,9 @@ export function checkPhaseAction(ctx: PhaseContext, action: PhaseAction, actor: 
           `"${phase}" is a planning phase: include the confirmed Understanding check (understandingCheck) when submitting it`,
         );
       }
+      if (ctx.stackAdr?.includes(phase) && !action.stackAdr) {
+        return problem(`"${phase}" needs a stack decision record: include the ADR (stackAdr) written with the stack-selection skill`);
+      }
       return { ok: true };
     }
     case "approve":
@@ -127,6 +132,7 @@ function toEventInput(action: PhaseAction, actor: Actor): EventInput {
           documents: action.documents,
           skillsUsed: action.skillsUsed,
           ...(action.understandingCheck ? { understandingCheck: action.understandingCheck } : {}),
+          ...(action.stackAdr ? { stackAdr: action.stackAdr } : {}),
         },
       };
     case "approve":
@@ -170,14 +176,16 @@ export async function refreshAfter<R extends { ok: boolean }>(store: MemoryStore
 export class PhaseEngine {
   private readonly flows: Flows;
   private readonly planning: readonly string[];
+  private readonly stackAdr: readonly string[];
   private readonly optional: Readonly<Record<string, string>>;
 
   constructor(
     private readonly store: MemoryStore,
-    options: { flows?: Flows; planning?: readonly string[]; optional?: Readonly<Record<string, string>> } = {},
+    options: { flows?: Flows; planning?: readonly string[]; stackAdr?: readonly string[]; optional?: Readonly<Record<string, string>> } = {},
   ) {
     this.flows = options.flows ?? FLOWS;
     this.planning = options.planning ?? PLANNING_PHASES;
+    this.stackAdr = options.stackAdr ?? STACK_ADR_PHASES;
     this.optional = options.optional ?? OPTIONAL_PHASES;
   }
 
@@ -187,7 +195,7 @@ export class PhaseEngine {
 
   async submit(
     actor: Actor,
-    submission: { phase: string; documents: string[]; skillsUsed: SkillUse[]; understandingCheck?: string },
+    submission: { phase: string; documents: string[]; skillsUsed: SkillUse[]; understandingCheck?: string; stackAdr?: string },
   ): Promise<PhaseResult> {
     const result = await this.act(actor, { kind: "submit", ...submission });
     return result.ok ? { ...result, reviewQuestion: REVIEW_QUESTION } : result;
@@ -213,6 +221,7 @@ export class PhaseEngine {
       flow: state.flow,
       flows: this.flows,
       planning: this.planning,
+      stackAdr: this.stackAdr,
       optional: this.optional,
     });
     // Early check for a clear message (for example, an agent trying to approve would

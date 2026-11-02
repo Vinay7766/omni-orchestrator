@@ -204,3 +204,109 @@ describe("submit_phase", () => {
     if (!again.ok) expect(again.message).toMatch(/awaiting_review/);
   });
 });
+
+// --- C16 (STK-1..3): the architecture submission must reference a complete stack ADR.
+
+const stackAdr = `# ADR-001: Stack for the planner
+
+## Status
+Proposed
+
+## Context and constraints
+Hard filters: runs on Windows and macOS; the user knows TypeScript.
+
+## Options considered
+| Criterion | A | B |
+|---|---|---|
+| Desktop | yes | yes |
+
+## Decision
+A is the best fit for these constraints.
+
+## Why the others lost
+- B: needs a runtime the user does not know.
+
+## Switch conditions
+- If mobile becomes a target, B wins.
+
+## Sources
+- https://example.org/a
+`;
+
+/** A complete, valid submission of the architecture phase. */
+async function readyArchitecture(): Promise<SubmitInput> {
+  await startPhase("architecture");
+  write("docs/ARCHITECTURE.md");
+  write("docs/understanding.md", "Restated request; constraints confirmed by the user.\n");
+  write("docs/decisions/ADR-001-stack.md", stackAdr);
+  return {
+    phase: "architecture",
+    documents: ["docs/ARCHITECTURE.md"],
+    skillsUsed: [{ skill: "plan-well", evidence: "Stack compared in docs/decisions/ADR-001-stack.md" }],
+    understandingCheck: "docs/understanding.md",
+    stackAdr: "docs/decisions/ADR-001-stack.md",
+    memoryUpdate: { files: ["docs/ARCHITECTURE.md"] },
+  };
+}
+
+describe("submit_phase for the architecture phase (C16)", () => {
+  it("accepts a submission that references a complete stack ADR and records it", async () => {
+    const result = await submit(await readyArchitecture());
+    if (!result.ok) throw new Error(result.message);
+    expect((await store.readEvents()).events.at(-1)!.payload).toMatchObject({ stackAdr: "docs/decisions/ADR-001-stack.md" });
+  });
+
+  it("accepts an ADR saved with Windows line endings", async () => {
+    const input = await readyArchitecture();
+    write("docs/decisions/ADR-001-stack.md", stackAdr.replace(/\n/g, "\r\n"));
+    expect((await submit(input)).ok).toBe(true);
+  });
+
+  it("rejects a submission without the ADR, says how to fix it, and writes nothing", async () => {
+    const { stackAdr: _, ...input } = await readyArchitecture();
+    const before = await eventTypes();
+    const result = await submit(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/"architecture" needs a stack decision record: include the ADR \(stackAdr\)/);
+    expect(await eventTypes()).toEqual(before);
+  });
+
+  it("names every missing section of an incomplete ADR and writes nothing", async () => {
+    const input = await readyArchitecture();
+    write("docs/decisions/ADR-001-stack.md", stackAdr.replace(/## Switch conditions[\s\S]*?(?=## Sources)/, "").replace("## Status\nProposed\n", ""));
+    const before = await eventTypes();
+    const result = await submit(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe(
+        "docs/decisions/ADR-001-stack.md is not a complete stack ADR: missing section: Status; missing section: Switch conditions. " +
+          "Finish it with the stack-selection skill, then submit again.",
+      );
+    }
+    expect(await eventTypes()).toEqual(before);
+  });
+
+  it("rejects an ADR that is missing, empty, or outside the project", async () => {
+    const input = await readyArchitecture();
+    write("docs/decisions/empty.md", "");
+    const cases: [string, RegExp][] = [
+      ["docs/decisions/nowhere.md", /docs\/decisions\/nowhere\.md: missing/],
+      ["../outside/ADR-001.md", /\.\.\/outside\/ADR-001\.md: invalid/],
+      ["docs/decisions/empty.md", /docs\/decisions\/empty\.md is not a complete stack ADR: missing section: Status/],
+    ];
+    for (const [path, message] of cases) {
+      const result = await submit({ ...input, stackAdr: path });
+      expect(result.ok, path).toBe(false);
+      if (!result.ok) expect(result.message).toMatch(message);
+    }
+    expect(await eventTypes()).not.toContain("phase_submitted");
+  });
+
+  it("checks an ADR given with another phase too, so a referenced ADR is never broken", async () => {
+    const input = await ready();
+    write("docs/decisions/half.md", "## Status\nProposed\n");
+    const result = await submit({ ...input, stackAdr: "docs/decisions/half.md" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/not a complete stack ADR/);
+  });
+});

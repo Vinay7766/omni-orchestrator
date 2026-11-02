@@ -30,6 +30,10 @@
     "architecture"
   ],
   "planningDescription": "Phases that must include a confirmed Understanding check when submitted (UND-1).",
+  "stackAdr": [
+    "architecture"
+  ],
+  "stackAdrDescription": "Phases whose submission must reference a complete stack decision record (STK-1..3): constraints, the options compared, the decision, why the others lost, switch conditions and linked sources.",
   "optional": {
     "security-pass": "The build is done and ready to deploy. Before deploying, run a red-team / blue-team pass to tighten security?"
   },

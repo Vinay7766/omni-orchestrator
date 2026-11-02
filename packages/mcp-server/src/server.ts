@@ -9,7 +9,7 @@ import { buildContext, type ContextDeps } from "./context.js";
 import { getPhaseSkills, submitPhase } from "./phase-tools.js";
 import { completeTask, createTasks, markTaskTrivial, startTask, submitDesignNote } from "./task-tools.js";
 import { recordDecision, recordLesson, recordProblem } from "./record-tools.js";
-import type { Event } from "@omni/core";
+import { STACK_ADR_PHASES, STACK_ADR_SECTIONS, type Event } from "@omni/core";
 import { SERVER_INFO } from "./info.js";
 
 const task = z.object({
@@ -112,7 +112,8 @@ export function createServer(deps: ContextDeps): McpServer {
       description:
         "Hand the current phase in for the user's review. Include the documents you produced, every skill you used with " +
         "evidence, the files you updated in the project memory (memoryUpdate), and for planning phases the confirmed " +
-        "Understanding check. Afterwards show the user the documents and the returned reviewQuestion. Only the user can " +
+        "Understanding check. For the " + STACK_ADR_PHASES.join(", ") + " phase, also the stack decision record (stackAdr) " +
+        "written with the stack-selection skill. Afterwards show the user the documents and the returned reviewQuestion. Only the user can " +
         "approve or request changes, in the OmniOrchestrator app or extension; there is no tool for that.",
       inputSchema: {
         projectPath: projectPathInput,
@@ -123,6 +124,12 @@ export function createServer(deps: ContextDeps): McpServer {
           .min(1)
           .describe("Each skill followed, with concrete evidence of how (a name alone is not enough)."),
         understandingCheck: projectFile.optional().describe("File with the user-confirmed Understanding check (planning phases)."),
+        stackAdr: projectFile
+          .optional()
+          .describe(
+            `Stack ADR with the sections ${STACK_ADR_SECTIONS.join(", ")} (Sources with links). ` +
+              `Needed for the ${STACK_ADR_PHASES.join(", ")} phase.`,
+          ),
         memoryUpdate: z
           .object({ files: z.array(projectFile).min(1) })
           .optional()

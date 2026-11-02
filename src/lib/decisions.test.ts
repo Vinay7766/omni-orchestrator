@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MemoryStore, OPTIONAL_PHASES, PhaseEngine } from "@omni/core";
+import { MemoryStore, OPTIONAL_PHASES, PhaseEngine, STACK_ADR_PHASES } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { approve, requestChanges, runOptional, skipOptional, DESKTOP_PERSON } from "./decisions";
 import { fakeInvoke } from "./testing/fake-invoke";
@@ -32,7 +32,7 @@ async function submitted(phase: string) {
   await engine.start(phase in OPTIONAL_PHASES ? DESKTOP_PERSON : agent, phase);
   await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [".agents/summary.md"] } });
   const planning = !["build", "review", "security-pass", "release", "handover"].includes(phase);
-  const r = await engine.submit(agent, { phase, documents: ["d.md"], skillsUsed: [{ skill: "x", evidence: "y" }], ...(planning ? { understandingCheck: "u.md" } : {}) });
+  const r = await engine.submit(agent, { phase, documents: ["d.md"], skillsUsed: [{ skill: "x", evidence: "y" }], ...(planning ? { understandingCheck: "u.md" } : {}), ...(STACK_ADR_PHASES.includes(phase as never) ? { stackAdr: "adr.md" } : {}) });
   if (!r.ok) throw new Error(JSON.stringify(r));
 }
 async function approvedThroughBuild() {

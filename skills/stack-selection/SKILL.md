@@ -98,9 +98,9 @@ result would be with different but reasonable weights.
 
 ## Step 6: Record it as an ADR
 
-Follow the project's existing ADR convention if there is one (location,
-numbering, headings). Otherwise use `docs/decisions/ADR-NNN-<short-title>.md`
-with this shape:
+Follow the project's existing ADR convention for location and numbering if
+there is one. Otherwise use `docs/decisions/ADR-NNN-<short-title>.md`. Either
+way, keep these headings (extra sections are fine):
 
 ```markdown
 # ADR-NNN: <Stack for ...>
@@ -138,6 +138,13 @@ YYYY-MM-DD
 Do not install, scaffold or migrate anything until the person accepts the
 ADR. If they choose a different candidate, record that choice and their
 reason in the ADR; the decision is theirs.
+
+In OmniOrchestrator, the person sees the ADR when you submit the
+architecture phase: pass its path as `stackAdr` to `submit_phase`. A
+submission without it, or with one of the Step 6 sections missing (Status,
+Context and constraints, Options considered, Decision, Why the others lost,
+Switch conditions, Sources with links), is rejected with the missing parts
+named.
 
 ## Red flags
 
