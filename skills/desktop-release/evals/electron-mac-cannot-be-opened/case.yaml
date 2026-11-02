@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: electron-mac-cannot-be-opened
+expected_outcome: |
+  Explains that apps distributed outside the App Store need a Developer ID Application certificate (not Apple
+  Development), the hardened runtime and a secure timestamp, and must be notarized with notarytool and stapled;
+  gives the concrete Electron build changes (Electron Forge or @electron/osx-sign and @electron/notarize) with
+  credentials kept out of the repository.

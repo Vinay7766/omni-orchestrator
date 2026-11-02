@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: tauri-signed-release-ci
+expected_outcome: |
+  A release plan that signs Windows installers with a SHA-256 digest and a timestamp, signs and notarizes macOS
+  builds with a Developer ID certificate through notarytool and staples them, keeps every certificate, password,
+  Apple credential and the updater private key in CI secrets, uses Tauri's signed updater over HTTPS, flags the
+  decisions and costs that belong to the developer (Apple Developer Program fee; Windows certificate or signing
+  service, noting Microsoft Artifact Signing is not open to individuals in India), and ends with release checks.
