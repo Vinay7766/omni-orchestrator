@@ -1,13 +1,14 @@
 /** Shared by every tool: find and open the project, and resolve its current phase's skills. */
 import {
-  checkRefs,
   findProject,
   joinPath,
   MemoryStore,
   resolvePhaseSkills,
   validateMemoryFile,
+  verifyReferences,
   type CommitChecker,
   type MemoryFs,
+  type ReferenceCheck,
   type ResolvedSkill,
   type SkillSource,
 } from "@omni/core";
@@ -78,7 +79,7 @@ async function readOverrides(store: MemoryStore, warnings: string[]) {
   return valid.value;
 }
 
-export type ReferenceCheck = { ok: true; warnings: string[] } | { ok: false; message: string };
+export type { ReferenceCheck };
 
 /**
  * MEM-4: files must exist inside the project and commits must exist in its git history. Commits
@@ -90,17 +91,5 @@ export async function checkReferences(
   refs: { files?: string[]; commits?: string[] },
   what: string,
 ): Promise<ReferenceCheck> {
-  const result = await checkRefs(deps.fs, root, { files: refs.files ?? [], commits: refs.commits ?? [] }, deps.commits);
-  const bad = result.results.filter((r) => r.status !== "ok" && r.status !== "unverified");
-  if (bad.length > 0) {
-    return {
-      ok: false,
-      message: `Fix these references before ${what}: ${bad.map((r) => `${r.ref}: ${r.status}${r.message ? ` (${r.message})` : ""}`).join("; ")}.`,
-    };
-  }
-  const warnings = result.results
-    .filter((r) => r.status === "unverified")
-    .map((r) => `${r.ref} could not be verified${r.message ? `: ${r.message}` : ""}`);
-  if (result.repository?.message) warnings.push(result.repository.message);
-  return { ok: true, warnings };
+  return verifyReferences(deps.fs, root, refs, what, deps.commits);
 }

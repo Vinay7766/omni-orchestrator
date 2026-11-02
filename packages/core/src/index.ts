@@ -21,6 +21,8 @@ export { projectOverview } from "./memory/overview.js";
 export type { ProjectOverview } from "./memory/overview.js";
 export { phaseHistory, buildPhaseHistory } from "./memory/history.js";
 export type { PhaseHistoryEntry } from "./memory/history.js";
+export { recordDecision, recordProblem, recordLesson, verifyReferences } from "./memory/record.js";
+export type { RecordTarget, RecordResult, ReferenceCheck, Refs } from "./memory/record.js";
 export type { FindProjectResult } from "./memory/discover.js";
 export { normalizePath, parentDir, joinPath, isAbsolutePath } from "./memory/paths.js";
 export { checkRefs } from "./memory/refs.js";

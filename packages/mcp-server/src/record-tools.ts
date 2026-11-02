@@ -3,9 +3,16 @@
  * pointing at real files or commits. The store validates against the event schema and removes
  * secrets (MEM-6); decisions.md, problems.md, lessons.md and summary.md are refreshed after.
  */
-import { refreshMemoryDocs, type Event } from "@omni/core";
+import {
+  recordDecision as coreRecordDecision,
+  recordLesson as coreRecordLesson,
+  recordProblem as coreRecordProblem,
+  type Event,
+  type RecordResult,
+  type RecordTarget,
+} from "@omni/core";
 import type { ToolResult } from "./phase-tools.js";
-import { checkReferences, openProject, type ToolDeps } from "./project.js";
+import { openProject, type ToolDeps } from "./project.js";
 
 type Actor = Event["actor"];
 type Refs = { files?: string[]; commits?: string[] };
@@ -16,39 +23,16 @@ export interface Recorded {
   warnings: string[];
 }
 
+/** Opens the project, then records through core (the same code the desktop app uses). */
 async function record(
   deps: ToolDeps,
-  actor: Actor,
   projectPath: string | undefined,
-  entry: { type: Event["type"]; payload: Record<string, unknown>; refs: Refs; refsRequired: boolean; what: string },
+  write: (target: RecordTarget) => Promise<RecordResult>,
 ): Promise<ToolResult<Recorded>> {
-  const files = entry.refs.files ?? [];
-  const commits = entry.refs.commits ?? [];
-  if (entry.refsRequired && files.length === 0 && commits.length === 0) {
-    return { ok: false, message: `A ${entry.what} must point to at least one file or commit it concerns (refs.files / refs.commits).` };
-  }
   const opened = await openProject(deps, projectPath);
   if (!opened.ok) return opened;
-  const checked = await checkReferences(deps, opened.root, { files, commits }, `recording this ${entry.what}`);
-  if (!checked.ok) return checked;
-
-  const refs = { ...(files.length ? { files } : {}), ...(commits.length ? { commits } : {}) };
-  const result = await opened.store.appendEvent({
-    type: entry.type,
-    actor,
-    payload: entry.payload,
-    ...(files.length || commits.length ? { refs } : {}),
-  });
-  if (!result.ok) {
-    return { ok: false, message: result.issues.map((i) => (i.path ? `${i.path} ${i.message}` : i.message)).join("; ") };
-  }
-  const warnings = [...checked.warnings];
-  try {
-    await refreshMemoryDocs(opened.store);
-  } catch (error) {
-    warnings.push(`recorded, but the memory documents could not be refreshed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  return { ok: true, value: { eventId: result.event.id, type: entry.type, warnings } };
+  const result = await write({ store: opened.store, fs: deps.fs, root: opened.root, commits: deps.commits });
+  return result.ok ? { ok: true, value: { eventId: result.eventId, type: result.type, warnings: result.warnings } } : result;
 }
 
 export async function recordDecision(
@@ -56,8 +40,8 @@ export async function recordDecision(
   actor: Actor,
   input: { projectPath?: string; title: string; decision: string; reason: string; alternatives?: string[]; refs: Refs },
 ): Promise<ToolResult<Recorded>> {
-  const { projectPath, refs, ...payload } = input;
-  return record(deps, actor, projectPath, { type: "decision_recorded", payload, refs, refsRequired: true, what: "decision" });
+  const { projectPath, ...entry } = input;
+  return record(deps, projectPath, (target) => coreRecordDecision(target, actor, entry));
 }
 
 export async function recordProblem(
@@ -65,8 +49,8 @@ export async function recordProblem(
   actor: Actor,
   input: { projectPath?: string; title: string; details: string; status: "open" | "resolved" | "wont_fix"; refs: Refs },
 ): Promise<ToolResult<Recorded & { status: string }>> {
-  const { projectPath, refs, ...payload } = input;
-  const result = await record(deps, actor, projectPath, { type: "problem_recorded", payload, refs, refsRequired: true, what: "problem" });
+  const { projectPath, ...entry } = input;
+  const result = await record(deps, projectPath, (target) => coreRecordProblem(target, actor, entry));
   return result.ok ? { ok: true, value: { ...result.value, status: input.status } } : result;
 }
 
@@ -76,6 +60,6 @@ export async function recordLesson(
   actor: Actor,
   input: { projectPath?: string; lesson: string; context?: string; refs?: Refs },
 ): Promise<ToolResult<Recorded>> {
-  const { projectPath, refs, ...payload } = input;
-  return record(deps, actor, projectPath, { type: "lesson_recorded", payload, refs: refs ?? {}, refsRequired: false, what: "lesson" });
+  const { projectPath, ...entry } = input;
+  return record(deps, projectPath, (target) => coreRecordLesson(target, actor, entry));
 }
