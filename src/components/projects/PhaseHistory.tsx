@@ -2,6 +2,7 @@ import React from "react";
 import { CheckCircle2, Circle, CircleDashed, Clock, MessageSquareWarning, SkipForward, type LucideIcon } from "lucide-react";
 import type { PhaseHistoryEntry } from "@omni/core";
 import { statusWords } from "../../lib/phase-status";
+import { PhaseActions, type PhaseDecisions } from "./PhaseActions";
 
 type Actor = PhaseHistoryEntry["submissions"][number]["by"];
 
@@ -74,8 +75,9 @@ function Decision({ entry }: { entry: PhaseHistoryEntry }) {
   return null;
 }
 
-/** Every phase of a project with what it produced and what was decided (GATE-5). Read-only. */
-export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[] }> = ({ entries }) => (
+/** Every phase of a project with what it produced and what was decided (GATE-5); with
+ * `decisions`, also the person's decisions that apply (E3 slice 3). */
+export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: PhaseDecisions }> = ({ entries, decisions }) => (
   <ol aria-label="Phases" className="rounded-xl border border-zinc-800 bg-zinc-900/40">
     {entries.map((entry) => {
       const { icon: Icon, tone } = STATUS_STYLE[entry.status] ?? STATUS_STYLE.not_started;
@@ -97,6 +99,7 @@ export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[] }> = ({ entri
             </p>
           ))}
           <Decision entry={entry} />
+          {decisions && <PhaseActions entry={entry} decisions={decisions} />}
         </li>
       );
     })}

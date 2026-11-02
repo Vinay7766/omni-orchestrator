@@ -3,9 +3,20 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings } from "../../lib/types";
 import { loadProjectDetail, loadProjects } from "../../lib/projects";
 import { ProjectsList } from "./ProjectsList";
-import { ProjectDetail } from "./ProjectDetail";
+import { ProjectDetail, type DecideFns } from "./ProjectDetail";
+import { approve, requestChanges, runOptional, skipOptional } from "../../lib/decisions";
+import type { Invoke } from "@omni/core";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
+const tauri: Invoke = (command, args) => invoke(command, args);
+/** The person's decisions, recorded through @omni/core over the app's memfs commands. */
+const decide: DecideFns = {
+  approve: (root, phase) => approve(tauri, root, phase),
+  requestChanges: (root, phase, notes) => requestChanges(tauri, root, phase, notes),
+  run: (root, phase) => runOptional(tauri, root, phase),
+  skip: (root, phase, reason) => skipOptional(tauri, root, phase, reason),
+};
+
 export const ProjectsView: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -45,6 +56,6 @@ export const ProjectsView: React.FC = () => {
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };

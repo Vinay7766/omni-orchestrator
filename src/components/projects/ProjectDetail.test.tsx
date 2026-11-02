@@ -36,3 +36,34 @@ describe("ProjectDetail", () => {
     expect(onBack).toHaveBeenCalled();
   });
 });
+
+describe("ProjectDetail: decisions (E3 slice 3)", () => {
+  const awaiting: ProjectDetailResult = {
+    ok: true,
+    name: "Orbit planner",
+    flow: "build",
+    history: [{ phase: "prd", status: "awaiting_review", isNext: true, submissions: [], changeRequests: [] }],
+  };
+  const approved: ProjectDetailResult = {
+    ...awaiting,
+    history: [{ phase: "prd", status: "approved", isNext: false, submissions: [], changeRequests: [] }],
+  } as ProjectDetailResult;
+
+  it("records a decision, announces the result, and reloads the history", async () => {
+    const load = vi.fn().mockResolvedValueOnce(awaiting).mockResolvedValueOnce(approved);
+    const decide = { approve: vi.fn(() => Promise.resolve({ ok: true, message: '"prd" approved. "architecture" has started.' })) };
+    render(<ProjectDetail root="C:/work/orbit" load={load} onBack={vi.fn()} decide={decide} />);
+    fireEvent.click(await screen.findByRole("button", { name: 'Approve "prd"' }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/"architecture" has started/);
+    expect(decide.approve).toHaveBeenCalledWith("C:/work/orbit", "prd");
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("approved")).toBeDefined();
+  });
+
+  it("shows the reason when a decision is refused", async () => {
+    const decide = { approve: vi.fn(() => Promise.resolve({ ok: false, message: '"prd" is not awaiting review (it is approved)' })) };
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(awaiting)} onBack={vi.fn()} decide={decide} />);
+    fireEvent.click(await screen.findByRole("button", { name: 'Approve "prd"' }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/not awaiting review/);
+  });
+});
