@@ -113,3 +113,12 @@ Components under ~200 lines, Lucide icons, zinc/indigo dark theme, keyboard reac
 4. **Sessions:** one slice per fresh session, starting with slice 1.
 
 Where the owner's wider idea lands (not E5): selecting the IDEs/AI tools for the project and handing the build over is E6 (PLAN-3, TOOL-2); splitting tasks across several tools by best fit (strengths, models, rate limits) is team mode (TEAM-2, TEAM-8, TEAM-9), which uses the task tags from slice 5.
+
+### As built (2026-11-02): changes from the spec
+
+- **Document writes need their own command.** The memfs commands only write inside `.agents/` (C9 security rule), so slice 2 added `write_planning_document` / `read_planning_document`: a plain lowercase `*.md` name in `docs/planning/` of a folder that already holds `.agents/project.json`; links (symlinks, junctions) refused; 2 MB cap.
+- **Files per phase:** `docs/planning/<phase>.md`, `<phase>-understanding.md` (UND-1), and for architecture `architecture-stack-adr.md`. The idea is `docs/planning/idea.md`; the task proposal is `docs/planning/tasks.md` (readable list plus the exact JSON approved). The ADR is kept in `docs/planning/` rather than `docs/decisions/`, so the app writes nowhere else.
+- **Where phases run:** in the project's page in Projects (not a separate screen), so planning resumes after a restart; "Start from an idea" creates the project, adds its parent folder to the Projects list and opens it there.
+- **Task list approval** is recorded as a decision by the person (referencing `tasks.md`); the tasks themselves are recorded as written by `omni-desktop` with the model's name. The task breakdown uses the architecture phase's skills (the task breakdown skill is mapped there).
+- **Schema:** optional `kinds` (1-8 short lowercase tags) on `task_created` and on tasks in `state.json`; Rust `Task` reads and writes it.
+- **Known gaps** are P-E5-01..12 in the private problems register (no real model run yet, model's skill evidence is self-reported, ADR links not checked from the app, and others).
