@@ -10,10 +10,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every suite runs on Windows, macOS and Linux (PRD NFR-9): a platform counts
+# as supported only when its tests pass here.
 jobs:
   test-frontend:
-    name: Frontend Verification (Node 22)
-    runs-on: ubuntu-latest
+    name: Frontend Verification (Node 22, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -34,11 +40,22 @@ jobs:
         run: npm test
 
   test-rust-backend:
-    name: Rust Backend Unit & Integration Tests
-    runs-on: windows-latest
+    name: Rust Backend Unit & Integration Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      # Tauri v2 Linux prerequisites (same list as release.yml).
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
