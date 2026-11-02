@@ -1500,5 +1500,27 @@
     "domains": [
       "app-distribution"
     ]
+  },
+  {
+    "id": "desktop-release",
+    "name": "desktop-release",
+    "description": "Packaging, code signing, notarizing and shipping a desktop app on Windows, macOS and Linux with any framework: installer formats, protecting signing secrets, signing with a timestamp, Apple notarization and stapling, signed update feeds, and the evidence a release needs.",
+    "category": "engineering",
+    "attribution": {
+      "name": "OmniOrchestrator (from Tauri, Apple, Microsoft and Electron documentation)",
+      "role": "Project-authored skill",
+      "sourceUrl": "https://github.com/Vinay7766/omni-orchestrator/tree/main/skills/desktop-release",
+      "verified": true
+    },
+    "enabled": true,
+    "isCustom": false,
+    "license": "Apache-2.0",
+    "phases": [
+      "architecture",
+      "release"
+    ],
+    "domains": [
+      "desktop-apps"
+    ]
   }
 ]
