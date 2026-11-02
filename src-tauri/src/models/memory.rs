@@ -76,6 +76,9 @@ pub struct Task {
     pub trivial_reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assigned_tool: Option<String>,
+    /// The kinds of work the task involves (free-text tags; E5), for assigning tasks to tools.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kinds: Option<Vec<String>>,
 }
 
 /// `.agents/state.json`: a snapshot rebuilt from the event log, never the source of truth.

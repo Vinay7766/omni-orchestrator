@@ -36,7 +36,8 @@
           "status": { "enum": ["todo", "designed", "in_progress", "done"] },
           "designNote": { "$ref": "urn:omni:schema:common#/$defs/relPath" },
           "trivialReason": { "$ref": "urn:omni:schema:common#/$defs/nonEmptyText" },
-          "assignedTool": { "$ref": "urn:omni:schema:common#/$defs/id" }
+          "assignedTool": { "$ref": "urn:omni:schema:common#/$defs/id" },
+          "kinds": { "$ref": "urn:omni:schema:common#/$defs/workKinds" }
         }
       }
     },

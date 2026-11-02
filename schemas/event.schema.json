@@ -598,6 +598,9 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "kinds": {
+          "$ref": "urn:omni:schema:common#/$defs/workKinds"
         }
       }
     },

@@ -20,6 +20,14 @@
     },
     "commitSha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
     "nonEmptyText": { "type": "string", "minLength": 1 },
+    "workKinds": {
+      "type": "array",
+      "description": "The kinds of work a task involves (for example interface, backend, tests, security, documentation): short free-text tags, no fixed list, used later to assign tasks to the tools that fit them best.",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 40 }
+    },
     "flow": { "enum": ["build", "pitch"] },
     "actor": {
       "type": "object",

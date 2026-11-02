@@ -46,7 +46,8 @@ export function applyEvent(state: State, event: Event): State {
       break;
     case "task_created":
       if (!next.tasks.some((t) => t.id === payload.taskId)) {
-        next.tasks.push({ id: payload.taskId, title: payload.title, status: "todo" });
+        const { kinds } = event.payload as { kinds?: State["tasks"][number]["kinds"] };
+        next.tasks.push({ id: payload.taskId, title: payload.title, status: "todo", ...(kinds ? { kinds } : {}) });
       }
       break;
     case "design_note_submitted":

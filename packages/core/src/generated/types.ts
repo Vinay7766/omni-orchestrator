@@ -109,6 +109,24 @@ export type SkillCatalog = {
   domains: [string, ...string[]];
 }[];
 /**
+ * The kinds of work a task involves (for example interface, backend, tests, security, documentation): short free-text tags, no fixed list, used later to assign tasks to the tools that fit them best.
+ *
+ * @minItems 1
+ * @maxItems 8
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "common_workKinds".
+ */
+export type CommonWorkKinds =
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string];
+/**
  * Path relative to the project root, forward slashes, never absolute, never leaving the project.
  */
 export type CommonRelPath1 = string;
@@ -359,6 +377,7 @@ export interface State {
     designNote?: CommonRelPath;
     trivialReason?: CommonNonEmptyText;
     assignedTool?: CommonId;
+    kinds?: CommonWorkKinds;
   }[];
   lastEventId: CommonId | null;
 }
@@ -471,6 +490,7 @@ export interface EventTaskCreated {
   taskId: CommonId;
   title: string;
   requirements?: string[];
+  kinds?: CommonWorkKinds;
 }
 /**
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema

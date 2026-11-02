@@ -10,7 +10,7 @@ type TestEvidence = { command: string; exitCode: number; outputTail: string };
 type Refs = { files?: string[]; commits?: string[] };
 
 export type TaskAction =
-  | { kind: "create"; taskId: string; title: string; requirements?: string[] }
+  | { kind: "create"; taskId: string; title: string; requirements?: string[]; kinds?: string[] }
   | { kind: "design"; taskId: string }
   | { kind: "trivial"; taskId: string; reason: string }
   | { kind: "start"; taskId: string; declaredSkills?: string[]; acknowledgedSkills?: string[] }
@@ -112,7 +112,12 @@ function toEventInput(action: TaskAction, actor: Actor): EventInput {
       return {
         type: "task_created",
         actor,
-        payload: { taskId: action.taskId, title: action.title, ...(action.requirements ? { requirements: action.requirements } : {}) },
+        payload: {
+          taskId: action.taskId,
+          title: action.title,
+          ...(action.requirements ? { requirements: action.requirements } : {}),
+          ...(action.kinds ? { kinds: action.kinds } : {}),
+        },
       };
     case "design":
       return { type: "design_note_submitted", actor, payload: { taskId: action.taskId, notePath: designNotePath(action.taskId) } };
@@ -142,7 +147,7 @@ export type TaskResult = { ok: true; event: Event; warning?: string } | { ok: fa
 export class TaskEngine {
   constructor(private readonly store: MemoryStore) {}
 
-  create(actor: Actor, task: { taskId: string; title: string; requirements?: string[] }): Promise<TaskResult> {
+  create(actor: Actor, task: { taskId: string; title: string; requirements?: string[]; kinds?: string[] }): Promise<TaskResult> {
     return this.act(actor, { kind: "create", ...task });
   }
 

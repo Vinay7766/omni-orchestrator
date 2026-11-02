@@ -68,6 +68,16 @@ describe("creating tasks", () => {
     expect(await status("T-1")).toBe("todo");
   });
 
+  it("keeps the kinds of work a task involves, for later assignment to tools (E5)", async () => {
+    expect((await tasks.create(agent, { taskId: "T-1", title: "List screen", requirements: ["REQ-2"], kinds: ["interface", "tests"] })).ok).toBe(true);
+    expect((await store.readState()).tasks[0]).toEqual({ id: "T-1", title: "List screen", status: "todo", kinds: ["interface", "tests"] });
+  });
+
+  it("refuses kinds that are not short lowercase tags", async () => {
+    const result = await tasks.create(agent, { taskId: "T-1", title: "List screen", kinds: ["User Interface!"] });
+    expect(result.ok).toBe(false);
+  });
+
   it("refuses a duplicate task id", async () => {
     await tasks.create(agent, { taskId: "T-1", title: "A" });
     const again = await tasks.create(agent, { taskId: "T-1", title: "B" });

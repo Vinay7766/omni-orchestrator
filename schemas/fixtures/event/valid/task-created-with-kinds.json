@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0003",
+  "time": "2026-11-02T10:00:00Z",
+  "type": "task_created",
+  "actor": { "kind": "agent", "tool": "omni-desktop", "model": "some-local-model" },
+  "payload": { "taskId": "T-3", "title": "Shopping list screen", "requirements": ["REQ-2"], "kinds": ["interface", "tests"] }
+}
