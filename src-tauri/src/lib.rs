@@ -10,6 +10,7 @@ use commands::memory_fs::*;
 use commands::tool_discovery::discover_tools;
 use commands::mcp_setup::setup_mcp;
 use commands::projects::find_projects;
+use commands::planning_docs::{read_planning_document, write_planning_document};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -51,7 +52,10 @@ pub fn run() {
             // Automatic MCP setup for discovered tools (D5)
             setup_mcp,
             // Projects under the folders the person configured (E2)
-            find_projects
+            find_projects,
+            // Planning documents in docs/planning of a project (E5)
+            write_planning_document,
+            read_planning_document
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

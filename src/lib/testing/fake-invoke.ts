@@ -20,6 +20,13 @@ export function fakeInvoke(roots: string[] = [], errors: string[] = []): Invoke 
     memfs_rename: (x) => node.rename(a(x, "from"), a(x, "to")),
     memfs_remove: (x) => node.remove(a(x, "path")),
     memfs_list: (x) => node.list(a(x, "path")),
+    // E5: the Rust command also checks the name and refuses links; the tests here cover the app.
+    write_planning_document: async (x) => {
+      if (!(await node.exists(`${a(x, "root")}/.agents/project.json`))) throw `${a(x, "root")} is not an OmniOrchestrator project`;
+      await node.mkdir(`${a(x, "root")}/docs/planning`);
+      await node.writeText(`${a(x, "root")}/docs/planning/${a(x, "name")}`, a(x, "content"));
+    },
+    read_planning_document: (x) => node.readText(`${a(x, "root")}/docs/planning/${a(x, "name")}`),
   };
   return (command, args) => {
     const handler = handlers[command];

@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fakeInvoke } from "./lib/testing/fake-invoke";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -96,28 +100,55 @@ describe("OmniOrchestrator App", () => {
     expect(saved).toEqual([{ settings: { ...SETTINGS, projectFolders: ["C:/work", "D:/more"] } }]);
   });
 
-  it("shows the detected tool in Start from an idea, and none when discovery found nothing", async () => {
+  it("Start from an idea is the idea form, with the free options shown when no model is set up", async () => {
     await renderApp();
     await openArea("Start from an idea");
 
-    expect(screen.getByText("None found")).toBeDefined();
+    expect(screen.getByLabelText(/your idea/i)).toBeDefined();
+    expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe("C:/Users/test/Projects");
+    expect(screen.getByRole("region", { name: /set up an ai model/i })).toBeDefined();
+    expect(screen.queryByLabelText("Prompt Input")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /open settings/i }));
+    });
+    expect(nav().getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
   });
 
-  it("shows the backend error instead of a fabricated brief when the idea brief fails", async () => {
-    mockBackend({
-      generate_project_brief: () => Promise.reject("Failed to write brief: access denied"),
-    });
-    await renderApp();
-    await openArea("Start from an idea");
+  it("creates a project from an idea, adds its folder to Projects and opens it", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-idea-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const saved: unknown[] = [];
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      mockBackend({
+        get_default_project_path: () => Promise.resolve(base),
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434" }, keyStorage: { available: true } }),
+        save_app_settings: (args) => {
+          saved.push(args);
+          return Promise.resolve();
+        },
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      expect(screen.queryByRole("region", { name: /set up an ai model/i })).toBeNull();
 
-    fireEvent.change(screen.getByLabelText("Prompt Input"), { target: { value: "Todo app" } });
-    await act(async () => {
-      fireEvent.click(screen.getByLabelText("Submit Prompt"));
-    });
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /create project/i }));
+      });
 
-    expect(screen.getByText(/Failed to write brief: access denied/)).toBeDefined();
-    expect(screen.queryByText(/Brief Initialized/)).toBeNull();
-    expect(screen.queryByRole("button", { name: /Configure & Stage Run/i })).toBeNull();
+      expect(await screen.findByRole("heading", { name: "Orbit" }, { timeout: 5000 })).toBeDefined();
+      expect(readFileSync(`${base}/orbit/docs/planning/idea.md`, "utf8")).toContain("A shared shopping list");
+      expect(saved).toEqual([{ settings: { ...SETTINGS, projectFolders: ["C:/work", base] } }]);
+      expect(nav().getByRole("button", { name: "Projects" }).getAttribute("aria-current")).toBe("page");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 
   it("shows the provider error instead of a fabricated report when a pitch teardown fails", async () => {

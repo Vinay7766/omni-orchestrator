@@ -27,10 +27,11 @@ const memory = {
   add: (root: string, entry: Parameters<typeof addEntry>[2]) => addEntry(tauri, root, entry),
 };
 
-export const ProjectsView: React.FC = () => {
+/** `openRoot`: a project to show straight away (one just created from an idea). */
+export const ProjectsView: React.FC<{ openRoot?: string }> = ({ openRoot }) => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [opened, setOpened] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(openRoot ?? null);
 
   useEffect(() => {
     invoke<AppSettings>("get_app_settings")

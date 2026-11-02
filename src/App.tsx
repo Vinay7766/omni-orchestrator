@@ -5,14 +5,12 @@ import type {
   ChatMessage,
   Skill,
   TeardownResponse,
-  DiscoveredTool,
-  LaunchResult,
   BYOKConfig,
   ByokState,
   KeyStorageStatus,
+  AppSettings,
 } from "./lib/types";
 import { ChatArea } from "./components/chat/ChatArea";
-import { PreLaunchStagingModal } from "./components/track-a/PreLaunchStagingModal";
 import { TeardownViewer } from "./components/track-b/TeardownViewer";
 import { BYOKSettings } from "./components/track-b/BYOKSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -20,25 +18,26 @@ import { SkillCatalog } from "./components/skills/SkillCatalog";
 import { Terminal } from "lucide-react";
 import { ProjectsView } from "./components/projects/ProjectsView";
 import { AreaNav, type Area } from "./components/layout/AreaNav";
+import { StartFromIdea } from "./components/planning/StartFromIdea";
+import { createProjectFromIdea, hasProvider } from "./lib/planning";
+
+const tauri = (command: string, args?: Record<string, unknown>) => invoke(command, args);
 
 export function App() {
   const [area, setArea] = useState<Area>("projects");
-  // One list for both conversations; each area shows only its own track's messages.
+  // A project to open when the Projects area shows (one just created from an idea).
+  const [openRoot, setOpenRoot] = useState<string | undefined>(undefined);
+  // Pitch mode's conversation (the idea area is a form, not a chat, since E5).
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingTrack, setLoadingTrack] = useState<TrackType | null>(null);
   const [byokConfig, setByokConfig] = useState<BYOKConfig>({});
   const [keyStorage, setKeyStorage] = useState<KeyStorageStatus | undefined>(undefined);
   const [byokLoadError, setByokLoadError] = useState<string | undefined>(undefined);
 
-  // Modals & Panels
-  const [showStaging, setShowStaging] = useState(false);
-  const [stagingPrompt, setStagingPrompt] = useState("");
   const [currentTeardown, setCurrentTeardown] = useState<TeardownResponse | null>(null);
 
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [tools, setTools] = useState<DiscoveredTool[]>([]);
-  const [activeTool, setActiveTool] = useState<string>("None found");
   const [defaultProjectPath, setDefaultProjectPath] = useState<string>("");
 
   useEffect(() => {
@@ -63,17 +62,6 @@ export function App() {
     }
 
     try {
-      const toolList = await invoke<DiscoveredTool[]>("discover_tools");
-      setTools(toolList);
-      const startable = toolList.find((t) => t.launch) ?? toolList[0];
-      if (startable) {
-        setActiveTool(startable.name);
-      }
-    } catch {
-      setActiveTool("Discovery failed");
-    }
-
-    try {
       const skillList = await invoke<Skill[]>("get_skills");
       setSkills(skillList);
     } catch {
@@ -82,10 +70,26 @@ export function App() {
 
     try {
       const path = await invoke<string>("get_default_project_path");
-      setDefaultProjectPath(path);
+      setDefaultProjectPath(path.replace(/\\/g, "/"));
     } catch {
       setDefaultProjectPath("");
     }
+  };
+
+  // A project created from an idea: its parent folder joins the Projects folder list (so it is
+  // listed there), then it opens in Projects, where its planning phases run.
+  const handleProjectCreated = async (root: string, parent: string) => {
+    try {
+      const settings = await invoke<AppSettings>("get_app_settings");
+      const folders = settings.projectFolders ?? [];
+      if (!folders.includes(parent)) {
+        await invoke("save_app_settings", { settings: { ...settings, projectFolders: [...folders, parent] } });
+      }
+    } catch {
+      // The project exists and still opens below; it is listed once its folder is added in Projects.
+    }
+    setOpenRoot(root);
+    setArea("projects");
   };
 
   const handleToggleSkill = async (id: string, enabled: boolean) => {
@@ -122,6 +126,7 @@ export function App() {
     }
   };
 
+  // Pitch mode: a teardown with the provider set up in Settings.
   const handleSubmitPrompt = async (prompt: string, track: TrackType) => {
     const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMsg: ChatMessage = {
@@ -135,74 +140,40 @@ export function App() {
     setMessages((prev) => [...prev, userMsg]);
     setLoadingTrack(track);
 
-    if (track === "track-a") {
-      try {
-        const brief = await invoke<string>("generate_project_brief", { idea: prompt });
-        const assistantMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          content: brief,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          track: "track-a",
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        setStagingPrompt(prompt);
-      } catch (err) {
-        // Honest error state: no fabricated brief when the backend fails.
-        const detail = typeof err === "string" ? err : err instanceof Error ? err.message : String(err);
-        const errorMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          content: `### Brief Generation Failed\n\nCould not generate the project brief:\n\n\`\`\`\n${detail}\n\`\`\`\n\nPlease try again.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          track: "track-a",
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMsg]);
-      } finally {
-        setLoadingTrack(null);
-      }
-    } else {
-      try {
-        const teardown = await invoke<TeardownResponse>("execute_strategic_teardown", {
-          request: {
-            targetProductOrCompany: prompt,
-            analysisType: "full-teardown",
-            byok: byokConfig,
-          },
-        });
-        setCurrentTeardown(teardown);
+    try {
+      const teardown = await invoke<TeardownResponse>("execute_strategic_teardown", {
+        request: {
+          targetProductOrCompany: prompt,
+          analysisType: "full-teardown",
+          byok: byokConfig,
+        },
+      });
+      setCurrentTeardown(teardown);
 
-        const assistantMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          content: `### Executive Teardown Complete: ${teardown.targetName}\n\nDeconstructed core users, JTBD, habit loops, and monetization friction using **Yan Liu's** framework.\n\nCold outreach sequence prepared for leadership pitch using **Corey Haines'** customer research principles.${teardown.source ? `\n\n_Source: ${teardown.source === "offline" ? "offline template (no provider configured)" : `${teardown.source} API`}_` : ""}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          track: "track-b",
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      } catch (err) {
-        // Honest error state: surface the provider failure instead of fabricating a report.
-        const detail = typeof err === "string" ? err : err instanceof Error ? err.message : String(err);
-        setCurrentTeardown(null);
-        const errorMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: "assistant",
-          content: `### Teardown Failed\n\nThe configured LLM provider could not complete the request:\n\n\`\`\`\n${detail}\n\`\`\`\n\nCheck your API key and model in BYOK settings, then try again.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          track: "track-b",
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMsg]);
-      } finally {
-        setLoadingTrack(null);
-      }
+      const assistantMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: "assistant",
+        content: `### Executive Teardown Complete: ${teardown.targetName}\n\nDeconstructed core users, JTBD, habit loops, and monetization friction using **Yan Liu's** framework.\n\nCold outreach sequence prepared for leadership pitch using **Corey Haines'** customer research principles.${teardown.source ? `\n\n_Source: ${teardown.source === "offline" ? "offline template (no provider configured)" : `${teardown.source} API`}_` : ""}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        track: "track-b",
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      // Honest error state: surface the provider failure instead of fabricating a report.
+      const detail = typeof err === "string" ? err : err instanceof Error ? err.message : String(err);
+      setCurrentTeardown(null);
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: "assistant",
+        content: `### Teardown Failed\n\nThe configured LLM provider could not complete the request:\n\n\`\`\`\n${detail}\n\`\`\`\n\nCheck your API key and model in BYOK settings, then try again.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        track: "track-b",
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setLoadingTrack(null);
     }
-  };
-
-  const handleOpenStaging = (promptContent: string) => {
-    setStagingPrompt(promptContent);
-    setShowStaging(true);
   };
 
   return (
@@ -220,36 +191,49 @@ export function App() {
       </header>
 
       <div className="flex flex-1 min-h-0">
-        <AreaNav current={area} onChange={setArea} />
+        <AreaNav
+          current={area}
+          onChange={(next) => {
+            setOpenRoot(undefined);
+            setArea(next);
+          }}
+        />
 
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {area === "projects" && (
             <div className="flex-1 overflow-y-auto">
               <ErrorBoundary panelName="Projects">
-                <ProjectsView />
+                <ProjectsView openRoot={openRoot} />
               </ErrorBoundary>
             </div>
           )}
 
-          {(area === "idea" || area === "pitch") && (
+          {area === "idea" && (
+            <div className="flex-1 overflow-y-auto">
+              <ErrorBoundary panelName="Start from an idea">
+                <StartFromIdea
+                  key={defaultProjectPath}
+                  defaultParent={defaultProjectPath}
+                  providerReady={hasProvider(byokConfig)}
+                  create={(input) => createProjectFromIdea(tauri, input)}
+                  onCreated={(root, parent) => void handleProjectCreated(root, parent)}
+                  onOpenSettings={() => setArea("settings")}
+                />
+              </ErrorBoundary>
+            </div>
+          )}
+
+          {area === "pitch" && (
             <ChatArea
-              track={area === "idea" ? "track-a" : "track-b"}
+              track="track-b"
               messages={messages}
               loading={loadingTrack}
               onSubmit={handleSubmitPrompt}
-              onOpenStaging={() => handleOpenStaging(stagingPrompt || "Autonomous build task")}
               onOpenTeardown={() => currentTeardown && setCurrentTeardown({ ...currentTeardown })}
               aside={
-                area === "idea" ? (
-                  <p className="text-xs text-zinc-400 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
-                    Tool to launch: <span className="font-semibold text-zinc-100">{activeTool}</span>
-                  </p>
-                ) : (
-                  <ErrorBoundary panelName="BYOK Settings">
-                    <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
-                  </ErrorBoundary>
-                )
+                <ErrorBoundary panelName="BYOK Settings">
+                  <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
+                </ErrorBoundary>
               }
             />
           )}
@@ -275,56 +259,6 @@ export function App() {
           )}
         </main>
       </div>
-
-      {/* Track A Pre-Launch Staging Modal */}
-      <PreLaunchStagingModal
-        isOpen={showStaging}
-        projectName={stagingPrompt.slice(0, 30) || "Agent Orchestrator Project"}
-        projectPath={defaultProjectPath}
-        detectedTools={tools}
-        initialSkills={skills}
-        onClose={() => setShowStaging(false)}
-        onLaunch={async (selectedTool, activeSkills, finalProjectPath) => {
-          setDefaultProjectPath(finalProjectPath);
-          let result: LaunchResult;
-          try {
-            result = await invoke<LaunchResult>("launch_and_build", {
-              payload: {
-                projectPath: finalProjectPath,
-                projectName: stagingPrompt.slice(0, 30) || "GeneratedApp",
-                selectedTool,
-                ideaDescription: stagingPrompt,
-                skills: activeSkills,
-              },
-            });
-          } catch (err) {
-            const detail = typeof err === "string" ? err : err instanceof Error ? err.message : String(err);
-            setShowStaging(false);
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: Date.now().toString(),
-                sender: "assistant",
-                content: `### Launch Failed\n\nCould not launch **${selectedTool}** at \`${finalProjectPath}\`:\n\n\`\`\`\n${detail}\n\`\`\``,
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                track: "track-a",
-                isError: true,
-              },
-            ]);
-            return;
-          }
-          setShowStaging(false);
-          const noticeMsg: ChatMessage = {
-            id: Date.now().toString(),
-            sender: "assistant",
-            // What the backend actually did: launched, or prepared with instructions to open.
-            content: `${result.message}\n\n${result.verificationNotice}`,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            track: "track-a",
-          };
-          setMessages((prev) => [...prev, noticeMsg]);
-        }}
-      />
 
       {/* Track B Strategic Teardown Viewer */}
       {currentTeardown && (

@@ -10,7 +10,7 @@ interface ChatAreaProps {
   /** The track whose request is running, if any. */
   loading: TrackType | null;
   onSubmit: (prompt: string, track: TrackType) => void;
-  onOpenStaging: () => void;
+  onOpenStaging?: () => void;
   onOpenTeardown: () => void;
   /** Area-specific panel above the input (the tool to launch, or the provider in use). */
   aside?: React.ReactNode;
