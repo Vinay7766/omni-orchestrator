@@ -28,6 +28,8 @@ export type { CommitChecker, GitLookup, RefResult, RefStatus, RepositoryInfo, Re
 
 export { PhaseEngine, checkPhaseAction, nextPhase, REVIEW_QUESTION } from "./engine/phases.js";
 export type { PhaseAction, PhaseContext, PhaseResult, CheckResult } from "./engine/phases.js";
+export { continueAfterDecision } from "./engine/continue.js";
+export type { ContinueResult } from "./engine/continue.js";
 export type { EventGuard } from "./memory/store.js";
 export { resolvePhaseSkills } from "./skills/resolve.js";
 export type { CatalogEntry, SkillSource, ResolvedSkill } from "./skills/resolve.js";

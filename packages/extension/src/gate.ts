@@ -3,7 +3,7 @@
  * changes. Rules live in @omni/core's PhaseEngine; this asks the person and records their answer.
  * The vscode layer (extension.ts) supplies the Ui; tests supply a scripted one.
  */
-import { nextPhase, OPTIONAL_PHASES, PhaseEngine, REVIEW_QUESTION, type Event, type MemoryStore } from "@omni/core";
+import { continueAfterDecision, PhaseEngine, REVIEW_QUESTION, type ContinueResult, type Event, type MemoryStore } from "@omni/core";
 
 type Actor = Event["actor"];
 
@@ -31,13 +31,32 @@ async function underReview(store: MemoryStore): Promise<{ phase: string; documen
 
 const RUN = "Run it";
 const SKIP = "Skip it";
+const WAITING = (phase: string) => `"${phase}" waits for your decision. Run "OmniOrchestrator: Decide optional phase" when you are ready.`;
 
 /**
- * Asks the person about an optional phase (SEC-1): run it (they start it) or skip it (recorded).
- * Closing the question decides nothing. After a skip, the next phase starts as usual.
+ * What happens next, after a decision: the shared rule (core's continueAfterDecision) starts the
+ * next phase, except an optional one, which the person is asked about here (SEC-1).
  */
-async function askAboutOptional(phases: PhaseEngine, store: MemoryStore, person: Actor, ui: GateUi, phase: string): Promise<string> {
-  const choice = await ui.choose(OPTIONAL_PHASES[phase], `"${phase}" is optional. Only you can decide whether it runs.`, [RUN, SKIP]);
+async function continueWith(store: MemoryStore, person: Actor, ui: GateUi): Promise<string> {
+  const next: ContinueResult = await continueAfterDecision(store, person);
+  switch (next.kind) {
+    case "done":
+      return "Every phase is done.";
+    case "started":
+      return `"${next.phase}" has started.`;
+    case "in_progress":
+      return `"${next.phase}" is under way.`;
+    case "start_failed":
+      return `"${next.phase}" could not start: ${issuesText(next.issues)}`;
+    case "needs_decision":
+      return askAboutOptional(store, person, ui, next.phase, next.question);
+  }
+}
+
+/** Run it (the person starts it), skip it (recorded, then the flow continues), or decide later. */
+async function askAboutOptional(store: MemoryStore, person: Actor, ui: GateUi, phase: string, question: string): Promise<string> {
+  const choice = await ui.choose(question, `"${phase}" is optional. Only you can decide whether it runs.`, [RUN, SKIP]);
+  const phases = new PhaseEngine(store);
   if (choice === RUN) {
     const started = await phases.start(person, phase);
     return started.ok ? `"${phase}" has started.` : `"${phase}" could not start: ${issuesText(started.issues)}`;
@@ -45,15 +64,12 @@ async function askAboutOptional(phases: PhaseEngine, store: MemoryStore, person:
   if (choice === SKIP) {
     const skipped = await phases.skip(person, phase);
     if (!skipped.ok) return `"${phase}" could not be skipped: ${issuesText(skipped.issues)}`;
-    const after = nextPhase(store.readProject().flow, await store.readState());
-    if (after === null) return `"${phase}" skipped. Every phase is done.`;
-    const started = await phases.start(person, after);
-    return started.ok ? `"${phase}" skipped. "${after}" has started.` : `"${phase}" skipped, but "${after}" could not start: ${issuesText(started.issues)}`;
+    return `"${phase}" skipped. ${await continueWith(store, person, ui)}`;
   }
-  return `"${phase}" waits for your decision. Run "OmniOrchestrator: Decide optional phase" when you are ready.`;
+  return WAITING(phase);
 }
 
-/** Approves the phase under review after the person confirms, then starts the next phase. */
+/** Approves the phase under review after the person confirms, then continues (see continueWith). */
 export async function approvePhase(store: MemoryStore, person: Actor, ui: GateUi): Promise<void> {
   const review = await underReview(store);
   if (!review) {
@@ -67,28 +83,12 @@ export async function approvePhase(store: MemoryStore, person: Actor, ui: GateUi
   ].join("\n");
   if (!(await ui.confirm(`Approve "${review.phase}"?`, detail))) return;
 
-  const phases = new PhaseEngine(store);
-  const approved = await phases.approve(person, review.phase);
+  const approved = await new PhaseEngine(store).approve(person, review.phase);
   if (!approved.ok) {
     ui.show(`Not approved: ${issuesText(approved.issues)}`);
     return;
   }
-  const next = nextPhase(store.readProject().flow, await store.readState());
-  if (next === null) {
-    ui.show(`"${review.phase}" approved. Every phase is done.`);
-    return;
-  }
-  // Never start an optional phase on the person's behalf: approving one phase is not consent to the next.
-  if (OPTIONAL_PHASES[next] !== undefined) {
-    ui.show(`"${review.phase}" approved. ${await askAboutOptional(phases, store, person, ui, next)}`);
-    return;
-  }
-  const started = await phases.start(person, next);
-  ui.show(
-    started.ok
-      ? `"${review.phase}" approved. "${next}" has started.`
-      : `"${review.phase}" approved, but "${next}" could not start: ${issuesText(started.issues)}`,
-  );
+  ui.show(`"${review.phase}" approved. ${await continueWith(store, person, ui)}`);
 }
 
 /** Sends the phase under review back with the person's notes. */
@@ -106,11 +106,10 @@ export async function requestChanges(store: MemoryStore, person: Actor, ui: Gate
 
 /** Lets the person decide an optional phase that is waiting for them (SEC-1). */
 export async function decideOptionalPhase(store: MemoryStore, person: Actor, ui: GateUi): Promise<void> {
-  const state = await store.readState();
-  const next = nextPhase(store.readProject().flow, state);
-  if (next === null || OPTIONAL_PHASES[next] === undefined || (state.phases[next]?.status ?? "not_started") !== "not_started") {
+  const next = await continueAfterDecision(store, person);
+  if (next.kind !== "needs_decision") {
     ui.show("Nothing to decide: the next phase is not an optional one waiting for you.");
     return;
   }
-  ui.show(await askAboutOptional(new PhaseEngine(store), store, person, ui, next));
+  ui.show(await askAboutOptional(store, person, ui, next.phase, next.question));
 }
