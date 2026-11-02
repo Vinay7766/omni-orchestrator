@@ -311,16 +311,6 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-
-
-  Syntax-file, code seperations,code vault integeted with css definition.
-Pre-recordec, pre-tested, elements to capture elements into Packeted-User-Relations to capture - [
-
-pre-requisites, statements, recorded-cams
-, cams-data
-, data, input()
-
-]
 ```
 
 ## Mozilla Public License 2.0: hashicorp/agent-skills
