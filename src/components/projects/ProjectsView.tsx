@@ -5,6 +5,7 @@ import { loadProjectDetail, loadProjects } from "../../lib/projects";
 import { ProjectsList } from "./ProjectsList";
 import { ProjectDetail, type DecideFns } from "./ProjectDetail";
 import { approve, requestChanges, runOptional, skipOptional } from "../../lib/decisions";
+import { addEntry, loadMemoryFiles } from "../../lib/memory";
 import type { Invoke } from "@omni/core";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
@@ -15,6 +16,12 @@ const decide: DecideFns = {
   requestChanges: (root, phase, notes) => requestChanges(tauri, root, phase, notes),
   run: (root, phase) => runOptional(tauri, root, phase),
   skip: (root, phase, reason) => skipOptional(tauri, root, phase, reason),
+};
+
+/** The project's memory files and the person's own entries, over the app's memfs commands. */
+const memory = {
+  load: (root: string) => loadMemoryFiles(tauri, root),
+  add: (root: string, entry: Parameters<typeof addEntry>[2]) => addEntry(tauri, root, entry),
 };
 
 export const ProjectsView: React.FC = () => {
@@ -56,6 +63,6 @@ export const ProjectsView: React.FC = () => {
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} memory={memory} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };

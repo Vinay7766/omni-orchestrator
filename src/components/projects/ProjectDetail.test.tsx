@@ -67,3 +67,16 @@ describe("ProjectDetail: decisions (E3 slice 3)", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/not awaiting review/);
   });
 });
+
+describe("ProjectDetail: project memory (E3 slice 4a)", () => {
+  it("shows the project memory below the phases when it can be read", async () => {
+    const memory = {
+      load: vi.fn(() => Promise.resolve({ ok: true as const, files: [{ name: "summary.md" as const, content: "# Orbit" }] })),
+      add: vi.fn(),
+    };
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(detail)} onBack={vi.fn()} memory={memory} />);
+    expect(await screen.findByRole("heading", { name: "Project memory" })).toBeDefined();
+    expect((await screen.findByLabelText("summary.md")).textContent).toContain("# Orbit");
+    expect(memory.load).toHaveBeenCalledWith("C:/work/orbit");
+  });
+});

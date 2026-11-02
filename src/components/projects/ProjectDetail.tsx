@@ -4,6 +4,8 @@ import type { ProjectDetailResult } from "../../lib/projects";
 import type { DecisionResult } from "../../lib/decisions";
 import { PhaseHistory } from "./PhaseHistory";
 import type { PhaseDecisions } from "./PhaseActions";
+import { MemoryPanel } from "./MemoryPanel";
+import type { MemoryFilesResult, NewEntry } from "../../lib/memory";
 
 /** How decisions are recorded for a project root (the app passes lib/decisions over invoke). */
 export interface DecideFns {
@@ -19,12 +21,17 @@ interface ProjectDetailProps {
   onBack: () => void;
   /** When given, the person can decide (approve, request changes, run or skip) here. */
   decide?: DecideFns;
+  /** When given, the project's memory files and the person's own entries are shown. */
+  memory?: {
+    load: (root: string) => Promise<MemoryFilesResult>;
+    add: (root: string, entry: NewEntry) => Promise<DecisionResult>;
+  };
 }
 
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, memory }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
 
@@ -90,6 +97,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
             <p className="text-xs font-mono text-zinc-500 break-all">{root}</p>
           </div>
           <PhaseHistory entries={detail.history} decisions={decisions} />
+          {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} />}
         </>
       )}
     </section>
