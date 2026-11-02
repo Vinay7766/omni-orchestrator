@@ -8,12 +8,25 @@ import { MemoryPanel } from "./MemoryPanel";
 import { ProjectDetailsForm } from "./ProjectDetailsForm";
 import type { MemoryFilesResult, NewEntry } from "../../lib/memory";
 import { PlanningPanel } from "../planning/PlanningPanel";
+import { TaskProposalPanel } from "../planning/TaskProposalPanel";
+import type { readTaskProposal } from "../../lib/task-proposal";
 
 /** Planning phases run with the person's own model (E5). */
 export interface PlanningFns {
   run: (root: string) => Promise<DecisionResult>;
   providerReady: boolean;
   readDocument: (root: string, name: string) => Promise<string | null>;
+  /** The task list (slice 5): written by the person's model, approved or sent back by the person. */
+  readProposal: (root: string) => ReturnType<typeof readTaskProposal>;
+  propose: (root: string, notes?: string) => Promise<DecisionResult>;
+  approveTasks: (root: string) => Promise<DecisionResult>;
+}
+
+/** The architecture is approved, the build is the next phase, and no tasks exist yet. */
+function wantsTaskList(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
+  const architecture = detail.history.find((e) => e.phase === "architecture");
+  const next = detail.history.find((e) => e.isNext);
+  return architecture?.status === "approved" && next?.phase === "build" && detail.taskCount === 0;
 }
 
 /** How decisions are recorded for a project root (the app passes lib/decisions over invoke). */
@@ -83,6 +96,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
   );
 
   const readDocument = useCallback((name: string) => (planning ? planning.readDocument(root, name) : Promise.resolve(null)), [planning, root]);
+  const readProposal = useCallback(
+    () => (planning ? planning.readProposal(root) : Promise.resolve({ ok: false as const, error: "Planning is not available here." })),
+    [planning, root],
+  );
 
   return (
     <section className="w-full max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
@@ -125,6 +142,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               providerReady={planning.providerReady}
               run={() => record(planning.run(root))}
               readDocument={readDocument}
+            />
+          )}
+          {planning && wantsTaskList(detail) && (
+            <TaskProposalPanel
+              providerReady={planning.providerReady}
+              read={readProposal}
+              propose={(notes) => record(planning.propose(root, notes))}
+              approve={() => record(planning.approveTasks(root))}
             />
           )}
           <PhaseHistory entries={detail.history} decisions={decisions} />

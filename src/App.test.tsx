@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import { render, screen, fireEvent, act, within, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeInvoke } from "./lib/testing/fake-invoke";
+import { MemoryStore, PhaseEngine } from "@omni/core";
+import { createNodeFs } from "@omni/core/node";
+import { createProjectFromIdea } from "./lib/planning";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -186,26 +189,81 @@ describe("OmniOrchestrator App", () => {
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /create project/i }));
       });
-      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 5000 });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 10_000 });
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /run idea-review/i }));
       });
-      expect(await screen.findByText(/Verdict: build it\./, {}, { timeout: 5000 })).toBeDefined();
+      expect(await screen.findByText(/Verdict: build it\./, {}, { timeout: 10_000 })).toBeDefined();
       expect(prompts[0]).toContain("IDEA REVIEW METHOD");
       expect(prompts[0]).toContain("A shared shopping list");
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /approve/i }));
       });
-      expect(await screen.findByText(/"idea-review" approved/, {}, { timeout: 5000 })).toBeDefined();
-      expect(await screen.findByRole("button", { name: /run research/i }, { timeout: 5000 })).toBeDefined();
+      expect(await screen.findByText(/"idea-review" approved/, {}, { timeout: 10_000 })).toBeDefined();
+      expect(await screen.findByRole("button", { name: /run research/i }, { timeout: 10_000 })).toBeDefined();
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
     // Real files for create, run, approve and the next start: about 2 s alone, over 5 s when the
     // full suite runs every package in parallel.
-  }, 20_000);
+  }, 30_000);
+
+  it("after the architecture is approved, the model writes the task list and the person approves it", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-tasklist-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const created = await createProjectFromIdea(files, { parent: base, name: "Orbit", idea: "A shared shopping list" });
+      if (!created.ok) throw new Error(created.error);
+      const opened = await MemoryStore.open(createNodeFs(), created.root);
+      if (!opened.ok) throw new Error("project did not open");
+      const engine = new PhaseEngine(opened.store);
+      const writer = { kind: "agent" as const, tool: "omni-desktop", model: "made-up-model" };
+      for (const phase of ["idea-review", "research", "prd", "architecture"]) {
+        await engine.start(writer, phase);
+        await opened.store.appendEvent({ type: "memory_updated", actor: writer, payload: { files: [`docs/planning/${phase}.md`] } });
+        await engine.submit(writer, { phase, documents: [`docs/planning/${phase}.md`], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "docs/planning/u.md", ...(phase === "architecture" ? { stackAdr: "docs/planning/a.md" } : {}) });
+        await engine.approve({ kind: "human", tool: "omni-desktop" }, phase);
+      }
+      await engine.start({ kind: "human", tool: "omni-desktop" }, "build");
+
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      mockBackend({
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" }, keyStorage: { available: true } }),
+        get_app_settings: () => Promise.resolve({ ...SETTINGS, projectFolders: [base] }),
+        find_projects: () => Promise.resolve({ roots: [created.root], errors: [] }),
+        byok_complete: () =>
+          Promise.resolve({
+            text: '```json\n{"tasks":[{"title":"Data model","requirements":["REQ-1"],"kinds":["backend"]},{"title":"List screen","kinds":["interface","tests"]}]}\n```',
+            provider: "ollama",
+            model: "made-up-model",
+          }),
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      const open = await screen.findByRole("button", { name: /open orbit/i }, { timeout: 10_000 });
+      await act(async () => {
+        fireEvent.click(open);
+      });
+      const write = await screen.findByRole("button", { name: /write the task list/i }, { timeout: 10_000 });
+      await act(async () => {
+        fireEvent.click(write);
+      });
+      expect(await screen.findByText(/List screen/, {}, { timeout: 10_000 })).toBeDefined();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /approve the task list/i }));
+      });
+      expect(await screen.findByText(/2 tasks created/, {}, { timeout: 10_000 })).toBeDefined();
+      await waitFor(() => expect(screen.queryByRole("region", { name: "Task list" })).toBeNull(), { timeout: 10_000 });
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+    // Real files: four locked writes on approval; about 2.5 s alone, much slower under the parallel full run.
+  }, 30_000);
 
   it("shows the provider error instead of a fabricated report when a pitch teardown fails", async () => {
     mockBackend({

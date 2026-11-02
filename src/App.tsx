@@ -21,6 +21,7 @@ import { AreaNav, type Area } from "./components/layout/AreaNav";
 import { StartFromIdea } from "./components/planning/StartFromIdea";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
 import { runPhase } from "./lib/phase-runner";
+import { approveTaskList, proposeTasks, readTaskProposal } from "./lib/task-proposal";
 import type { PlanningFns } from "./components/projects/ProjectDetail";
 
 const tauri = (command: string, args?: Record<string, unknown>) => invoke(command, args);
@@ -188,6 +189,15 @@ export function App() {
       return { ok: true, message: r.message + note };
     },
     readDocument: (root, name) => invoke<string | null>("read_planning_document", { root, name }),
+    readProposal: (root) => readTaskProposal(tauri, root),
+    propose: async (root, notes) => {
+      const r = await proposeTasks(tauri, root, { byok: byokConfig, skills, notes });
+      return r.ok ? { ok: true, message: `${r.model} proposed ${r.tasks.length} tasks. Review them, then approve or request changes.` } : { ok: false, message: r.error };
+    },
+    approveTasks: async (root) => {
+      const r = await approveTaskList(tauri, root);
+      return r.ok ? { ok: true, message: r.message } : { ok: false, message: r.error };
+    },
   }), [byokConfig, skills]);
 
   return (

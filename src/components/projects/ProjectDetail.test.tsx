@@ -109,3 +109,36 @@ describe("ProjectDetail: the details form after a save (E3 slice 4b)", () => {
     expect((screen.getByLabelText("Project name") as HTMLInputElement).value).toBe("Orbit [REDACTED]");
   });
 });
+
+describe("ProjectDetail: the task list (E5 slice 5)", () => {
+  const afterArchitecture = (taskCount: number): ProjectDetailResult => ({
+    ok: true,
+    name: "Orbit",
+    flow: "build",
+    mode: "full",
+    taskCount,
+    history: [
+      { phase: "architecture", status: "approved", isNext: false, submissions: [], changeRequests: [] },
+      { phase: "build", status: "in_progress", isNext: true, submissions: [], changeRequests: [] },
+    ],
+  });
+  const planning = {
+    run: vi.fn(),
+    providerReady: true,
+    readDocument: vi.fn(),
+    readProposal: vi.fn().mockResolvedValue({ ok: false, error: "No task list has been proposed yet." }),
+    propose: vi.fn(),
+    approveTasks: vi.fn(),
+  };
+
+  it("offers the task list once the architecture is approved and there are no tasks", async () => {
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(afterArchitecture(0))} onBack={vi.fn()} planning={planning} />);
+    expect(await screen.findByRole("region", { name: "Task list" })).toBeDefined();
+  });
+
+  it("does not offer it once the project has tasks", async () => {
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(afterArchitecture(3))} onBack={vi.fn()} planning={planning} />);
+    await screen.findByRole("heading", { name: "Orbit" });
+    expect(screen.queryByRole("region", { name: "Task list" })).toBeNull();
+  });
+});

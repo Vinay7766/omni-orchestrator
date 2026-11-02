@@ -184,7 +184,8 @@ function currentPhase(store: Store, state: Awaited<ReturnType<Store["readState"]
   return next && (PLANNING_PHASES as readonly string[]).includes(next) ? next : null;
 }
 
-async function phaseSkills(store: Store, skills: Skill[], phase: string) {
+/** The phase's skills with full text: catalog plus the project's skills.json overrides. */
+export async function phaseSkills(store: Store, skills: Skill[], phase: string) {
   const catalog = skills.map((s) => ({ ...s, license: s.license ?? "unverified", phases: s.phases ?? [], domains: ["general"] })) as unknown as CatalogEntry[];
   let overrides = null;
   const raw = await store.readFile("skills.json");
@@ -200,7 +201,7 @@ async function phaseSkills(store: Store, skills: Skill[], phase: string) {
   return resolvePhaseSkills(catalog, overrides, phase).skills.map((s) => ({ id: s.id, name: s.name, content: byId.get(s.id)?.content ?? s.description }));
 }
 
-const readDoc = async (invoke: Invoke, root: string, name: string) => (await invoke("read_planning_document", { root, name })) as string | null;
+export const readDoc = async (invoke: Invoke, root: string, name: string) => (await invoke("read_planning_document", { root, name })) as string | null;
 
 function lastNotes(events: Event[], phase: string): string | undefined {
   const request = [...events].reverse().find((e) => e.type === "changes_requested" && (e.payload as { phase?: string }).phase === phase);
