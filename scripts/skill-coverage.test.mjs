@@ -39,6 +39,18 @@ describe("renderCoverage", () => {
     expect(md).toMatch(/## Gaps[\s\S]*- empty-domain: Nobody covers it/);
   });
 
+  it("lists a domain's note, saying why part of it has no vetted skill", () => {
+    const withNote = {
+      ...tiny.domains,
+      domains: tiny.domains.domains.map((d) => (d.id === "second-domain" ? { ...d, note: "One vendor's skill only works as a chain" } : d)),
+    };
+    expect(renderCoverage(tiny.catalog, withNote)).toMatch(/## Notes[\s\S]*- second-domain: One vendor's skill only works as a chain/);
+  });
+
+  it("leaves out the notes section when no domain has a note", () => {
+    expect(renderCoverage(tiny.catalog, tiny.domains)).not.toContain("## Notes");
+  });
+
   it("cites the yardsticks", () => {
     expect(renderCoverage(tiny.catalog, tiny.domains)).toContain("[A yardstick](https://example.org/yardstick)");
   });

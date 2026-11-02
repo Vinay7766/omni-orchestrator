@@ -19,6 +19,7 @@ export function renderCoverage(catalog, domainsDoc) {
     return { ...d, skills, line: `| ${d.id} | ${d.function} | ${phasesOf.get(d.function) ?? ""} | ${skills.length ? skills.join(", ") : "**gap**"} |` };
   });
   const gaps = rows.filter((r) => r.skills.length === 0);
+  const notes = rows.filter((r) => r.note);
 
   return [
     "# Skill coverage",
@@ -35,6 +36,7 @@ export function renderCoverage(catalog, domainsDoc) {
     "",
     ...(gaps.length ? gaps.map((g) => `- ${g.id}: ${g.description}`) : ["None."]),
     "",
+    ...(notes.length ? ["## Notes", "", ...notes.map((n) => `- ${n.id}: ${n.note}`), ""] : []),
     "## Yardsticks",
     "",
     ...domainsDoc.sources.map((s) => `- [${s.name}](${s.url})`),
