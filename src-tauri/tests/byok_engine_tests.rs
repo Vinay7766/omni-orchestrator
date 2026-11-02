@@ -1,4 +1,4 @@
-use tauri_app_lib::commands::byok_engine::{parse_openai_response, ByokEngine, TeardownRequest};
+use tauri_app_lib::commands::byok_engine::{execute_strategic_teardown, parse_openai_response, ByokEngine, TeardownRequest};
 use tauri_app_lib::models::BYOKConfig;
 
 #[test]
@@ -342,4 +342,74 @@ fn a_model_listed_twice_is_offered_once_in_the_providers_order() {
         fake_endpoint(200, r#"{"object":"list","data":[{"id":"zeta"},{"id":"alpha"},{"id":"zeta"},{"id":""}]}"#);
     let byok = BYOKConfig { compatible_base_url: Some(base), ..Default::default() };
     assert_eq!(ByokEngine::new().list_models(&byok, ByokProvider::Compatible).unwrap(), vec!["zeta", "alpha"]);
+}
+
+// G3: the teardown command must not hold the caller's thread (in the app: the main thread,
+// which draws the window) while it waits for the model. Tauri runs non-async commands on the
+// main thread: https://v2.tauri.app/develop/calling-rust/#async-commands
+
+/// A made-up OpenAI-compatible endpoint that waits `delay` before answering.
+fn slow_endpoint(delay: std::time::Duration) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut reader = BufReader::new(stream);
+        let mut length = 0usize;
+        loop {
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                length = v.trim().parse().unwrap();
+            }
+            if line == "\r\n" || line.is_empty() {
+                break;
+            }
+        }
+        let mut payload = vec![0u8; length];
+        reader.read_exact(&mut payload).unwrap();
+        std::thread::sleep(delay);
+        let reply = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            REPLY.len(),
+            REPLY
+        );
+        reader.get_mut().write_all(reply.as_bytes()).unwrap();
+    });
+    format!("http://127.0.0.1:{}/v1", port)
+}
+
+#[test]
+fn a_slow_model_does_not_hold_the_callers_thread() {
+    use std::future::Future;
+    use std::task::{Context, Poll, Waker};
+    use std::time::{Duration, Instant};
+
+    let base = slow_endpoint(Duration::from_millis(800));
+    let mut command = Box::pin(execute_strategic_teardown(compatible(&base, None, Some("made-up-model"))));
+
+    // What the window's thread experiences: one poll of the command.
+    let started = Instant::now();
+    let first = command.as_mut().poll(&mut Context::from_waker(Waker::noop()));
+    let held = started.elapsed();
+    println!("the command held the caller's thread for {:?}", held);
+    assert!(matches!(first, Poll::Pending), "the command finished synchronously instead of in the background");
+    assert!(held < Duration::from_millis(200), "the caller's thread was held for {:?}", held);
+
+    // The work still completes, with the model's answer.
+    let response = tauri::async_runtime::block_on(command).expect("teardown succeeds");
+    assert_eq!(response.source, "compatible");
+}
+
+/// Baseline for G3 (kept as a record, not run by default): how long a direct call holds the
+/// caller's thread when the model takes 800 ms.
+#[test]
+#[ignore]
+fn baseline_blocking_call_duration() {
+    use std::time::{Duration, Instant};
+    let base = slow_endpoint(Duration::from_millis(800));
+    let engine = ByokEngine::new();
+    let started = Instant::now();
+    let _ = engine.generate_teardown(&compatible(&base, None, Some("made-up-model")));
+    println!("blocking call held the caller for {:?}", started.elapsed());
 }

@@ -698,8 +698,12 @@ pub async fn list_byok_models(byok: BYOKConfig, provider: ByokProvider) -> Resul
         .map_err(|e| e.to_string())?
 }
 
+/// Async, so Tauri does not run it on the main thread (which draws the window), and the
+/// blocking HTTP call runs on a blocking-task thread, so the window never waits for the model.
+/// Non-async commands run on the main thread: https://v2.tauri.app/develop/calling-rust/#async-commands
 #[tauri::command]
-pub fn execute_strategic_teardown(request: TeardownRequest) -> Result<TeardownResponse, String> {
-    let engine = ByokEngine::new();
-    engine.generate_teardown(&request)
+pub async fn execute_strategic_teardown(request: TeardownRequest) -> Result<TeardownResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || ByokEngine::new().generate_teardown(&request))
+        .await
+        .map_err(|e| e.to_string())?
 }
