@@ -230,6 +230,62 @@ describe("OmniOrchestrator App", () => {
     // full suite runs every package in parallel.
   }, 30_000);
 
+  it("revises a planning document right after the person requests changes, and shows the new version (tester feedback)", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-revise-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const prompts: string[] = [];
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      const doc = (verdict: string) =>
+        `# Idea review\n\nVerdict: ${verdict}\n\n## Understanding check\n\nA list families share.\n\n## Skills applied\n\n- idea-review: checked problem and users\n`;
+      mockBackend({
+        get_default_project_path: () => Promise.resolve(base),
+        get_skills: () =>
+          Promise.resolve([
+            {
+              id: "idea-review", name: "Idea review", description: "Reviews ideas honestly", category: "strategy",
+              attribution: { name: "Made-up Author", sourceUrl: "https://example.org", verified: true },
+              enabled: true, content: "IDEA REVIEW METHOD", isCustom: false, phases: ["idea-review"], license: "MIT",
+            },
+          ]),
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" }, keyStorage: { available: true } }),
+        save_app_settings: () => Promise.resolve(),
+        byok_complete: (args) => {
+          prompts.push((args as { request: { prompt: string } }).request.prompt);
+          return Promise.resolve({ text: doc(prompts.length === 1 ? "first draft." : "revised with pricing."), provider: "ollama", model: "made-up-model" });
+        },
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /create project/i }));
+      });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 10_000 });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /run idea-review/i }));
+      });
+      await screen.findByText(/Verdict: first draft\./, {}, { timeout: 10_000 });
+
+      fireEvent.click(screen.getByRole("button", { name: /request changes/i }));
+      fireEvent.change(screen.getByLabelText(/what should change/i), { target: { value: "Add a pricing section" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /send the changes/i }));
+      });
+
+      // No second click on "Run idea-review": the revision starts by itself and is shown for review.
+      expect(await screen.findByText(/Verdict: revised with pricing\./, {}, { timeout: 10_000 })).toBeDefined();
+      expect(prompts).toHaveLength(2);
+      expect(prompts[1]).toContain("Add a pricing section");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("after the architecture is approved, the model writes the task list and the person approves it", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-tasklist-")).replace(/\\/g, "/");
     try {

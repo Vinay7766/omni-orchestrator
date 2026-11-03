@@ -18,8 +18,13 @@ export const PlanningPanel: React.FC<{
   providerReady: boolean;
   run: () => Promise<void>;
   readDocument: (name: string) => Promise<string | null>;
-}> = ({ entry, providerReady, run, readDocument }) => {
+  /** Set right after the person requests changes here: the revision starts without another click. */
+  autoRun?: boolean;
+  /** Called when an automatic revision starts, so it runs once. */
+  onAutoRun?: () => void;
+}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun }) => {
   const [running, setRunning] = useState(false);
+  const [revising, setRevising] = useState(false);
   const [documents, setDocuments] = useState<{ name: string; text: string | null }[] | null>(null);
   const phase = entry?.phase ?? "";
   const awaiting = entry?.status === "awaiting_review";
@@ -35,6 +40,27 @@ export const PlanningPanel: React.FC<{
       current = false;
     };
   }, [phase, awaiting, readDocument]);
+
+  const start = async (revision = false) => {
+    setRunning(true);
+    setRevising(revision);
+    try {
+      await run();
+    } finally {
+      setRunning(false);
+      setRevising(false);
+    }
+  };
+
+  // Tester feedback: after "Request changes" the person had to find and press Run again to get
+  // the revised document. A request made here now starts the revision straight away.
+  const changesRequested = entry?.status === "changes_requested";
+  useEffect(() => {
+    if (!autoRun || !changesRequested || !providerReady || running) return;
+    onAutoRun?.();
+    void start(true);
+    // start is recreated each render; the guard values above decide when it runs.
+  }, [autoRun, changesRequested, providerReady, running]);
 
   if (!entry || !(PLANNING_PHASES as readonly string[]).includes(phase)) return null;
 
@@ -65,15 +91,6 @@ export const PlanningPanel: React.FC<{
 
   if (!RUNNABLE.includes(entry.status)) return null;
 
-  const start = async () => {
-    setRunning(true);
-    try {
-      await run();
-    } finally {
-      setRunning(false);
-    }
-  };
-
   return (
     <section aria-label="Next planning step" className="border border-zinc-800 rounded-lg bg-zinc-900 p-4 space-y-2">
       <h3 className="text-sm font-semibold text-zinc-100">Next planning step: {phase}</h3>
@@ -92,7 +109,7 @@ export const PlanningPanel: React.FC<{
       </button>
       {running && (
         <p role="status" className="text-xs text-zinc-400">
-          Running {phase} with your model. A long document can take several minutes, more on a local model.
+          {revising ? `Revising ${phase} with your change notes.` : `Running ${phase} with your model.`} A long document can take several minutes, more on a local model.
         </p>
       )}
     </section>
