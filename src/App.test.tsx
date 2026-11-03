@@ -464,6 +464,39 @@ describe("OmniOrchestrator App", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("adds the person's own skill through the app and shows it in the catalog (tester feedback 4)", async () => {
+    const sent: unknown[] = [];
+    mockBackend({
+      get_skills: () => Promise.resolve([madeUpSkill]),
+      add_skill: (args) => {
+        sent.push(args);
+        const s = (args as { skill: { id: string; name: string; description: string; content: string; phases: string[]; author: string; sourceUrl: string; license: string } }).skill;
+        return Promise.resolve({
+          id: s.id, name: s.name, description: s.description, content: s.content, category: "custom", enabled: true, isCustom: true,
+          phases: s.phases, license: s.license, attribution: { name: s.author, sourceUrl: s.sourceUrl, verified: false },
+        });
+      },
+    });
+    await renderApp();
+    await openArea("Skills");
+    fireEvent.click(screen.getByRole("button", { name: "Add a skill" }));
+    const form = within(screen.getByRole("region", { name: "Add a skill" }));
+    fireEvent.change(form.getByLabelText(/^name/i), { target: { value: "My Own Checklist" } });
+    fireEvent.change(form.getByLabelText("Description (when tools should use it)"), { target: { value: "My own checklist for reviews." } });
+    fireEvent.change(form.getByLabelText(/skill text/i), { target: { value: "Step 1" } });
+    fireEvent.change(form.getByLabelText(/author/i), { target: { value: "Me" } });
+    fireEvent.change(form.getByLabelText(/source link/i), { target: { value: "https://example.com" } });
+    fireEvent.change(form.getByLabelText(/license/i), { target: { value: "MIT" } });
+    fireEvent.click(form.getByRole("checkbox", { name: "review" }));
+    await act(async () => {
+      fireEvent.click(form.getByRole("button", { name: /add skill/i }));
+    });
+
+    expect(sent).toHaveLength(1);
+    expect(screen.getByText("My Own Checklist")).toBeDefined();
+    expect(screen.queryByRole("region", { name: "Add a skill" })).toBeNull();
+  });
+
   it("shows the real error when saving a skill edit fails, keeps the typed text and leaves the list unchanged", async () => {
     mockBackend({
       get_skills: () => Promise.resolve([madeUpSkill]),

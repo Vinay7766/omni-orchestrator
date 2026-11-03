@@ -15,6 +15,7 @@ import { TeardownViewer } from "./components/track-b/TeardownViewer";
 import { BYOKSettings } from "./components/track-b/BYOKSettings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SkillCatalog } from "./components/skills/SkillCatalog";
+import type { NewSkillInput } from "./components/skills/AddSkillForm";
 import { Terminal } from "lucide-react";
 import { ProjectsView } from "./components/projects/ProjectsView";
 import { AreaNav, type Area } from "./components/layout/AreaNav";
@@ -114,6 +115,11 @@ export function App() {
     setSkills((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled } : s))
     );
+  };
+
+  const handleAddSkill = async (skill: NewSkillInput) => {
+    const added = await invoke<Skill>("add_skill", { skill });
+    setSkills((prev) => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
   };
 
   const handleSaveSkillModification = async (
@@ -269,7 +275,7 @@ export function App() {
 
           {area === "skills" && (
             <div className="flex-1 overflow-y-auto">
-              <SkillCatalog skills={skills} onToggle={handleToggleSkill} onSave={handleSaveSkillModification} />
+              <SkillCatalog skills={skills} onToggle={handleToggleSkill} onSave={handleSaveSkillModification} onAdd={handleAddSkill} />
             </div>
           )}
 
