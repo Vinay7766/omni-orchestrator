@@ -3,7 +3,7 @@
  * project's memory is read through @omni/core over the memfs commands, the same code the MCP
  * server and the extension use, so the app shows real project data only.
  */
-import { createInvokeFs, MemoryStore, normalizePath, phaseHistory, projectOverview, type Invoke, type PhaseHistoryEntry, type ProjectOverview } from "@omni/core";
+import { buildPhaseHistory, buildWorkflow, createInvokeFs, MemoryStore, normalizePath, projectOverview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow } from "@omni/core";
 
 export type ProjectRow = { root: string; ok: true; overview: ProjectOverview } | { root: string; ok: false; error: string };
 
@@ -33,7 +33,7 @@ export async function loadProjects(invoke: Invoke, folders: string[]): Promise<P
 
 /** One project's phase history for the detail screen (E3, GATE-5). */
 export type ProjectDetailResult =
-  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number }
+  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow }
   | { ok: false; error: string };
 
 export async function loadProjectDetail(invoke: Invoke, root: string): Promise<ProjectDetailResult> {
@@ -41,8 +41,17 @@ export async function loadProjectDetail(invoke: Invoke, root: string): Promise<P
     const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root));
     if (!opened.ok) return { ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
     const project = opened.store.readProject();
-    const taskCount = (await opened.store.readState()).tasks.length;
-    return { ok: true, name: project.name, flow: project.flow, mode: project.mode, history: await phaseHistory(opened.store), taskCount };
+    const state = await opened.store.readState();
+    const { events } = await opened.store.readEvents();
+    return {
+      ok: true,
+      name: project.name,
+      flow: project.flow,
+      mode: project.mode,
+      history: buildPhaseHistory(project.flow, state, events),
+      taskCount: state.tasks.length,
+      workflow: buildWorkflow(project.flow, state, events),
+    };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }

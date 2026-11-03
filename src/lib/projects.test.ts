@@ -74,6 +74,15 @@ describe("loadProjectDetail (E3)", () => {
     expect(detail.history[0].started?.by).toEqual(agent);
   });
 
+  it("reads the workflow chart from the same memory (E8)", async () => {
+    const root = await project("orbit", "idea-review");
+    const detail = await loadProjectDetail(fakeInvoke([]), root);
+    if (!detail.ok) throw new Error(detail.error);
+    const first = detail.workflow?.nodes[0];
+    expect(first).toMatchObject({ id: "phase:idea-review", status: "in_progress" });
+    expect(first?.events[0]).toMatchObject({ type: "phase_started", by: agent });
+  });
+
   it("reports the real reason when a folder is not a readable project", async () => {
     const empty = join(base, "not-a-project");
     mkdirSync(empty);

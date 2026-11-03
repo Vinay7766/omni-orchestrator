@@ -23,6 +23,8 @@ export { projectOverview } from "./memory/overview.js";
 export type { ProjectOverview } from "./memory/overview.js";
 export { phaseHistory, buildPhaseHistory } from "./memory/history.js";
 export type { PhaseHistoryEntry } from "./memory/history.js";
+export { workflow, buildWorkflow } from "./memory/workflow.js";
+export type { Workflow, WorkflowNode, WorkflowEvent, GateStatus } from "./memory/workflow.js";
 export { recordDecision, recordProblem, recordLesson, verifyReferences } from "./memory/record.js";
 export type { RecordTarget, RecordResult, ReferenceCheck, Refs } from "./memory/record.js";
 export type { FindProjectResult } from "./memory/discover.js";
