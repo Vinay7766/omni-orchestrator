@@ -18,6 +18,8 @@ import { SkillCatalog } from "./components/skills/SkillCatalog";
 import { Terminal } from "lucide-react";
 import { ProjectsView } from "./components/projects/ProjectsView";
 import { AreaNav, type Area } from "./components/layout/AreaNav";
+import { SetupGuide, type SetupChecks } from "./components/setup/SetupGuide";
+import { discoverTools } from "./lib/team";
 import { StartFromIdea } from "./components/planning/StartFromIdea";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
 import { runPhase } from "./lib/phase-runner";
@@ -25,6 +27,14 @@ import { approveTaskList, proposeTasks, readTaskProposal } from "./lib/task-prop
 import type { PlanningFns } from "./components/projects/ProjectDetail";
 
 const tauri = (command: string, args?: Record<string, unknown>) => invoke(command, args);
+
+/** The setup guide's checks on this computer (E9, NTU-4). */
+const setupChecks: SetupChecks = {
+  gitVersion: () => invoke<string | null>("git_version"),
+  tools: () => discoverTools(tauri),
+  projectFolders: async () => (await invoke<AppSettings>("get_app_settings"))?.projectFolders ?? [],
+  openFolder: (path) => invoke<void>("open_folder", { path }),
+};
 
 export function App() {
   const [area, setArea] = useState<Area>("projects");
@@ -265,6 +275,14 @@ export function App() {
           {area === "skills" && (
             <div className="flex-1 overflow-y-auto">
               <SkillCatalog skills={skills} onToggle={handleToggleSkill} onSave={handleSaveSkillModification} />
+            </div>
+          )}
+
+          {area === "setup" && (
+            <div className="flex-1 overflow-y-auto">
+              <ErrorBoundary panelName="Setup guide">
+                <SetupGuide checks={setupChecks} onGoToProjects={() => setArea("projects")} />
+              </ErrorBoundary>
             </div>
           )}
 

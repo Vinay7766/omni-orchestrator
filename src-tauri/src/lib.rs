@@ -10,6 +10,7 @@ use commands::tool_discovery::discover_tools;
 use commands::mcp_setup::setup_mcp;
 use commands::handoff::hand_off_tool;
 use commands::fresh_session::start_fresh_session_cmd;
+use commands::setup_guide::{git_version, open_folder};
 use commands::projects::find_projects;
 use commands::planning_docs::{read_planning_document, write_planning_document};
 
@@ -53,6 +54,9 @@ pub fn run() {
             hand_off_tool,
             // Next phase in a fresh session (E11, HND-7)
             start_fresh_session_cmd,
+            // Setup guide checks (E9, NTU-4)
+            git_version,
+            open_folder,
             // Projects under the folders the person configured (E2)
             find_projects,
             // Planning documents in docs/planning of a project (E5)

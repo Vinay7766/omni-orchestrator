@@ -1,7 +1,7 @@
 import React from "react";
-import { FolderOpen, Lightbulb, Presentation, Sliders, Settings, type LucideIcon } from "lucide-react";
+import { FolderOpen, Lightbulb, ListChecks, Presentation, Sliders, Settings, type LucideIcon } from "lucide-react";
 
-export type Area = "projects" | "idea" | "pitch" | "skills" | "settings";
+export type Area = "projects" | "idea" | "pitch" | "skills" | "setup" | "settings";
 
 /** The dashboard's areas, in the order they are listed. Projects is home (APP-1). */
 const AREAS: { id: Area; label: string; icon: LucideIcon }[] = [
@@ -9,6 +9,7 @@ const AREAS: { id: Area; label: string; icon: LucideIcon }[] = [
   { id: "idea", label: "Start from an idea", icon: Lightbulb },
   { id: "pitch", label: "Pitch mode", icon: Presentation },
   { id: "skills", label: "Skills", icon: Sliders },
+  { id: "setup", label: "Setup guide", icon: ListChecks },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 

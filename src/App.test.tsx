@@ -66,7 +66,7 @@ describe("OmniOrchestrator App", () => {
   it("reaches every area from the navigation and marks only the open one as current", async () => {
     await renderApp();
 
-    for (const area of ["Start from an idea", "Pitch mode", "Skills", "Settings", "Projects"]) {
+    for (const area of ["Start from an idea", "Pitch mode", "Skills", "Setup guide", "Settings", "Projects"]) {
       await openArea(area);
       const current = nav()
         .getAllByRole("button")

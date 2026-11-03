@@ -13,3 +13,4 @@ pub use byok_engine::*;
 pub mod planning_docs;
 pub mod handoff;
 pub mod fresh_session;
+pub mod setup_guide;
