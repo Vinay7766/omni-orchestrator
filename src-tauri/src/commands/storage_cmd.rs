@@ -65,16 +65,3 @@ pub fn get_default_project_path() -> String {
         .unwrap_or_else(|_| "C:\\Users\\User".to_string());
     format!("{}\\Projects\\MyApp", home)
 }
-
-#[tauri::command]
-pub fn generate_project_brief(idea: String) -> Result<String, String> {
-    if idea.trim().is_empty() {
-        return Err("Idea cannot be empty".to_string());
-    }
-    
-    let brief = format!(
-        "### Specification Brief Initialized\n\n**Idea:** {}\n\n**Next Steps:**\n- Structured PRD will be generated\n- Tools will be detected on your system\n- Skills will be configured for your project\n\nClick **Configure & Stage Run** to choose your project folder, target IDE, and customize which skills are active before launching.",
-        idea.trim()
-    );
-    Ok(brief)
-}

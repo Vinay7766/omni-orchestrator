@@ -46,15 +46,6 @@ export interface LaunchCommand {
   args: string[];
 }
 
-/** What launch_and_build reports (Rust LaunchResult). */
-export interface LaunchResult {
-  success: boolean;
-  message: string;
-  projectPath: string;
-  toolLaunched: boolean;
-  verificationNotice: string;
-}
-
 /** What hand_off_tool reports (Rust HandoffResult, handoff.rs). */
 export interface HandoffResult {
   toolId: string;

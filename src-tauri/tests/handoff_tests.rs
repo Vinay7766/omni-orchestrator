@@ -280,3 +280,15 @@ fn level_one_writes_no_instruction_files() {
     assert!(result.mcp.is_none() && result.mcp_problem.is_none());
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn an_unfinished_block_is_left_alone_and_reported() {
+    let dir = project("half", &[("orbit", 2, false)]);
+    let half = format!("# mine\n{}\nhalf\n", MANAGED_BEGIN);
+    fs::write(dir.join("AGENTS.md"), &half).unwrap();
+    let tools = [tool("orbit", Some(3), false)];
+    let result = hand_off(&request(&dir, "orbit"), &context(&tools, &[], &dir), no_spawn).unwrap();
+    assert_eq!(fs::read_to_string(dir.join("AGENTS.md")).unwrap(), half);
+    assert!(result.files.iter().any(|f| f.contains("left unchanged")), "{:?}", result.files);
+    let _ = fs::remove_dir_all(dir);
+}

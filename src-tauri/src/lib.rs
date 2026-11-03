@@ -4,7 +4,6 @@ pub mod commands;
 
 use commands::storage_cmd::*;
 use commands::skill_manager::*;
-use commands::sync_launcher::*;
 use commands::byok_engine::*;
 use commands::memory_fs::*;
 use commands::tool_discovery::discover_tools;
@@ -29,11 +28,8 @@ pub fn run() {
             get_session_state,
             save_session_state,
             get_default_project_path,
-            generate_project_brief,
             get_skills,
             toggle_skill,
-            launch_and_build,
-            prepare_project_staging,
             execute_strategic_teardown,
             byok_complete,
             list_byok_models,
