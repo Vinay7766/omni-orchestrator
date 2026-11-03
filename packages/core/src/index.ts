@@ -40,6 +40,8 @@ export { TaskEngine, checkTaskAction, designNotePath } from "./engine/tasks.js";
 export type { TaskAction, TaskResult } from "./engine/tasks.js";
 export { readTeam, saveTeam, TEAM_FILE } from "./team/team.js";
 export type { Team, TeamMember, TeamSelection, ReadTeamResult, SaveTeamResult } from "./team/team.js";
+export { buildHandoff, HANDOFF_FILE } from "./team/handoff.js";
+export type { Handoff, HandoffInput, HandoffTask } from "./team/handoff.js";
 
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES, STACK_ADR_PHASES, OPTIONAL_PHASES } from "./generated/contract.js";
 export type * from "./generated/types.js";
