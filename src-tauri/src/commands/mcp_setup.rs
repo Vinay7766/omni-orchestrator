@@ -295,6 +295,14 @@ pub fn resolve_server_command(server_override: Option<String>, built_main: &Path
     })
 }
 
+/// Adds the person's own skills folder, so the tool is served the skills they added, edited or
+/// switched off in the app (SKL-5).
+pub fn with_user_skills(mut server: ServerCommand, folder: &Path) -> ServerCommand {
+    server.args.push("--user-skills".into());
+    server.args.push(folder.to_string_lossy().into_owned());
+    server
+}
+
 /// Connects a discovered tool to the OmniOrchestrator MCP server (D5). `project_path`, when
 /// given, must be an existing folder; the entry then serves that project.
 #[tauri::command]
@@ -322,6 +330,7 @@ pub async fn setup_mcp(tool_id: String, project_path: Option<String>) -> Result<
             .ok_or_else(|| "The home folder could not be found.".to_string())?;
         let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("main.js");
         let server = resolve_server_command(std::env::var("OMNI_MCP_SERVER").ok(), &built, &view.path_dirs)?;
+        let server = with_user_skills(server, &crate::commands::skill_manager::SkillManager::default_system().user_skills_dir());
         let (adapters, _) = bundled_adapters();
         setup_tool(tool, adapter_for(&tool.id, &adapters), &home, project.as_deref(), &server)
     })

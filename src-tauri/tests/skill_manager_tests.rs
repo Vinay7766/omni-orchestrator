@@ -319,3 +319,123 @@ fn test_the_domain_list_cites_its_yardsticks() {
         assert!(source["name"].as_str().map(|n| !n.is_empty()).unwrap_or(false), "each source has a name");
     }
 }
+
+// --- The person's own skills folder, shared with the MCP server (SKL-5; tester feedback 4 and 8) ---
+
+use tauri_app_lib::commands::skill_manager::NewSkill;
+
+fn fresh_dir(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("omni_user_skills_{}_{}", name, std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn read_json(path: std::path::PathBuf) -> serde_json::Value {
+    serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {}", path.display(), e))).unwrap()
+}
+
+fn new_skill(id: &str) -> NewSkill {
+    NewSkill {
+        id: id.into(),
+        name: "My made-up skill".into(),
+        description: "A person's own skill, made up for tests.".into(),
+        content: "---\nname: my-made-up-skill\n---\n\nMY OWN METHOD\n".into(),
+        phases: vec!["build".into()],
+        author: "The person".into(),
+        source_url: "https://example.com/my-skill".into(),
+        license: "MIT".into(),
+    }
+}
+
+#[test]
+fn switching_a_skill_off_is_written_where_the_mcp_server_reads_it() {
+    let dir = fresh_dir("toggle");
+    let manager = SkillManager::new(dir.clone());
+    manager.toggle_skill("solution-design", false).unwrap();
+    let states = read_json(dir.join("skills").join("skills.json"));
+    assert_eq!(states["formatVersion"], 1);
+    assert_eq!(states["skills"]["solution-design"]["enabled"], false);
+    let skills = manager.get_all_skills().unwrap();
+    assert!(!skills.iter().find(|s| s.id == "solution-design").unwrap().enabled);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn editing_a_bundled_skill_writes_its_text_and_catalog_entry_to_the_persons_folder() {
+    let dir = fresh_dir("edit");
+    let manager = SkillManager::new(dir.clone());
+    manager.update_skill("solution-design", "EDITED TEXT".into(), "An edited description, long enough.".into()).unwrap();
+    let user = dir.join("skills");
+    assert_eq!(std::fs::read_to_string(user.join("solution-design").join("SKILL.md")).unwrap(), "EDITED TEXT");
+    let catalog = read_json(user.join("catalog.json"));
+    let entry = catalog.as_array().unwrap().iter().find(|e| e["id"] == "solution-design").expect("entry written");
+    for field in ["id", "name", "description", "category", "attribution", "enabled", "isCustom", "license", "phases", "domains"] {
+        assert!(entry.get(field).is_some(), "catalog entry lacks {field}: {entry}");
+    }
+    assert!(entry.get("content").is_none(), "the text lives in SKILL.md, not the catalog");
+    assert_eq!(entry["isCustom"], true);
+    let skill = manager.get_all_skills().unwrap().into_iter().find(|s| s.id == "solution-design").unwrap();
+    assert_eq!(skill.content, "EDITED TEXT");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn a_person_can_add_their_own_skill_and_it_is_written_for_every_tool() {
+    let dir = fresh_dir("add");
+    let manager = SkillManager::new(dir.clone());
+    let added = manager.add_skill(new_skill("my-made-up-skill")).unwrap();
+    assert!(added.is_custom);
+    assert_eq!(added.license.as_deref(), Some("MIT"));
+    let user = dir.join("skills");
+    assert!(std::fs::read_to_string(user.join("my-made-up-skill").join("SKILL.md")).unwrap().contains("MY OWN METHOD"));
+    let entry = read_json(user.join("catalog.json"))[0].clone();
+    assert_eq!(entry["category"], "custom");
+    assert_eq!(entry["attribution"]["sourceUrl"], "https://example.com/my-skill");
+    assert_eq!(entry["attribution"]["verified"], false);
+    assert!(manager.get_all_skills().unwrap().iter().any(|s| s.id == "my-made-up-skill"));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn adding_a_skill_refuses_anything_the_catalog_would_not_accept() {
+    let dir = fresh_dir("refuse");
+    let manager = SkillManager::new(dir.clone());
+    let cases: Vec<(&str, NewSkill)> = vec![
+        ("existing id", new_skill("solution-design")),
+        ("bad id", new_skill("My Skill")),
+        ("path id", new_skill("../escape")),
+        ("short description", NewSkill { description: "too short".into(), ..new_skill("a-skill") }),
+        ("http source", NewSkill { source_url: "http://example.com".into(), ..new_skill("a-skill") }),
+        ("no author", NewSkill { author: " ".into(), ..new_skill("a-skill") }),
+        ("no license", NewSkill { license: "".into(), ..new_skill("a-skill") }),
+        ("no phases", NewSkill { phases: vec![], ..new_skill("a-skill") }),
+        ("unknown phase", NewSkill { phases: vec!["made-up-phase".into()], ..new_skill("a-skill") }),
+        ("empty text", NewSkill { content: "  ".into(), ..new_skill("a-skill") }),
+        ("huge text", NewSkill { content: "x".repeat(200 * 1024), ..new_skill("a-skill") }),
+    ];
+    for (why, skill) in cases {
+        assert!(manager.add_skill(skill).is_err(), "{why} was accepted");
+    }
+    assert!(!dir.join("skills").join("catalog.json").exists(), "nothing written for refused skills");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn old_custom_skills_and_switches_move_to_the_persons_folder_once() {
+    let dir = fresh_dir("migrate");
+    let mut old = SkillManager::new(dir.clone()).get_default_skills().into_iter().find(|s| s.id == "solution-design").unwrap();
+    old.content = "OLD EDIT".into();
+    old.is_custom = true;
+    std::fs::write(dir.join("custom_skills.json"), serde_json::to_string(&vec![old]).unwrap()).unwrap();
+    std::fs::write(dir.join("skill_states.json"), r#"{"brainstorming":false}"#).unwrap();
+
+    let skills = SkillManager::new(dir.clone()).get_all_skills().unwrap();
+    assert_eq!(skills.iter().find(|s| s.id == "solution-design").unwrap().content, "OLD EDIT");
+    assert!(!skills.iter().find(|s| s.id == "brainstorming").unwrap().enabled);
+    let user = dir.join("skills");
+    assert_eq!(std::fs::read_to_string(user.join("solution-design").join("SKILL.md")).unwrap(), "OLD EDIT");
+    assert_eq!(read_json(user.join("skills.json"))["skills"]["brainstorming"]["enabled"], false);
+    assert!(!dir.join("custom_skills.json").exists() && !dir.join("skill_states.json").exists(), "old files are moved aside");
+    let _ = std::fs::remove_dir_all(dir);
+}

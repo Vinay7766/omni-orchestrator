@@ -36,6 +36,7 @@ pub fn run() {
             byok_complete,
             list_byok_models,
             update_skill_content,
+            add_skill,
             // Project memory file access for @omni/core in the web view (path policy in memory_fs.rs)
             memfs_read_text,
             memfs_write_text,

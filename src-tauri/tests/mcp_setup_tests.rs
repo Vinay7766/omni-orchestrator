@@ -357,3 +357,14 @@ fn real_config_copies_keep_everything() {
         }
     }
 }
+
+#[test]
+fn the_server_command_carries_the_persons_skills_folder_for_every_tool() {
+    // SKL-5: the app adds --user-skills, so each tool gets the skills the person added or edited.
+    use tauri_app_lib::commands::mcp_setup::with_user_skills;
+    let server = ServerCommand { command: "/usr/bin/node".into(), args: vec!["/app/main.js".into()] };
+    let folder = Path::new("/data/omni/skills");
+    let with = with_user_skills(server.clone(), folder);
+    assert_eq!(with.args, vec!["/app/main.js".to_string(), "--user-skills".into(), "/data/omni/skills".into()]);
+    assert_eq!(with.command, server.command);
+}

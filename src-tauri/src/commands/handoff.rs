@@ -281,7 +281,9 @@ pub async fn hand_off_tool(request: HandoffRequest) -> Result<HandoffResult, Str
             .map(PathBuf::from)
             .ok_or_else(|| "The home folder could not be found.".to_string())?;
         let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("main.js");
-        let server = resolve_server_command(std::env::var("OMNI_MCP_SERVER").ok(), &built, &view.path_dirs);
+        let user_skills = crate::commands::skill_manager::SkillManager::default_system().user_skills_dir();
+        let server = resolve_server_command(std::env::var("OMNI_MCP_SERVER").ok(), &built, &view.path_dirs)
+            .map(|server| crate::commands::mcp_setup::with_user_skills(server, &user_skills));
         let context = HandoffContext { tools: &tools, adapters: &adapters, home: &home, server };
         // The program comes from the tool's own install folder (discovery), never from the web view.
         hand_off(&request, &context, |cmd, project| Command::new(&cmd.program).args(&cmd.args).arg(project).spawn().map(|_| ()))
