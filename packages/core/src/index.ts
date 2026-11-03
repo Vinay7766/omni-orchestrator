@@ -12,6 +12,8 @@ export { createInvokeFs, MEMORY_FS_COMMANDS } from "./memory/invoke-fs.js";
 export type { Invoke } from "./memory/invoke-fs.js";
 export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
 export { EventFollower, watchEvents } from "./memory/sync.js";
+export { createInvokeChangeTrigger, STAMP_COMMAND } from "./memory/invoke-watch.js";
+export type { InvokeTriggerOptions } from "./memory/invoke-watch.js";
 export { parseAdapters, adapterFor, applyManagedBlock, mcpSetupSnippet, MANAGED_BEGIN, MANAGED_END } from "./adapters/adapters.js";
 export type { Adapter, AdapterIssue, ManagedBlockStatus, McpServerCommand, McpSnippet } from "./adapters/adapters.js";
 export type { SyncUpdate, ChangeTrigger, WatchOptions, EventWatch } from "./memory/sync.js";

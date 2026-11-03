@@ -7,7 +7,7 @@
  * was replaced or shortened, the follower starts over with a full rebuild.
  *
  * Detecting changes is separate (a ChangeTrigger), so each runtime supplies its own: Node
- * uses file watching (node-watch.ts); the desktop app adds its own in E7. No sockets.
+ * uses file watching (node-watch.ts); the desktop web view asks the backend (invoke-watch.ts). No sockets.
  */
 import type { Event, State } from "../generated/types.js";
 import { validateMemoryFile } from "../validate.js";
