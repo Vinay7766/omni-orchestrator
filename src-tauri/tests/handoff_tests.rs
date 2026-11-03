@@ -201,6 +201,19 @@ fn the_tools_own_instruction_files_point_to_agents_md() {
 }
 
 #[test]
+fn the_tools_own_instruction_files_say_not_to_add_ai_attribution() {
+    // C19: a tool that reads only its own instruction file still gets the rule.
+    let dir = project("no-attribution", &[("nebula", 2, false)]);
+    let tools = [tool("nebula", Some(3), false)];
+    let adapters = nebula_adapter();
+    hand_off(&request(&dir, "nebula"), &context(&tools, &adapters, &dir), no_spawn).unwrap();
+    let rules = fs::read_to_string(dir.join(".nebula").join("rules.md")).unwrap();
+    assert!(rules.to_lowercase().contains("co-author"), "{rules}");
+    assert!(rules.contains("authored by the person"), "{rules}");
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn gitignore_lists_only_our_own_memory_files_once_and_keeps_the_users_lines() {
     let dir = project("gitignore", &[("orbit", 2, false)]);
     fs::write(dir.join(".gitignore"), "node_modules\n").unwrap();

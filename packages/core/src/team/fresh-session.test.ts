@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { State } from "../generated/types.js";
 import { buildFreshSession, FRESH_SESSION_FILE, FRESH_SESSION_LAUNCH_TEXT } from "./fresh-session.js";
+import { NO_AI_ATTRIBUTION_RULE } from "./handoff.js";
 
 // E11 / HND-7: the next phase starts in a new session that loads its context from memory alone.
 
@@ -27,6 +28,11 @@ describe("buildFreshSession", () => {
     expect(prompt).toMatch(/no earlier conversation/i);
     expect(prompt).toContain("get_context");
     expect(prompt).toContain(".agents/summary.md");
+  });
+
+  it("tells the new session not to add AI attribution to commits, pull requests or release notes (C19)", () => {
+    const { prompt } = buildFreshSession({ projectName: "Orbit planner", flow: "build", state: state() });
+    expect(prompt).toContain(NO_AI_ATTRIBUTION_RULE);
   });
 
   it("asks the session to state the goal, the phase and the next step before doing anything", () => {
