@@ -1,11 +1,113 @@
-import React, { useEffect, useState } from "react";
-import { FileText, Play } from "lucide-react";
+import React, { useEffect, useId, useState } from "react";
+import { ArrowUp, FileText, Play, Wand2 } from "lucide-react";
+import { discussionNotes, type ChatMessage, type ChatTurn } from "../../lib/idea-chat";
+import { ChatLog } from "./ChatLog";
 import { PLANNING_PHASES, STACK_ADR_PHASES, type PhaseHistoryEntry } from "@omni/core";
 
 const RUNNABLE = ["not_started", "in_progress", "changes_requested"];
 
 /** The documents a phase hands in: its own, plus the stack decision record where one is required. */
 const documentsOf = (phase: string) => [`${phase}.md`, ...((STACK_ADR_PHASES as readonly string[]).includes(phase) ? [`${phase}-stack-adr.md`] : [])];
+
+/**
+ * C (owner decision 2026-11-03): the person answers the document's open questions in a
+ * conversation with their AI, then "Generate final document" revises it from that conversation
+ * (sent as change notes, so the gate rules are the same), and they approve the new version.
+ */
+const DocumentDiscussion: React.FC<{
+  phase: string;
+  document: string;
+  providerReady: boolean;
+  discuss: (document: string, messages: ChatMessage[]) => Promise<ChatTurn>;
+  revise: (notes: string, messages: ChatMessage[]) => Promise<void>;
+}> = ({ phase, document, providerReady, discuss, revise }) => {
+  const id = useId();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [text, setText] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canSend = providerReady && text.trim() !== "" && !thinking && !generating;
+
+  const send = async () => {
+    if (!canSend) return;
+    const next: ChatMessage[] = [...messages, { role: "person", text: text.trim() }];
+    setMessages(next);
+    setText("");
+    setError(null);
+    setThinking(true);
+    const turn = await discuss(document, next);
+    setThinking(false);
+    if (turn.ok) setMessages([...next, { role: "assistant", text: turn.reply }]);
+    else {
+      setMessages(messages);
+      setText(next[next.length - 1].text);
+      setError(turn.error);
+    }
+  };
+
+  const generate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      await revise(discussionNotes(messages), messages);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-zinc-800">
+      <p className="text-xs text-zinc-400">
+        Questions in it, or something to change? Talk it through with the AI, then press Generate final document. Or approve it as it is in the phase history below.
+      </p>
+      {messages.length > 0 && <ChatLog label={`Conversation about ${phase}`} messages={messages} thinking={thinking} className="max-h-80" />}
+      <div className="relative">
+        <label htmlFor={`${id}-say`} className="sr-only">
+          Talk about this document
+        </label>
+        <textarea
+          id={`${id}-say`}
+          rows={2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          placeholder="Answer its questions, or ask about the document..."
+          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 pr-12 text-sm text-zinc-200 placeholder-zinc-600 resize-none focus:outline-none focus:border-indigo-500"
+        />
+        <button
+          type="button"
+          onClick={() => void send()}
+          disabled={!canSend}
+          aria-label="Send to the AI"
+          className="absolute right-2 bottom-2 w-8 h-8 rounded-lg grid place-items-center bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+        >
+          <ArrowUp className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs text-red-400 break-words">
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => void generate()}
+        disabled={!messages.some((m) => m.role === "person") || thinking || generating || !providerReady}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+      >
+        <Wand2 className="w-3.5 h-3.5" aria-hidden="true" /> {generating ? "Generating..." : "Generate final document"}
+      </button>
+    </div>
+  );
+};
 
 /**
  * E5 (PLAN-1, PLAN-2, GATE-2): the next planning phase of a project. It runs with the person's
@@ -22,7 +124,10 @@ export const PlanningPanel: React.FC<{
   autoRun?: boolean;
   /** Called when an automatic revision starts, so it runs once. */
   onAutoRun?: () => void;
-}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun }) => {
+  /** With both, the person can talk about a document under review and have it revised (C). */
+  discuss?: (document: string, messages: ChatMessage[]) => Promise<ChatTurn>;
+  revise?: (notes: string, messages: ChatMessage[]) => Promise<void>;
+}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun, discuss, revise }) => {
   const [running, setRunning] = useState(false);
   const [revising, setRevising] = useState(false);
   const [documents, setDocuments] = useState<{ name: string; text: string | null }[] | null>(null);
@@ -84,6 +189,9 @@ export const PlanningPanel: React.FC<{
               docs/planning/{name} was not found in the project.
             </p>
           ),
+        )}
+        {discuss && revise && documents && documents[0]?.text && (
+          <DocumentDiscussion phase={phase} document={documents.map((d) => d.text ?? "").join("\n\n")} providerReady={providerReady} discuss={discuss} revise={revise} />
         )}
       </section>
     );

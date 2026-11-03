@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PLANNING_PHASES } from "@omni/core";
+import type { ChatMessage, ChatTurn } from "../../lib/idea-chat";
 import type { ProjectDetailResult } from "../../lib/projects";
 import type { DecisionResult } from "../../lib/decisions";
 import { PhaseHistory } from "./PhaseHistory";
@@ -24,6 +25,10 @@ export interface PlanningFns {
   readProposal: (root: string) => ReturnType<typeof readTaskProposal>;
   propose: (root: string, notes?: string) => Promise<DecisionResult>;
   approveTasks: (root: string) => Promise<DecisionResult>;
+  /** C: the next reply in a conversation about a document under review. */
+  discuss?: (root: string, phase: string, document: string, messages: ChatMessage[]) => Promise<ChatTurn>;
+  /** C: keeps that conversation with the project (docs/planning/<phase>-discussion.md). */
+  saveDiscussion?: (root: string, phase: string, messages: ChatMessage[]) => Promise<void>;
 }
 
 /** The architecture is approved, the build is the next phase, and no tasks exist yet. */
@@ -201,6 +206,18 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               readDocument={readDocument}
               autoRun={reviseNow !== null && reviseNow === detail.history.find((e) => e.isNext)?.phase}
               onAutoRun={() => setReviseNow(null)}
+              discuss={
+                planning.discuss &&
+                ((document, messages) => planning.discuss!(root, detail.history.find((e) => e.isNext)?.phase ?? "", document, messages))
+              }
+              revise={
+                decisions &&
+                (async (notes, messages) => {
+                  const phase = detail.history.find((e) => e.isNext)?.phase ?? "";
+                  await planning.saveDiscussion?.(root, phase, messages);
+                  await decisions.requestChanges(phase, notes);
+                })
+              }
             />
           )}
           {planning && wantsTaskList(detail) && (

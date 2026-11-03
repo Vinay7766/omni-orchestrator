@@ -22,7 +22,7 @@ import { AreaNav, type Area } from "./components/layout/AreaNav";
 import { SetupGuide, type SetupChecks } from "./components/setup/SetupGuide";
 import { discoverTools } from "./lib/team";
 import { StartFromIdea, type IdeaDraft } from "./components/planning/StartFromIdea";
-import { chatTurn } from "./lib/idea-chat";
+import { chatTurn, discussionMarkdown } from "./lib/idea-chat";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
 import { runPhase } from "./lib/phase-runner";
 import { approveTaskList, proposeTasks, readTaskProposal } from "./lib/task-proposal";
@@ -196,6 +196,11 @@ export function App() {
       return { ok: true, message: r.message + note };
     },
     readDocument: (root, name) => invoke<string | null>("read_planning_document", { root, name }),
+    discuss: (_root, phase, document, messages) =>
+      chatTurn(tauri, byokConfig, { kind: "document", phase, document, messages, skill: skills.find((sk) => sk.id === "understand-intent" && sk.enabled)?.content }),
+    saveDiscussion: async (root, phase, messages) => {
+      await invoke("write_planning_document", { root, name: `${phase}-discussion.md`, content: discussionMarkdown(phase, messages) });
+    },
     readProposal: (root) => readTaskProposal(tauri, root),
     propose: async (root, notes) => {
       const r = await proposeTasks(tauri, root, { byok: byokConfig, skills, notes });

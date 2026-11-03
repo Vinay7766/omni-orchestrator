@@ -326,6 +326,68 @@ describe("OmniOrchestrator App", () => {
     }
   }, 30_000);
 
+  it("answers a document's questions in a conversation, then generates the final document from it (C)", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-discuss-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const prompts: string[] = [];
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      const doc = (verdict: string) =>
+        `# Idea review\n\nVerdict: ${verdict}\n\n## Understanding check\n\nA list families share.\n\n## Skills applied\n\n- idea-review: checked problem and users\n`;
+      mockBackend({
+        get_default_project_path: () => Promise.resolve(base),
+        get_skills: () =>
+          Promise.resolve([
+            {
+              id: "idea-review", name: "Idea review", description: "Reviews ideas honestly", category: "strategy",
+              attribution: { name: "Made-up Author", sourceUrl: "https://example.org", verified: true },
+              enabled: true, content: "IDEA REVIEW METHOD", isCustom: false, phases: ["idea-review"], license: "MIT",
+            },
+          ]),
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" }, keyStorage: { available: true } }),
+        save_app_settings: () => Promise.resolve(),
+        byok_complete: (args) => {
+          prompts.push((args as { request: { prompt: string } }).request.prompt);
+          const n = prompts.length;
+          const text = n === 1 ? doc("first draft.") : n === 2 ? "What should it cost per month?" : doc("revised with pricing.");
+          return Promise.resolve({ text, provider: "ollama", model: "made-up-model" });
+        },
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /create project/i }));
+      });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 10_000 });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /run idea-review/i }));
+      });
+      await screen.findByText(/Verdict: first draft\./, {}, { timeout: 10_000 });
+
+      fireEvent.change(screen.getByLabelText(/talk about this document/i), { target: { value: "Is pricing settled?" } });
+      await act(async () => {
+        fireEvent.click(within(screen.getByRole("region", { name: "Planning document" })).getByRole("button", { name: "Send to the AI" }));
+      });
+      expect(await screen.findByText("What should it cost per month?")).toBeDefined();
+      expect(prompts[1]).toContain("Verdict: first draft.");
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /generate final document/i }));
+      });
+      expect(await screen.findByText(/Verdict: revised with pricing\./, {}, { timeout: 10_000 })).toBeDefined();
+      expect(prompts).toHaveLength(3);
+      expect(prompts[2]).toContain("You: Is pricing settled?");
+      expect(readFileSync(`${base}/orbit/docs/planning/idea-review-discussion.md`, "utf8")).toContain("**AI:** What should it cost per month?");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("after the architecture is approved, the model writes the task list and the person approves it", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-tasklist-")).replace(/\\/g, "/");
     try {

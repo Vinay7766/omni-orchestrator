@@ -100,3 +100,9 @@ export function discussionNotes(messages: ChatMessage[]): string {
     ...messages.map((m) => `${speaker(m)}: ${m.text.trim()}`),
   ].join("\n");
 }
+
+/** A conversation about a phase document, kept with the project, with secrets removed. */
+export function discussionMarkdown(phase: string, messages: ChatMessage[]): string {
+  const lines = [`# Conversation about the ${phase} document`, "", ...messages.flatMap((m) => [`**${speaker(m)}:** ${m.text.trim()}`, ""])];
+  return redactText(lines.join("\n")).text;
+}

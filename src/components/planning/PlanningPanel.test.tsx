@@ -71,4 +71,53 @@ describe("PlanningPanel", () => {
     const { container } = render(<PlanningPanel entry={entry("build", "not_started")} providerReady run={vi.fn()} readDocument={vi.fn()} />);
     expect(container.textContent).toBe("");
   });
+
+  // C: answer a document's open questions in a conversation, then generate the final document.
+  async function reviewing(over: Partial<React.ComponentProps<typeof PlanningPanel>> = {}) {
+    const props = {
+      entry: entry("prd", "awaiting_review"),
+      providerReady: true,
+      run: vi.fn(),
+      readDocument: vi.fn().mockResolvedValue("# PRD\n\nOpen question: pricing?"),
+      discuss: vi.fn().mockResolvedValue({ ok: true, reply: "What should it cost?", ready: null }),
+      revise: vi.fn().mockResolvedValue(undefined),
+      ...over,
+    };
+    await act(async () => {
+      render(<PlanningPanel {...props} />);
+    });
+    return props;
+  }
+  const say = async (text: string) => {
+    fireEvent.change(screen.getByLabelText(/talk about this document/i), { target: { value: text } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Send to the AI" }));
+    });
+  };
+
+  it("lets the person talk about the document with the AI, which has the document", async () => {
+    const props = await reviewing();
+    await say("What is still open?");
+    expect(props.discuss).toHaveBeenCalledWith("# PRD\n\nOpen question: pricing?", [{ role: "person", text: "What is still open?" }]);
+    expect(screen.getByRole("log", { name: "Conversation about prd" }).textContent).toContain("What should it cost?");
+  });
+
+  it("generates the final document from the conversation, as change notes for the revision", async () => {
+    const revise = vi.fn().mockResolvedValue(undefined);
+    await reviewing({ revise });
+    await say("Ten dollars a month");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /generate final document/i }));
+    });
+    expect(revise).toHaveBeenCalledTimes(1);
+    const [notes, messages] = revise.mock.calls[0];
+    expect(notes).toContain("You: Ten dollars a month");
+    expect(notes).toContain("AI: What should it cost?");
+    expect(messages).toHaveLength(2);
+  });
+
+  it("cannot generate a final document before the person has said anything", async () => {
+    await reviewing();
+    expect((screen.getByRole("button", { name: /generate final document/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
 });
