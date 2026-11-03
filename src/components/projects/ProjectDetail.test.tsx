@@ -142,3 +142,38 @@ describe("ProjectDetail: the task list (E5 slice 5)", () => {
     expect(screen.queryByRole("region", { name: "Task list" })).toBeNull();
   });
 });
+
+describe("ProjectDetail: tools for the build (E6)", () => {
+  const withTasks = (taskCount: number, architecture: "approved" | "awaiting_review"): ProjectDetailResult => ({
+    ok: true,
+    name: "Orbit",
+    flow: "build",
+    mode: "full",
+    taskCount,
+    history: [
+      { phase: "architecture", status: architecture, isNext: architecture !== "approved", submissions: [], changeRequests: [] },
+      { phase: "build", status: "in_progress", isNext: architecture === "approved", submissions: [], changeRequests: [] },
+    ],
+  });
+  const team = {
+    discover: vi.fn().mockResolvedValue({ ok: true, tools: [] }),
+    load: vi.fn().mockResolvedValue({ ok: true, team: null }),
+    save: vi.fn(),
+    handOff: vi.fn(),
+  };
+
+  it("shows the tools once the architecture is approved and the task list exists", async () => {
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withTasks(2, "approved"))} onBack={vi.fn()} team={team} />);
+    expect(await screen.findByRole("region", { name: "Tools for the build" })).toBeDefined();
+  });
+
+  it("does not show them before there is a task list, or before the architecture is approved", async () => {
+    const { unmount } = render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withTasks(0, "approved"))} onBack={vi.fn()} team={team} />);
+    await screen.findByRole("heading", { name: "Orbit" });
+    expect(screen.queryByRole("region", { name: "Tools for the build" })).toBeNull();
+    unmount();
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withTasks(2, "awaiting_review"))} onBack={vi.fn()} team={team} />);
+    await screen.findByRole("heading", { name: "Orbit" });
+    expect(screen.queryByRole("region", { name: "Tools for the build" })).toBeNull();
+  });
+});

@@ -55,6 +55,19 @@ export interface LaunchResult {
   verificationNotice: string;
 }
 
+/** What hand_off_tool reports (Rust HandoffResult, handoff.rs). */
+export interface HandoffResult {
+  toolId: string;
+  level: number;
+  /** One line per file created or changed. */
+  files: string[];
+  mcp: { configPath: string; backupPath: string | null; message: string } | null;
+  /** Why MCP could not be set up, with the entry to add by hand when there is one. */
+  mcpProblem: string | null;
+  launched: boolean;
+  message: string;
+}
+
 /** One AI coding tool found on this computer (Rust discover_tools, tool_discovery.rs). */
 export interface DiscoveredTool {
   id: ToolId;

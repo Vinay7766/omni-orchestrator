@@ -7,6 +7,8 @@ import { ProjectDetail, type DecideFns, type PlanningFns } from "./ProjectDetail
 import { approve, requestChanges, runOptional, skipOptional } from "../../lib/decisions";
 import { addEntry, loadMemoryFiles, updateProjectDetails } from "../../lib/memory";
 import type { Invoke } from "@omni/core";
+import { discoverTools, handOffTool, loadTeam, saveTeamSelection } from "../../lib/team";
+import type { TeamFns } from "../team/TeamPanel";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
 const tauri: Invoke = (command, args) => invoke(command, args);
@@ -25,6 +27,14 @@ const details = { update: (root: string, changes: { name?: string; mode?: "full"
 const memory = {
   load: (root: string) => loadMemoryFiles(tauri, root),
   add: (root: string, entry: Parameters<typeof addEntry>[2]) => addEntry(tauri, root, entry),
+};
+
+/** Tools for the build (E6): discovery, the person's selection, and the handoff to each tool. */
+const team: TeamFns = {
+  discover: () => discoverTools(tauri),
+  load: (root) => loadTeam(tauri, root),
+  save: (root, selection) => saveTeamSelection(tauri, root, selection),
+  handOff: (root, toolId) => handOffTool(tauri, root, toolId),
 };
 
 /** `openRoot`: a project to show straight away (one just created from an idea). */
@@ -67,6 +77,6 @@ export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns 
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };

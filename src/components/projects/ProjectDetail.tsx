@@ -10,6 +10,7 @@ import type { MemoryFilesResult, NewEntry } from "../../lib/memory";
 import { PlanningPanel } from "../planning/PlanningPanel";
 import { TaskProposalPanel } from "../planning/TaskProposalPanel";
 import type { readTaskProposal } from "../../lib/task-proposal";
+import { TeamPanel, type TeamFns } from "../team/TeamPanel";
 
 /** Planning phases run with the person's own model (E5). */
 export interface PlanningFns {
@@ -27,6 +28,12 @@ function wantsTaskList(detail: Extract<ProjectDetailResult, { ok: true }>): bool
   const architecture = detail.history.find((e) => e.phase === "architecture");
   const next = detail.history.find((e) => e.isNext);
   return architecture?.status === "approved" && next?.phase === "build" && detail.taskCount === 0;
+}
+
+/** The architecture is approved and the task list exists: the build can be handed to tools (E6). */
+function readyToHandOff(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
+  const architecture = detail.history.find((e) => e.phase === "architecture");
+  return architecture?.status === "approved" && (detail.taskCount ?? 0) > 0;
 }
 
 /** How decisions are recorded for a project root (the app passes lib/decisions over invoke). */
@@ -52,12 +59,14 @@ interface ProjectDetailProps {
   };
   /** When given, the next planning phase runs here and its document is shown for review. */
   planning?: PlanningFns;
+  /** When given, the person selects the tools for the build and hands it to them (E6). */
+  team?: TeamFns;
 }
 
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
 
@@ -152,6 +161,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               approve={() => record(planning.approveTasks(root))}
             />
           )}
+          {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
           <PhaseHistory entries={detail.history} decisions={decisions} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} />}
         </>
