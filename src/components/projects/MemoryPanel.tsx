@@ -8,12 +8,14 @@ interface MemoryPanelProps {
   root: string;
   load: (root: string) => Promise<MemoryFilesResult>;
   add: (root: string, entry: NewEntry) => Promise<DecisionResult>;
+  /** Changes when the project's memory changed elsewhere; the files are then read again (E7). */
+  revision?: number;
 }
 
 const failed = (e: unknown): MemoryFilesResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** A project's memory (APP-2): the files, read-only, and the person's own entries (E3 slice 4a). */
-export const MemoryPanel: React.FC<MemoryPanelProps> = ({ root, load, add }) => {
+export const MemoryPanel: React.FC<MemoryPanelProps> = ({ root, load, add, revision }) => {
   const [files, setFiles] = useState<MemoryFilesResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
 
@@ -25,7 +27,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({ root, load, add }) => 
     return () => {
       current = false;
     };
-  }, [root, load]);
+  }, [root, load, revision]);
 
   const record = useCallback(
     async (entry: NewEntry) => {

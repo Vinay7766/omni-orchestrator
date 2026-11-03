@@ -9,6 +9,7 @@ import { addEntry, loadMemoryFiles, updateProjectDetails } from "../../lib/memor
 import type { Invoke } from "@omni/core";
 import { discoverTools, handOffTool, loadTeam, saveTeamSelection } from "../../lib/team";
 import type { TeamFns } from "../team/TeamPanel";
+import { watchProject } from "../../lib/live";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
 const tauri: Invoke = (command, args) => invoke(command, args);
@@ -36,6 +37,9 @@ const team: TeamFns = {
   save: (root, selection) => saveTeamSelection(tauri, root, selection),
   handOff: (root, toolId) => handOffTool(tauri, root, toolId),
 };
+
+/** Live updates (E7): the open project follows its events.jsonl through the app's backend. */
+const watch = (root: string, onChange: () => void, onError: (message: string) => void) => watchProject(tauri, root, onChange, onError);
 
 /** `openRoot`: a project to show straight away (one just created from an idea). */
 export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns }> = ({ openRoot, planning }) => {
@@ -77,6 +81,6 @@ export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns 
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} watch={watch} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };

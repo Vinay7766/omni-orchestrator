@@ -4,6 +4,7 @@
  */
 import type { Invoke } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
+import { statSync } from "node:fs";
 
 const node = createNodeFs();
 
@@ -20,6 +21,10 @@ export function fakeInvoke(roots: string[] = [], errors: string[] = []): Invoke 
     memfs_rename: (x) => node.rename(a(x, "from"), a(x, "to")),
     memfs_remove: (x) => node.remove(a(x, "path")),
     memfs_list: (x) => node.list(a(x, "path")),
+    memfs_stamp: async (x) => {
+      const info = statSync(a(x, "path"), { throwIfNoEntry: false });
+      return info ? `${info.size}:${info.mtimeMs}` : null;
+    },
     // E5: the Rust command also checks the name and refuses links; the tests here cover the app.
     write_planning_document: async (x) => {
       if (!(await node.exists(`${a(x, "root")}/.agents/project.json`))) throw `${a(x, "root")} is not an OmniOrchestrator project`;

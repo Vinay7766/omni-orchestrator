@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { ProjectDetail } from "./ProjectDetail";
 import type { ProjectDetailResult } from "../../lib/projects";
 
@@ -175,5 +175,35 @@ describe("ProjectDetail: tools for the build (E6)", () => {
     render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withTasks(2, "awaiting_review"))} onBack={vi.fn()} team={team} />);
     await screen.findByRole("heading", { name: "Orbit" });
     expect(screen.queryByRole("region", { name: "Tools for the build" })).toBeNull();
+  });
+});
+
+describe("ProjectDetail: live updates (E7)", () => {
+  it("reloads when the project's memory changes elsewhere, keeping the page on screen (E7)", async () => {
+    const later: ProjectDetailResult = { ...detail, history: [{ ...detail.history[0], status: "awaiting_review" }] };
+    const load = vi.fn().mockResolvedValueOnce(detail).mockResolvedValue(later);
+    let changed!: () => void;
+    const stop = vi.fn();
+    const watch = vi.fn((_root: string, onChange: () => void) => {
+      changed = onChange;
+      return stop;
+    });
+    const { unmount } = render(<ProjectDetail root="C:/work/orbit" load={load} onBack={vi.fn()} watch={watch} />);
+    await screen.findByRole("heading", { name: "Orbit" });
+    expect(watch).toHaveBeenCalledWith("C:/work/orbit", expect.any(Function), expect.any(Function));
+    act(() => changed());
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("heading", { name: "Orbit" })).toBeDefined();
+    unmount();
+    expect(stop).toHaveBeenCalled();
+  });
+
+  it("says so when live updates stop working", async () => {
+    const watch = (_root: string, _onChange: () => void, onError: (message: string) => void) => {
+      onError("Live updates are off: disk unavailable");
+      return () => {};
+    };
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(detail)} onBack={vi.fn()} watch={watch} />);
+    expect((await screen.findByText(/live updates are off/i)).textContent).toMatch(/disk unavailable/);
   });
 });

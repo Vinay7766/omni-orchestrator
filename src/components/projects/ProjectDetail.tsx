@@ -61,14 +61,19 @@ interface ProjectDetailProps {
   planning?: PlanningFns;
   /** When given, the person selects the tools for the build and hands it to them (E6). */
   team?: TeamFns;
+  /** When given, the page follows the project's memory and reloads on changes made elsewhere (E7). */
+  watch?: (root: string, onChange: () => void, onError: (message: string) => void) => () => void;
 }
 
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team, watch }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  // Bumped on each change seen elsewhere, so the memory panel reloads too.
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -81,6 +86,27 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
       current = false;
     };
   }, [root, load]);
+
+  // A change recorded elsewhere (extension, MCP server): reload, keeping the page on screen.
+  useEffect(() => {
+    if (!watch) return;
+    let current = true;
+    setLiveError(null);
+    const stop = watch(
+      root,
+      () => {
+        setRevision((r) => r + 1);
+        load(root)
+          .then((d) => current && setDetail(d))
+          .catch((e) => current && setDetail(failed(e)));
+      },
+      (message) => current && setLiveError(message),
+    );
+    return () => {
+      current = false;
+      stop();
+    };
+  }, [watch, root, load]);
 
   // After a decision: show its result and reload, keeping the current history on screen meanwhile.
   const record = useCallback(
@@ -126,6 +152,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           The project memory could not be read: {detail.error}
         </p>
       )}
+      {liveError && (
+        <p role="status" className="text-xs text-amber-400 break-words">
+          {liveError} Changes made in other tools show after you reopen the project.
+        </p>
+      )}
       {outcome && (
         <p role={outcome.ok ? "status" : "alert"} className={`text-sm break-words ${outcome.ok ? "text-emerald-400" : "text-red-400"}`}>
           {outcome.ok ? outcome.message : `Not recorded: ${outcome.message}`}
@@ -163,7 +194,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           )}
           {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
           <PhaseHistory entries={detail.history} decisions={decisions} />
-          {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} />}
+          {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} revision={revision} />}
         </>
       )}
     </section>
