@@ -132,11 +132,14 @@ pub enum EventType {
     ProblemRecorded,
     LessonRecorded,
     MemoryUpdated,
+    /// An AI tool session began / ended work on the project (E10, HND-8).
+    SessionStarted,
+    SessionEnded,
 }
 
 impl EventType {
     /// Every variant, so tests can compare this enum with the schema's list.
-    pub const ALL: [EventType; 18] = [
+    pub const ALL: [EventType; 20] = [
         EventType::ProjectCreated,
         EventType::ProjectUpdated,
         EventType::ToolsSelected,
@@ -155,6 +158,8 @@ impl EventType {
         EventType::ProblemRecorded,
         EventType::LessonRecorded,
         EventType::MemoryUpdated,
+        EventType::SessionStarted,
+        EventType::SessionEnded,
     ];
 }
 
