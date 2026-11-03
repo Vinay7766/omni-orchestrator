@@ -132,16 +132,22 @@ pub enum ManagedBlockStatus {
 /// markers is never changed; a begin marker without an end marker is left alone, not guessed.
 /// Behaviour is pinned by packages/core/test-data/managed-block-cases.json (shared with core).
 pub fn apply_managed_block(existing: Option<&str>, body: &str) -> (String, ManagedBlockStatus) {
+    apply_block(existing, body, MANAGED_BEGIN, MANAGED_END)
+}
+
+/// Like apply_managed_block, with the markers given (files where HTML comments are not
+/// comments, such as .gitignore, need their own).
+pub fn apply_block(existing: Option<&str>, body: &str, begin_marker: &str, end_marker: &str) -> (String, ManagedBlockStatus) {
     let nl = if existing.is_some_and(|e| e.contains("\r\n")) { "\r\n" } else { "\n" };
-    let block = format!("{MANAGED_BEGIN}{nl}{body}{nl}{MANAGED_END}{nl}");
+    let block = format!("{begin_marker}{nl}{body}{nl}{end_marker}{nl}");
     let Some(existing) = existing else {
         return (block, ManagedBlockStatus::Created);
     };
-    if let Some(begin) = existing.find(MANAGED_BEGIN) {
-        let Some(end_offset) = existing[begin..].find(MANAGED_END) else {
+    if let Some(begin) = existing.find(begin_marker) {
+        let Some(end_offset) = existing[begin..].find(end_marker) else {
             return (existing.to_string(), ManagedBlockStatus::Unterminated);
         };
-        let mut end = begin + end_offset + MANAGED_END.len();
+        let mut end = begin + end_offset + end_marker.len();
         if existing[end..].starts_with(nl) {
             end += nl.len();
         }
