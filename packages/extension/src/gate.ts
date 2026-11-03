@@ -3,7 +3,7 @@
  * changes. Rules live in @omni/core's PhaseEngine; this asks the person and records their answer.
  * The vscode layer (extension.ts) supplies the Ui; tests supply a scripted one.
  */
-import { continueAfterDecision, PhaseEngine, REVIEW_QUESTION, type ContinueResult, type Event, type MemoryStore } from "@omni/core";
+import { buildGateReview, continueAfterDecision, gateReviewText, PhaseEngine, REVIEW_QUESTION, type ContinueResult, type Event, type MemoryStore } from "@omni/core";
 
 type Actor = Event["actor"];
 
@@ -19,14 +19,14 @@ export interface GateUi {
 
 const issuesText = (issues: { message: string }[]) => issues.map((i) => i.message).join("; ");
 
-/** The phase waiting for this person's review, with the documents handed in for it. */
-async function underReview(store: MemoryStore): Promise<{ phase: string; documents: string[] } | null> {
+/** The phase waiting for this person's review, with its review summary from memory (C18). */
+async function underReview(store: MemoryStore): Promise<{ phase: string; summary: string } | null> {
   const state = await store.readState();
   const phase = state.currentPhase;
   if (!phase || state.phases[phase]?.status !== "awaiting_review") return null;
   const { events } = await store.readEvents();
-  const submission = events.filter((e) => e.type === "phase_submitted" && (e.payload as { phase?: string }).phase === phase).pop();
-  return { phase, documents: ((submission?.payload as { documents?: string[] }) ?? {}).documents ?? [] };
+  const review = buildGateReview(events, phase);
+  return { phase, summary: review ? gateReviewText(review) : "No submission was found in the project memory." };
 }
 
 const RUN = "Run it";
@@ -76,11 +76,7 @@ export async function approvePhase(store: MemoryStore, person: Actor, ui: GateUi
     ui.show("Nothing is waiting for review.");
     return;
   }
-  const detail = [
-    review.documents.length ? `Documents: ${review.documents.join(", ")}` : "No documents were listed.",
-    "",
-    REVIEW_QUESTION,
-  ].join("\n");
+  const detail = [review.summary, "", REVIEW_QUESTION].join("\n");
   if (!(await ui.confirm(`Approve "${review.phase}"?`, detail))) return;
 
   const approved = await new PhaseEngine(store).approve(person, review.phase);

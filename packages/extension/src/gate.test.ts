@@ -52,6 +52,16 @@ function fakeUi(answers: { confirm?: boolean; notes?: string | undefined; choice
 const types = async () => (await store.readEvents()).events.map((e) => e.type);
 
 describe("approvePhase", () => {
+  it("shows the gate review in the approve dialog: the hand-in and what changed since the last gate (C18)", async () => {
+    await submitted("idea-review");
+    const { ui, asked } = fakeUi({ confirm: false });
+    await approvePhase(store, person, ui);
+    expect(asked[0].detail).toContain("Submitted by made-up-agent");
+    expect(asked[0].detail).toContain("x: y");
+    expect(asked[0].detail).toMatch(/Since the project started:\n- Memory updated/);
+    expect(asked[0].detail).toMatch(/Have you reviewed this\?/);
+  });
+
   it("approves the phase under review and starts the next one, as the person", async () => {
     await submitted("idea-review");
     const { ui, asked, shown } = fakeUi();
