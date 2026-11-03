@@ -120,4 +120,14 @@ describe("PlanningPanel", () => {
     await reviewing();
     expect((screen.getByRole("button", { name: /generate final document/i }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("explains each step in plain words in simple mode (G, NTU-2)", () => {
+    render(<PlanningPanel entry={entry("research", "not_started")} providerReady run={vi.fn()} readDocument={vi.fn()} explain />);
+    expect(screen.getByRole("note", { name: "What this step is" }).textContent).toMatch(/research/i);
+  });
+
+  it("does not explain the steps in full mode", () => {
+    render(<PlanningPanel entry={entry("research", "not_started")} providerReady run={vi.fn()} readDocument={vi.fn()} />);
+    expect(screen.queryByRole("note", { name: "What this step is" })).toBeNull();
+  });
 });

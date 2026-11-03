@@ -6,6 +6,14 @@ import { PLANNING_PHASES, STACK_ADR_PHASES, type PhaseHistoryEntry } from "@omni
 
 const RUNNABLE = ["not_started", "in_progress", "changes_requested"];
 
+/** Plain-language help for each planning step, shown in simple mode (G, NTU-2). */
+const STEP_HELP: Record<string, string> = {
+  "idea-review": "Idea review: the AI looks at your idea honestly: who it helps, what problem it solves, and what could go wrong. It is cheaper to find a weak spot now than after building.",
+  research: "Research: the AI looks for what already exists (similar products, users' needs) and labels what is a fact, a guess or unknown, with sources you can check.",
+  prd: "PRD (product requirements document): a clear list of what the product must do, for whom, and how you will know it works. Builders and AI tools follow it later.",
+  architecture: "Architecture: how the product is built: the main parts, the technology chosen and why. It ends with the task list the AI tools will work through.",
+};
+
 /** The documents a phase hands in: its own, plus the stack decision record where one is required. */
 const documentsOf = (phase: string) => [`${phase}.md`, ...((STACK_ADR_PHASES as readonly string[]).includes(phase) ? [`${phase}-stack-adr.md`] : [])];
 
@@ -127,7 +135,9 @@ export const PlanningPanel: React.FC<{
   /** With both, the person can talk about a document under review and have it revised (C). */
   discuss?: (document: string, messages: ChatMessage[]) => Promise<ChatTurn>;
   revise?: (notes: string, messages: ChatMessage[]) => Promise<void>;
-}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun, discuss, revise }) => {
+  /** Simple mode: explain each step in plain words (G, NTU-2). */
+  explain?: boolean;
+}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun, discuss, revise, explain = false }) => {
   const [running, setRunning] = useState(false);
   const [revising, setRevising] = useState(false);
   const [documents, setDocuments] = useState<{ name: string; text: string | null }[] | null>(null);
@@ -202,6 +212,11 @@ export const PlanningPanel: React.FC<{
   return (
     <section aria-label="Next planning step" className="border border-zinc-800 rounded-lg bg-zinc-900 p-4 space-y-2">
       <h3 className="text-sm font-semibold text-zinc-100">Next planning step: {phase}</h3>
+      {explain && STEP_HELP[phase] && (
+        <p role="note" aria-label="What this step is" className="text-xs text-sky-200 bg-sky-950/30 border border-sky-900/60 rounded-lg px-3 py-2 leading-relaxed">
+          {STEP_HELP[phase]}
+        </p>
+      )}
       <p className="text-xs text-zinc-400">
         Your model writes the {phase} document with this phase's skills; you then review it here.
         {entry.status === "changes_requested" && " Your change notes and the version you reviewed are sent with it."}

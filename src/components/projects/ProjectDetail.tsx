@@ -206,6 +206,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               readDocument={readDocument}
               autoRun={reviseNow !== null && reviseNow === detail.history.find((e) => e.isNext)?.phase}
               onAutoRun={() => setReviseNow(null)}
+              explain={detail.mode === "simple"}
               discuss={
                 planning.discuss &&
                 ((document, messages) => planning.discuss!(root, detail.history.find((e) => e.isNext)?.phase ?? "", document, messages))
