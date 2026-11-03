@@ -105,15 +105,13 @@ export function App() {
     setArea("projects");
   };
 
+  // Skill changes show in the list only once saved; a failure is thrown to the Skills area, which
+  // shows the real error where the person acted (NFR-7, P-E4-01/02).
   const handleToggleSkill = async (id: string, enabled: boolean) => {
+    await invoke("toggle_skill", { skillId: id, enabled });
     setSkills((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled } : s))
     );
-    try {
-      await invoke("toggle_skill", { skillId: id, enabled });
-    } catch {
-      // Handled
-    }
   };
 
   const handleSaveSkillModification = async (
@@ -121,22 +119,12 @@ export function App() {
     newContent: string,
     newDescription: string
   ) => {
-    try {
-      const updated = await invoke<Skill>("update_skill_content", {
-        skillId,
-        newContent,
-        newDescription,
-      });
-      setSkills((prev) => prev.map((s) => (s.id === skillId ? updated : s)));
-    } catch {
-      setSkills((prev) =>
-        prev.map((s) =>
-          s.id === skillId
-            ? { ...s, content: newContent, description: newDescription, isCustom: true }
-            : s
-        )
-      );
-    }
+    const updated = await invoke<Skill>("update_skill_content", {
+      skillId,
+      newContent,
+      newDescription,
+    });
+    setSkills((prev) => prev.map((s) => (s.id === skillId ? updated : s)));
   };
 
   // Pitch mode: a teardown with the provider set up in Settings.

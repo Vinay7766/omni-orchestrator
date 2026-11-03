@@ -350,4 +350,62 @@ describe("OmniOrchestrator App", () => {
     expect(screen.queryByText("Test-driven development")).toBeNull();
     expect(screen.getByText("Security hardening")).toBeDefined();
   });
+
+  // P-E4-01 / P-E4-02: a change that was not saved is never shown as saved (NFR-7).
+  const madeUpSkill = {
+    id: "made-up", name: "Made-up skill", description: "Saved description", content: "Saved content",
+    category: "engineering", enabled: true, isCustom: false, phases: [],
+    attribution: { name: "Some Author", sourceUrl: "https://example.org", verified: false },
+  };
+  const toggle = () => screen.getByRole("checkbox", { name: "Toggle Made-up skill" }) as HTMLInputElement;
+
+  it("keeps a skill's switch where it was and shows the real error when turning it off fails", async () => {
+    mockBackend({
+      get_skills: () => Promise.resolve([madeUpSkill]),
+      toggle_skill: () => Promise.reject("could not write the skill settings: disk full"),
+    });
+    await renderApp();
+    await openArea("Skills");
+
+    await act(async () => {
+      fireEvent.click(toggle());
+    });
+
+    expect(toggle().checked).toBe(true);
+    expect(screen.getByRole("alert").textContent).toMatch(/disk full/);
+  });
+
+  it("moves a skill's switch once turning it off is saved", async () => {
+    mockBackend({ get_skills: () => Promise.resolve([madeUpSkill]), toggle_skill: () => Promise.resolve(null) });
+    await renderApp();
+    await openArea("Skills");
+
+    await act(async () => {
+      fireEvent.click(toggle());
+    });
+
+    expect(toggle().checked).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows the real error when saving a skill edit fails, keeps the typed text and leaves the list unchanged", async () => {
+    mockBackend({
+      get_skills: () => Promise.resolve([madeUpSkill]),
+      update_skill_content: () => Promise.reject("could not save the skill: permission denied"),
+    });
+    await renderApp();
+    await openArea("Skills");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Made-up skill" }));
+    fireEvent.change(screen.getByDisplayValue("Saved description"), { target: { value: "Unsaved description" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Save Modifications/ }));
+    });
+
+    expect(screen.getByRole("alert").textContent).toMatch(/permission denied/);
+    expect(screen.getByDisplayValue("Unsaved description")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByText("Saved description")).toBeDefined();
+    expect(screen.queryByText("Unsaved description")).toBeNull();
+  });
 });

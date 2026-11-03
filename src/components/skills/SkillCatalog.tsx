@@ -6,7 +6,8 @@ import { SkillDetailModal } from "./SkillDetailModal";
 
 interface SkillCatalogProps {
   skills: Skill[];
-  onToggle: (id: string, enabled: boolean) => void;
+  /** Rejects when the change was not saved; the switch then stays where it was. */
+  onToggle: (id: string, enabled: boolean) => Promise<void>;
   onSave: (skillId: string, newContent: string, newDescription: string) => Promise<void>;
 }
 
@@ -14,6 +15,18 @@ interface SkillCatalogProps {
 export const SkillCatalog: React.FC<SkillCatalogProps> = ({ skills, onToggle, onSave }) => {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<{ skill: Skill; mode: "view" | "edit" } | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+
+  const toggle = async (id: string, enabled: boolean) => {
+    setToggleError(null);
+    try {
+      await onToggle(id, enabled);
+    } catch (error) {
+      const name = skills.find((s) => s.id === id)?.name ?? id;
+      const reason = error instanceof Error ? error.message : String(error);
+      setToggleError(`Could not turn ${name} ${enabled ? "on" : "off"}: ${reason}`);
+    }
+  };
 
   const q = query.trim().toLowerCase();
   const shown = q
@@ -41,6 +54,12 @@ export const SkillCatalog: React.FC<SkillCatalogProps> = ({ skills, onToggle, on
         />
       </div>
 
+      {toggleError && (
+        <p role="alert" className="text-xs text-red-400 break-words">
+          {toggleError}
+        </p>
+      )}
+
       {skills.length === 0 ? (
         <p role="status" className="text-xs text-zinc-400">No skills were loaded.</p>
       ) : shown.length === 0 ? (
@@ -51,7 +70,7 @@ export const SkillCatalog: React.FC<SkillCatalogProps> = ({ skills, onToggle, on
             <SkillCard
               key={skill.id}
               skill={skill}
-              onToggle={onToggle}
+              onToggle={toggle}
               onView={(s) => setSelected({ skill: s, mode: "view" })}
               onEdit={(s) => setSelected({ skill: s, mode: "edit" })}
             />
