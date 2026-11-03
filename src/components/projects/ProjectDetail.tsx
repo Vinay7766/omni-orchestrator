@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import type { ProjectDetailResult } from "../../lib/projects";
 import type { DecisionResult } from "../../lib/decisions";
 import { PhaseHistory } from "./PhaseHistory";
+import { WorkflowChart } from "./WorkflowChart";
 import type { PhaseDecisions } from "./PhaseActions";
 import { MemoryPanel } from "./MemoryPanel";
 import { ProjectDetailsForm } from "./ProjectDetailsForm";
@@ -193,6 +194,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
             />
           )}
           {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
+          {detail.workflow && <WorkflowChart workflow={detail.workflow} />}
           <PhaseHistory entries={detail.history} decisions={decisions} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} revision={revision} />}
         </>

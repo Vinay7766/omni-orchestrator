@@ -16,8 +16,8 @@ const STATUS_STYLE: Record<PhaseHistoryEntry["status"], { icon: LucideIcon; tone
   skipped: { icon: SkipForward, tone: "text-zinc-400" },
 };
 
-const when = (iso: string) => new Date(iso).toLocaleString();
-const who = (actor: Actor) => (actor.kind === "human" ? `a person (${actor.tool})` : `${actor.tool}${actor.model ? `, ${actor.model}` : ""}`);
+export const when = (iso: string) => new Date(iso).toLocaleString();
+export const who = (actor: Actor) => (actor.kind === "human" ? `a person (${actor.tool})` : `${actor.tool}${actor.model ? `, ${actor.model}` : ""}`);
 
 function Submissions({ entry }: { entry: PhaseHistoryEntry }) {
   if (entry.submissions.length === 0) return null;

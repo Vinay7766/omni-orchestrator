@@ -198,6 +198,21 @@ describe("ProjectDetail: live updates (E7)", () => {
     expect(stop).toHaveBeenCalled();
   });
 
+  it("shows the workflow chart and updates it when memory changes elsewhere (E8, VIS-3)", async () => {
+    const phase = (status: "in_progress" | "awaiting_review") => ({ id: "phase:idea-review", kind: "phase" as const, label: "idea-review", status, isNext: true, events: [] });
+    const withChart = (status: "in_progress" | "awaiting_review"): ProjectDetailResult => ({ ...detail, workflow: { nodes: [phase(status)], edges: [] } });
+    const load = vi.fn().mockResolvedValueOnce(withChart("in_progress")).mockResolvedValue(withChart("awaiting_review"));
+    let changed!: () => void;
+    const watch = (_root: string, onChange: () => void) => {
+      changed = onChange;
+      return () => {};
+    };
+    render(<ProjectDetail root="C:/work/orbit" load={load} onBack={vi.fn()} watch={watch} />);
+    expect(await screen.findByRole("button", { name: "Phase idea-review: in progress, next" })).toBeDefined();
+    act(() => changed());
+    expect(await screen.findByRole("button", { name: "Phase idea-review: review needed, next" })).toBeDefined();
+  });
+
   it("says so when live updates stop working", async () => {
     const watch = (_root: string, _onChange: () => void, onError: (message: string) => void) => {
       onError("Live updates are off: disk unavailable");
