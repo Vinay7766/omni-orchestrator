@@ -102,3 +102,15 @@ As `src/lib/decisions.ts`: functions take `invoke`, return `{ ok, ... }` with th
 3. **Build phase start.** Proposed: the first handoff starts the build phase, recorded as the person.
 4. **Models per tool** (TOOL-2 "which models each offers"). Proposed: left to team mode (v0.6); `team.json` has no models field yet.
 5. **P-E5-08** (`create_tasks` over MCP lacks `kinds`). Proposed: add it in this task as a small extra slice, since level-3 tools create tasks through it.
+
+### As built (2026-11-03): changes from the spec
+
+- **Commits:** 59dc17f (team.json), acd1ae4 (handoff text), b95037e (`hand_off_tool`), 0d4aa11 (team panel), 5812889 (old launcher removed), 1b3cc0b (`create_tasks` kinds, slice 6).
+- **Task line:** state keeps no requirement ids per task, so the handoff names the task id, title and kinds. The next task is the one in progress, else the first not done.
+- **Untrusted text in the handoff:** task titles and the project name are written as one line of at most 200 characters, because other AI tools read the block as instructions.
+- **Who checks what:** Rust reads the level from `.agents/team.json` itself; the web view sends only the folder, the tool id and the AGENTS.md text (at most 16 KB, no block markers). A file, or a folder on the way to it, that is a link is refused before anything is written.
+- **`.gitignore`:** a `# omni:begin` / `# omni:end` block lists each of OmniOrchestrator's `.agents/` files (and its temporary `.agents/.write.*` files), never the folder; written at every level.
+- **Level 3 when MCP cannot be set up** (server not built, unsafe config): the reason is returned with the entry to add by hand; the instruction files and the start still happen.
+- **Pointer text** in the tool's own instruction files now says AGENTS.md names the memory and the next task (the old text named `.agents/skills`).
+- **RT-11 fixed** by slice 5: the old launcher was the only code that passed a relative path to a program; the red-team test now runs against `hand_off_tool`.
+- **Known gaps:** P-E6-01..08 in the private problems register (no real tool opened yet at any level; a per-user MCP entry is shared by all projects; local paths in project MCP configs; and others).
