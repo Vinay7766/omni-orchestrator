@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { State } from "../generated/types.js";
-import { buildHandoff, HANDOFF_FILE } from "./handoff.js";
+import { buildHandoff, HANDOFF_FILE, NO_AI_ATTRIBUTION_RULE } from "./handoff.js";
 
 // What a selected tool is given when the build is handed to it (PLAN-3): the AGENTS.md block
 // (tools that read instruction files) and the handoff package (chat-only tools).
@@ -44,6 +44,14 @@ describe("buildHandoff (core)", () => {
     expect(agentsBlock).toContain("docs/planning/");
     expect(agentsBlock).toContain("get_context");
     expect(agentsBlock).toMatch(/Current phase: build/);
+  });
+
+  it("tells every tool not to add AI attribution to commits, pull requests or release notes (C19)", () => {
+    const { agentsBlock, package: pkg } = buildHandoff({ projectName: "Notes", state: state(tasks), summary: null });
+    expect(agentsBlock).toContain(NO_AI_ATTRIBUTION_RULE);
+    expect(pkg).toContain(NO_AI_ATTRIBUTION_RULE);
+    expect(NO_AI_ATTRIBUTION_RULE).toMatch(/co-author/i);
+    expect(NO_AI_ATTRIBUTION_RULE).toMatch(/authored by the person/i);
   });
 
   it("puts the summary itself in the package, because a chat-only tool cannot read files", () => {

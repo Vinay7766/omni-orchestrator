@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { PLANNING_PHASES } from "@omni/core";
 import type { ProjectDetailResult } from "../../lib/projects";
 import type { DecisionResult } from "../../lib/decisions";
 import { PhaseHistory } from "./PhaseHistory";
@@ -82,6 +83,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
+  /** A planning phase the person just sent back here; its revision starts by itself. */
+  const [reviseNow, setReviseNow] = useState<string | null>(null);
   // Bumped on each change seen elsewhere, so the memory panel reloads too.
   const [revision, setRevision] = useState(0);
 
@@ -133,7 +136,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
     () =>
       decide && {
         approve: (phase) => record(decide.approve?.(root, phase)),
-        requestChanges: (phase, notes) => record(decide.requestChanges?.(root, phase, notes)),
+        requestChanges: async (phase, notes) => {
+          await record(decide.requestChanges?.(root, phase, notes));
+          // A planning phase run in the app is revised straight away (tester feedback).
+          if ((PLANNING_PHASES as readonly string[]).includes(phase)) setReviseNow(phase);
+        },
         run: (phase) => record(decide.run?.(root, phase)),
         skip: (phase, reason) => record(decide.skip?.(root, phase, reason)),
       },
@@ -192,6 +199,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               providerReady={planning.providerReady}
               run={() => record(planning.run(root))}
               readDocument={readDocument}
+              autoRun={reviseNow !== null && reviseNow === detail.history.find((e) => e.isNext)?.phase}
+              onAutoRun={() => setReviseNow(null)}
             />
           )}
           {planning && wantsTaskList(detail) && (
@@ -205,7 +214,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
           {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
           {detail.workflow && <WorkflowChart workflow={detail.workflow} />}
-          <PhaseHistory entries={detail.history} decisions={decisions} />
+          <PhaseHistory entries={detail.history} decisions={decisions} review={detail.review} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} revision={revision} />}
         </>
       )}

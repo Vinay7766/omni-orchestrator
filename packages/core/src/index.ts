@@ -23,6 +23,8 @@ export { projectOverview } from "./memory/overview.js";
 export type { ProjectOverview } from "./memory/overview.js";
 export { phaseHistory, buildPhaseHistory } from "./memory/history.js";
 export type { PhaseHistoryEntry } from "./memory/history.js";
+export { buildGateReview, gateReviewText, findBatchApprovals, BATCH_WINDOW_MS } from "./memory/gate-review.js";
+export type { GateReview, BatchApproval } from "./memory/gate-review.js";
 export { startSession, endSession } from "./memory/sessions.js";
 export type { SessionResult } from "./memory/sessions.js";
 export { workflow, buildWorkflow } from "./memory/workflow.js";

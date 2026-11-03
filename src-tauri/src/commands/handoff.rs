@@ -51,7 +51,9 @@ const OUR_MEMORY_FILES: &[&str] = &[
 ];
 
 /// What the pointer in a tool's own instruction file says.
-const POINTER: &str = "This project is prepared by OmniOrchestrator. Read AGENTS.md first: it says where the project memory is and which task is next.";
+/// The last sentence is the no-AI-attribution rule (C19), the same text as core's
+/// `NO_AI_ATTRIBUTION_RULE`, so a tool that reads only this file still gets it.
+const POINTER: &str = "This project is prepared by OmniOrchestrator. Read AGENTS.md first: it says where the project memory is and which task is next. Do not add AI attribution to commits, pull requests or release notes: no AI co-author trailers, no \"generated with\" lines, no AI author name or email. Commits are authored by the person.";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -21,17 +21,20 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   const [description, setDescription] = useState(skill.description);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!onSave) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       await onSave(skill.id, content, description);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
       setIsEditing(false);
-    } catch {
-      // Error handled
+    } catch (error) {
+      // Stay in edit mode with the person's text, and say why it was not saved (NFR-7).
+      setSaveError(`Not saved: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -137,9 +140,15 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
         {/* Modal Footer */}
         {isEditing && (
           <div className="p-4 border-t border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
-            <span className="text-xs text-zinc-500">
-              Modifications are saved locally to your OmniOrchestrator skill catalog.
-            </span>
+            {saveError ? (
+              <span role="alert" className="text-xs text-red-400 break-words">
+                {saveError}
+              </span>
+            ) : (
+              <span className="text-xs text-zinc-500">
+                Modifications are saved locally to your OmniOrchestrator skill catalog.
+              </span>
+            )}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsEditing(false)}

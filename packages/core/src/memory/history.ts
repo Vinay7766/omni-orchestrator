@@ -1,6 +1,7 @@
 import { FLOWS, OPTIONAL_PHASES } from "../generated/contract.js";
 import type { Event, State } from "../generated/types.js";
 import type { MemoryStore } from "./store.js";
+import { findBatchApprovals } from "./gate-review.js";
 
 type Actor = Event["actor"];
 type PhaseStatus = State["phases"][string]["status"];
@@ -25,7 +26,14 @@ export interface PhaseHistoryEntry {
     stackAdr?: string;
   }[];
   changeRequests: { time: string; by: Actor; notes: string }[];
-  decision?: { kind: "approved" | "skipped"; time: string; by: Actor; reason?: string };
+  decision?: {
+    kind: "approved" | "skipped";
+    time: string;
+    by: Actor;
+    reason?: string;
+    /** Set when this approval was one of several made together: every phase in that batch (GATE-6). */
+    batch?: string[];
+  };
   /** The tool sessions that worked on this phase, oldest first (HND-8). */
   sessions: { id: string; by: Actor; started: string; ended?: string; transcript?: string }[];
 }
@@ -99,6 +107,12 @@ export function buildPhaseHistory(
         break;
       default:
         break;
+    }
+  }
+  for (const batch of findBatchApprovals(events)) {
+    for (const phase of batch.phases) {
+      const decision = entries.get(phase)?.decision;
+      if (decision?.kind === "approved") decision.batch = batch.phases;
     }
   }
   return [...entries.values()];

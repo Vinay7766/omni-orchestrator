@@ -146,13 +146,15 @@ export class MemoryStore {
    *   the guard passes and before the event is appended. If it throws, the event is not written.
    */
   async appendEvent(input: EventInput, guard?: EventGuard, effect?: () => Promise<void>): Promise<AppendResult> {
-    const { value: clean, findings } = redactJson({ payload: input.payload, refs: input.refs });
+    // The actor is redacted too: its tool and model names come from the caller (an MCP client's
+    // own name, a model an agent reports) and could carry a key (RT-5, RT-6).
+    const { value: clean, findings } = redactJson({ actor: input.actor, payload: input.payload, refs: input.refs });
     const event: Event = {
       formatVersion: 1,
       id: newId("evt"),
       time: new Date().toISOString(),
       type: input.type,
-      actor: input.actor,
+      actor: clean.actor,
       payload: clean.payload,
       ...(clean.refs ? { refs: clean.refs } : {}),
     };

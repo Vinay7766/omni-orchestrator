@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import type { PhaseHistoryEntry } from "@omni/core";
+import type { GateReview, PhaseHistoryEntry } from "@omni/core";
 import { PhaseHistory } from "./PhaseHistory";
 
 const person = { kind: "human" as const, tool: "omni-desktop" };
@@ -152,5 +152,48 @@ describe("PhaseHistory (GATE-5)", () => {
     expect(rows[1].textContent).toContain("a person (omni-desktop)");
     expect(rows[1].textContent).toContain("still open");
     expect(within(item("architecture")).queryByRole("list", { name: "Sessions" })).toBeNull();
+  });
+
+  it("shows the gate review above the decision for the phase waiting for the person (C18)", () => {
+    const review: GateReview = {
+      phase: "prd",
+      submission: { time: T, by: agent, documents: ["docs/planning/prd.md"], skillsUsed: [{ skill: "made-up-skill", evidence: "did it" }] },
+      earlierChangeRequests: [{ time: T, notes: "Add the pricing section" }],
+      since: { from: T, items: [{ time: T, type: "decision_recorded", text: "Decision recorded: Store notes locally" }], files: ["src/a.ts"], commits: ["abc1234"] },
+    };
+    render(<PhaseHistory entries={[entry({ phase: "prd", status: "awaiting_review" }), entry({ phase: "architecture" })]} review={review} />);
+    const summary = within(item("prd")).getByRole("region", { name: "Review summary" });
+    expect(summary.textContent).toContain("Decision recorded: Store notes locally");
+    expect(summary.textContent).toContain("You asked for changes before: Add the pricing section");
+    expect(summary.textContent).toContain("src/a.ts");
+    expect(summary.textContent).toContain("abc1234");
+    expect(within(item("architecture")).queryByRole("region", { name: "Review summary" })).toBeNull();
+  });
+
+  it("says so when nothing else was recorded since the last gate", () => {
+    const review: GateReview = {
+      phase: "prd",
+      submission: { time: T, by: agent, documents: [], skillsUsed: [] },
+      earlierChangeRequests: [],
+      since: { from: null, items: [], files: [], commits: [] },
+    };
+    render(<PhaseHistory entries={[entry({ phase: "prd", status: "awaiting_review" })]} review={review} />);
+    expect(within(item("prd")).getByRole("region", { name: "Review summary" }).textContent).toMatch(/Since the project started: nothing else was recorded/);
+  });
+
+  it("labels an approval made together with others as approved as a batch, listing every phase (GATE-6)", () => {
+    const batch = ["made-up-a", "made-up-b"];
+    render(
+      <PhaseHistory
+        entries={[
+          entry({ phase: "made-up-a", status: "approved", decision: { kind: "approved", time: T, by: person, batch } }),
+          entry({ phase: "made-up-b", status: "approved", decision: { kind: "approved", time: T, by: person, batch } }),
+          entry({ phase: "made-up-c", status: "approved", decision: { kind: "approved", time: T, by: person } }),
+        ]}
+      />,
+    );
+    expect(within(item("made-up-a")).getByText(/Approved as a batch: made-up-a, made-up-b/)).toBeDefined();
+    expect(within(item("made-up-b")).getByText(/Approved as a batch: made-up-a, made-up-b/)).toBeDefined();
+    expect(within(item("made-up-c")).queryByText(/Approved as a batch/)).toBeNull();
   });
 });

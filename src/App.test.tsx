@@ -118,6 +118,21 @@ describe("OmniOrchestrator App", () => {
     expect(nav().getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
   });
 
+  it("keeps what the person typed in the idea form when they switch areas and come back (tester feedback)", async () => {
+    await renderApp();
+    await openArea("Start from an idea");
+    fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A made-up alarm app" } });
+    fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Made-up alarm" } });
+    fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: "C:/somewhere/else" } });
+
+    await openArea("Skills");
+    await openArea("Start from an idea");
+
+    expect((screen.getByLabelText(/your idea/i) as HTMLTextAreaElement).value).toBe("A made-up alarm app");
+    expect((screen.getByLabelText(/project name/i) as HTMLInputElement).value).toBe("Made-up alarm");
+    expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe("C:/somewhere/else");
+  });
+
   it("creates a project from an idea, adds its folder to Projects and opens it", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-idea-")).replace(/\\/g, "/");
     try {
@@ -149,6 +164,11 @@ describe("OmniOrchestrator App", () => {
       expect(readFileSync(`${base}/orbit/docs/planning/idea.md`, "utf8")).toContain("A shared shopping list");
       expect(saved).toEqual([{ settings: { ...SETTINGS, projectFolders: ["C:/work", base] } }]);
       expect(nav().getByRole("button", { name: "Projects" }).getAttribute("aria-current")).toBe("page");
+
+      // Once the project exists, the form starts empty again.
+      await openArea("Start from an idea");
+      expect((screen.getByLabelText(/your idea/i) as HTMLTextAreaElement).value).toBe("");
+      expect((screen.getByLabelText(/project name/i) as HTMLInputElement).value).toBe("");
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
@@ -208,6 +228,62 @@ describe("OmniOrchestrator App", () => {
     }
     // Real files for create, run, approve and the next start: about 2 s alone, over 5 s when the
     // full suite runs every package in parallel.
+  }, 30_000);
+
+  it("revises a planning document right after the person requests changes, and shows the new version (tester feedback)", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-revise-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const prompts: string[] = [];
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      const doc = (verdict: string) =>
+        `# Idea review\n\nVerdict: ${verdict}\n\n## Understanding check\n\nA list families share.\n\n## Skills applied\n\n- idea-review: checked problem and users\n`;
+      mockBackend({
+        get_default_project_path: () => Promise.resolve(base),
+        get_skills: () =>
+          Promise.resolve([
+            {
+              id: "idea-review", name: "Idea review", description: "Reviews ideas honestly", category: "strategy",
+              attribution: { name: "Made-up Author", sourceUrl: "https://example.org", verified: true },
+              enabled: true, content: "IDEA REVIEW METHOD", isCustom: false, phases: ["idea-review"], license: "MIT",
+            },
+          ]),
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" }, keyStorage: { available: true } }),
+        save_app_settings: () => Promise.resolve(),
+        byok_complete: (args) => {
+          prompts.push((args as { request: { prompt: string } }).request.prompt);
+          return Promise.resolve({ text: doc(prompts.length === 1 ? "first draft." : "revised with pricing."), provider: "ollama", model: "made-up-model" });
+        },
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /create project/i }));
+      });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 10_000 });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /run idea-review/i }));
+      });
+      await screen.findByText(/Verdict: first draft\./, {}, { timeout: 10_000 });
+
+      fireEvent.click(screen.getByRole("button", { name: /request changes/i }));
+      fireEvent.change(screen.getByLabelText(/what should change/i), { target: { value: "Add a pricing section" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /send the changes/i }));
+      });
+
+      // No second click on "Run idea-review": the revision starts by itself and is shown for review.
+      expect(await screen.findByText(/Verdict: revised with pricing\./, {}, { timeout: 10_000 })).toBeDefined();
+      expect(prompts).toHaveLength(2);
+      expect(prompts[1]).toContain("Add a pricing section");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   }, 30_000);
 
   it("after the architecture is approved, the model writes the task list and the person approves it", async () => {
@@ -349,5 +425,63 @@ describe("OmniOrchestrator App", () => {
     fireEvent.change(screen.getByLabelText("Search skills"), { target: { value: "owasp" } });
     expect(screen.queryByText("Test-driven development")).toBeNull();
     expect(screen.getByText("Security hardening")).toBeDefined();
+  });
+
+  // P-E4-01 / P-E4-02: a change that was not saved is never shown as saved (NFR-7).
+  const madeUpSkill = {
+    id: "made-up", name: "Made-up skill", description: "Saved description", content: "Saved content",
+    category: "engineering", enabled: true, isCustom: false, phases: [],
+    attribution: { name: "Some Author", sourceUrl: "https://example.org", verified: false },
+  };
+  const toggle = () => screen.getByRole("checkbox", { name: "Toggle Made-up skill" }) as HTMLInputElement;
+
+  it("keeps a skill's switch where it was and shows the real error when turning it off fails", async () => {
+    mockBackend({
+      get_skills: () => Promise.resolve([madeUpSkill]),
+      toggle_skill: () => Promise.reject("could not write the skill settings: disk full"),
+    });
+    await renderApp();
+    await openArea("Skills");
+
+    await act(async () => {
+      fireEvent.click(toggle());
+    });
+
+    expect(toggle().checked).toBe(true);
+    expect(screen.getByRole("alert").textContent).toMatch(/disk full/);
+  });
+
+  it("moves a skill's switch once turning it off is saved", async () => {
+    mockBackend({ get_skills: () => Promise.resolve([madeUpSkill]), toggle_skill: () => Promise.resolve(null) });
+    await renderApp();
+    await openArea("Skills");
+
+    await act(async () => {
+      fireEvent.click(toggle());
+    });
+
+    expect(toggle().checked).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows the real error when saving a skill edit fails, keeps the typed text and leaves the list unchanged", async () => {
+    mockBackend({
+      get_skills: () => Promise.resolve([madeUpSkill]),
+      update_skill_content: () => Promise.reject("could not save the skill: permission denied"),
+    });
+    await renderApp();
+    await openArea("Skills");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Made-up skill" }));
+    fireEvent.change(screen.getByDisplayValue("Saved description"), { target: { value: "Unsaved description" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Save Modifications/ }));
+    });
+
+    expect(screen.getByRole("alert").textContent).toMatch(/permission denied/);
+    expect(screen.getByDisplayValue("Unsaved description")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByText("Saved description")).toBeDefined();
+    expect(screen.queryByText("Unsaved description")).toBeNull();
   });
 });

@@ -107,7 +107,7 @@ describe("red team: approval through the MCP route (T1.1)", () => {
 describe("red team: keys in memory through agent-supplied names (T3.3)", () => {
   // RT-5: the model name an agent reports is stored as-is, so a key pasted (or injected) into
   // it lands in events.jsonl, which is read by every later tool and may be committed.
-  it.fails("RT-5 (T3.3): a key in the reported model name is redacted before it is written", async () => {
+  it("RT-5 (T3.3): a key in the reported model name is redacted before it is written", async () => {
     await connect("made-up-client");
     const submitted = await client.callTool({ name: "submit_phase", arguments: { ...submission, model: `model ${FAKE_KEY}` } });
     expect(submitted.isError, JSON.stringify(submitted.content)).toBeFalsy();
@@ -115,7 +115,7 @@ describe("red team: keys in memory through agent-supplied names (T3.3)", () => {
   });
 
   // RT-6: the same through the client's own name (clientInfo.name becomes actor.tool).
-  it.fails("RT-6 (T3.3): a key in the MCP client's name is redacted before it is written", async () => {
+  it("RT-6 (T3.3): a key in the MCP client's name is redacted before it is written", async () => {
     await connect(`client ${FAKE_KEY}`);
     const submitted = await client.callTool({ name: "submit_phase", arguments: submission });
     expect(submitted.isError, JSON.stringify(submitted.content)).toBeFalsy();

@@ -17,6 +17,14 @@ export const HANDOFF_FILE = "handoff/latest.md";
 
 const MAX_LINE_TEXT = 200;
 
+/**
+ * Every text the app writes for AI tools in a person's project carries this rule (C19): the work is
+ * the person's. It names no tool or vendor (TOOL-0). The Rust pointer in tools' own instruction
+ * files (`handoff.rs`) carries the same sentence.
+ */
+export const NO_AI_ATTRIBUTION_RULE =
+  'Do not add AI attribution to commits, pull requests or release notes: no AI co-author trailers, no "generated with" lines, no AI author name or email. Commits are authored by the person.';
+
 export interface HandoffInput {
   projectName: string;
   state: State;
@@ -54,6 +62,7 @@ export function buildHandoff({ projectName, state, summary }: HandoffInput): Han
     "- Work on one task at a time. A task is done only with the test command you ran and its real output.",
     "- The person approves every phase and the task list. Do not approve, skip or reorder them yourself.",
     "- Record decisions and problems in project memory, each pointing at the files or commits it concerns.",
+    `- ${NO_AI_ATTRIBUTION_RULE}`,
   ];
 
   const agentsBlock = [
