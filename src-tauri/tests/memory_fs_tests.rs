@@ -170,3 +170,28 @@ fn refuses_a_symlink_inside_agents_that_points_elsewhere() {
     assert!(!elsewhere.join("x.json").exists());
     let _ = fs::remove_dir_all(base);
 }
+
+// E7: the desktop app notices a changed events.jsonl by its size and change time.
+
+#[test]
+fn stamp_is_none_for_a_missing_file_and_changes_when_the_file_grows() {
+    use tauri_app_lib::commands::memory_fs::memfs_stamp;
+    let base = project("stamp");
+    let file = base.join("app").join(".agents").join("events.jsonl");
+    assert_eq!(memfs_stamp(s(&file)).unwrap(), None);
+    memfs_append_text(s(&file), "{}\n".into()).unwrap();
+    let first = memfs_stamp(s(&file)).unwrap().expect("a stamp for an existing file");
+    assert_eq!(memfs_stamp(s(&file)).unwrap(), Some(first.clone()), "unchanged file, same stamp");
+    memfs_append_text(s(&file), "{}\n".into()).unwrap();
+    assert_ne!(memfs_stamp(s(&file)).unwrap(), Some(first));
+}
+
+#[test]
+fn stamp_refuses_paths_outside_agents() {
+    use tauri_app_lib::commands::memory_fs::memfs_stamp;
+    let base = project("stamp-outside");
+    let file = base.join("app").join("secret.txt");
+    fs::write(&file, "x").unwrap();
+    assert!(memfs_stamp(s(&file)).is_err());
+    assert!(memfs_stamp("relative/.agents/events.jsonl".into()).is_err());
+}

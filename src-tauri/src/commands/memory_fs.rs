@@ -181,3 +181,24 @@ pub fn memfs_list(path: String) -> Result<Vec<String>, String> {
         Err(e) => Err(io_err("list", &p, e)),
     }
 }
+
+/// A short text that changes whenever the file's size or last-change time changes, or None
+/// if the file does not exist. The desktop app checks this often to notice new events (E7)
+/// without reading the whole log each time. Same path policy as reading.
+#[tauri::command]
+pub fn memfs_stamp(path: String) -> Result<Option<String>, String> {
+    let p = checked(&path, Access::Read)?;
+    match retry(|| fs::metadata(&p)) {
+        Ok(info) => {
+            let changed = info
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            Ok(Some(format!("{}:{}", info.len(), changed)))
+        }
+        Err(e) if e.kind() == ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(io_err("check", &p, e)),
+    }
+}

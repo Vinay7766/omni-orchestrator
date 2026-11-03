@@ -44,6 +44,7 @@ pub fn run() {
             memfs_rename,
             memfs_remove,
             memfs_list,
+            memfs_stamp,
             // Category-based tool discovery (no fixed tool list)
             discover_tools,
             // Automatic MCP setup for discovered tools (D5)
