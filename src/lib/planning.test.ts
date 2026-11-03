@@ -31,6 +31,20 @@ describe("createProjectFromIdea", () => {
     expect(readFileSync(`${base}/plant-watering-helper/docs/planning/idea.md`, "utf8")).toContain("Remind me to water each plant.");
   });
 
+  it("saves the conversation before planning as the idea, so every phase reads it (C)", async () => {
+    const conversation = [
+      { role: "person" as const, text: "Remind me to water each plant." },
+      { role: "assistant" as const, text: "Indoor plants, outdoor, or both?" },
+      { role: "person" as const, text: "Indoor only." },
+    ];
+    const r = await createProjectFromIdea(fakeInvoke(), { parent: base, name: "Plant Helper", idea: "Remind me to water each plant.", conversation, summary: "Reminders to water indoor plants" });
+    expect(r.ok).toBe(true);
+    const idea = readFileSync(`${base}/plant-helper/docs/planning/idea.md`, "utf8");
+    expect(idea).toContain("Reminders to water indoor plants");
+    expect(idea).toContain("**You:** Indoor only.");
+    expect(idea).toContain("**AI:** Indoor plants, outdoor, or both?");
+  });
+
   it("refuses a relative parent folder", async () => {
     const r = await createProjectFromIdea(fakeInvoke(), { parent: "projects", name: "Orbit", idea: "x" });
     expect(r).toMatchObject({ ok: false });

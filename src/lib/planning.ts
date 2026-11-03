@@ -7,6 +7,7 @@
 import { createInvokeFs, isAbsolutePath, MemoryStore, normalizePath, type Invoke } from "@omni/core";
 import type { BYOKConfig } from "./types";
 import { DESKTOP_PERSON } from "./decisions";
+import { conversationMarkdown, type ChatMessage } from "./idea-chat";
 
 export type CreateResult = { ok: true; root: string } | { ok: false; error: string };
 
@@ -31,7 +32,15 @@ export function hasProvider(byok: BYOKConfig): boolean {
 /** Creates `<parent>/<folder name>` as a project (flow "build") and saves the idea in it. */
 export async function createProjectFromIdea(
   invoke: Invoke,
-  input: { parent: string; name: string; idea: string },
+  input: {
+    parent: string;
+    name: string;
+    idea: string;
+    /** The conversation before planning (C); saved as the idea so every phase reads it. */
+    conversation?: ChatMessage[];
+    /** The idea in one sentence, when the AI said it had understood. */
+    summary?: string | null;
+  },
 ): Promise<CreateResult> {
   const name = input.name.trim();
   const idea = input.idea.trim();
@@ -48,7 +57,11 @@ export async function createProjectFromIdea(
       const text = created.issues.map((i) => i.message).join("; ");
       return { ok: false, error: /already exists/.test(text) ? `A project already exists in ${root}.` : text };
     }
-    await invoke("write_planning_document", { root, name: "idea.md", content: `# ${name}: the idea\n\n${idea}\n` });
+    const content =
+      input.conversation && input.conversation.length > 1
+        ? conversationMarkdown(name, input.conversation, input.summary ?? null)
+        : `# ${name}: the idea\n\n${idea}\n`;
+    await invoke("write_planning_document", { root, name: "idea.md", content });
     return { ok: true, root };
   } catch (error) {
     return { ok: false, error: reason(error) };
