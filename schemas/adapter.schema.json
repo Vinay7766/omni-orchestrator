@@ -40,6 +40,23 @@
       "minItems": 1,
       "items": { "$ref": "urn:omni:schema:common#/$defs/relPath" }
     },
+    "startPrompt": {
+      "description": "How the tool, started in a terminal, takes the prompt a fresh session begins with (HND-7). {prompt} is replaced by a fixed sentence pointing at .agents/handoff/next-session.md; no other text reaches the command line. Leave it out when the tool has no documented way: the person then pastes the prompt.",
+      "type": "object",
+      "required": ["args"],
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "contains": { "const": "{prompt}" },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      }
+    },
     "sources": {
       "description": "Where each detail was checked. At least one.",
       "type": "array",
@@ -51,7 +68,7 @@
         "properties": {
           "url": { "type": "string", "pattern": "^https://" },
           "checked": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
-          "covers": { "type": "array", "minItems": 1, "items": { "enum": ["mcp", "instructionFiles"] } }
+          "covers": { "type": "array", "minItems": 1, "items": { "enum": ["mcp", "instructionFiles", "startPrompt"] } }
         }
       }
     }

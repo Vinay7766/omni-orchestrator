@@ -91,7 +91,7 @@ struct TeamFile {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct TeamMember {
+pub(crate) struct TeamMember {
     tool_id: String,
     capability: u8,
     confirmed_by_person: bool,
@@ -102,7 +102,7 @@ fn is_link(path: &Path) -> bool {
 }
 
 /// True when `rel` itself, or any folder on the way to it inside the project, is a link.
-fn passes_a_link(project: &Path, rel: &str) -> bool {
+pub(crate) fn passes_a_link(project: &Path, rel: &str) -> bool {
     let mut path = project.to_path_buf();
     Path::new(rel).components().any(|part| {
         path.push(part);
@@ -110,7 +110,7 @@ fn passes_a_link(project: &Path, rel: &str) -> bool {
     })
 }
 
-fn project_folder(path: &str) -> Result<PathBuf, String> {
+pub(crate) fn project_folder(path: &str) -> Result<PathBuf, String> {
     let dir = PathBuf::from(path);
     if !dir.is_absolute() {
         return Err(format!("\"{}\" is not a full folder path.", path));
@@ -121,7 +121,7 @@ fn project_folder(path: &str) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-fn team_member(project: &Path, tool_id: &str) -> Result<TeamMember, String> {
+pub(crate) fn team_member(project: &Path, tool_id: &str) -> Result<TeamMember, String> {
     let path = project.join(".agents").join("team.json");
     let not_selected = || format!("\"{}\" is not one of the tools selected for this project. Select it first.", tool_id);
     let meta = match fs::symlink_metadata(&path) {

@@ -21,7 +21,17 @@ pub struct Adapter {
     pub instruction_files: Vec<String>,
     /// Where the tool keeps its MCP servers, if known (used by automatic MCP setup, D5).
     pub mcp: Option<AdapterMcp>,
+    /// How the tool, started in a terminal, takes a fresh session's first prompt (HND-7).
+    pub start_prompt: Option<AdapterStartPrompt>,
 }
+
+/// Arguments with exactly one "{prompt}", replaced by a fixed sentence (never by memory text).
+#[derive(Debug, Clone, Deserialize)]
+pub struct AdapterStartPrompt {
+    pub args: Vec<String>,
+}
+
+pub const PROMPT_PLACEHOLDER: &str = "{prompt}";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -88,6 +98,13 @@ pub fn parse_adapters(files: &[AdapterFile]) -> (Vec<Adapter>, Vec<AdapterIssue>
             }
             if let Some(bad) = mcp.user_config.iter().find(|p| !p.strip_prefix("~/").is_some_and(is_safe_relative_path)) {
                 report(format!("MCP user config \"{}\" must be a path in the home folder starting with ~/", bad));
+                continue;
+            }
+        }
+        if let Some(start) = &adapter.start_prompt {
+            let placeholders = start.args.iter().filter(|a| a.as_str() == PROMPT_PLACEHOLDER).count();
+            if placeholders != 1 || start.args.len() > 8 || start.args.iter().any(|a| a.is_empty() || a.len() > 100 || a.contains('\0')) {
+                report("startPrompt args must be 1-8 short arguments with exactly one \"{prompt}\"".to_string());
                 continue;
             }
         }

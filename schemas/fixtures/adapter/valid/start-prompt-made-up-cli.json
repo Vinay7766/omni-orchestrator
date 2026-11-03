@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "id": "made-up-cli",
+  "name": "Made-up CLI",
+  "matches": [
+    "made-up-cli"
+  ],
+  "sources": [
+    {
+      "url": "https://made-up.example/docs/cli",
+      "checked": "2026-11-03",
+      "covers": [
+        "startPrompt"
+      ]
+    }
+  ],
+  "startPrompt": {
+    "args": [
+      "--prompt",
+      "{prompt}"
+    ]
+  }
+}

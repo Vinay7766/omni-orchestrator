@@ -189,6 +189,24 @@ export interface Adapter {
    */
   instructionFiles?: [CommonRelPath, ...CommonRelPath[]];
   /**
+   * How the tool, started in a terminal, takes the prompt a fresh session begins with (HND-7). {prompt} is replaced by a fixed sentence pointing at .agents/handoff/next-session.md; no other text reaches the command line. Leave it out when the tool has no documented way: the person then pastes the prompt.
+   */
+  startPrompt?: {
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    args:
+      | [string]
+      | [string, string]
+      | [string, string, string]
+      | [string, string, string, string]
+      | [string, string, string, string, string]
+      | [string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string, string];
+  };
+  /**
    * Where each detail was checked. At least one.
    *
    * @minItems 1
@@ -200,7 +218,10 @@ export interface Adapter {
       /**
        * @minItems 1
        */
-      covers: ["mcp" | "instructionFiles", ...("mcp" | "instructionFiles")[]];
+      covers: [
+        "mcp" | "instructionFiles" | "startPrompt",
+        ...("mcp" | "instructionFiles" | "startPrompt")[]
+      ];
     },
     ...{
       url: string;
@@ -208,7 +229,10 @@ export interface Adapter {
       /**
        * @minItems 1
        */
-      covers: ["mcp" | "instructionFiles", ...("mcp" | "instructionFiles")[]];
+      covers: [
+        "mcp" | "instructionFiles" | "startPrompt",
+        ...("mcp" | "instructionFiles" | "startPrompt")[]
+      ];
     }[]
   ];
 }

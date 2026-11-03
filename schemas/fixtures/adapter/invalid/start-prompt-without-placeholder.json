@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "id": "zeta",
+  "name": "Zeta",
+  "matches": [
+    "zeta"
+  ],
+  "sources": [
+    {
+      "url": "https://made-up.example/docs/cli",
+      "checked": "2026-11-03",
+      "covers": [
+        "startPrompt"
+      ]
+    }
+  ],
+  "startPrompt": {
+    "args": [
+      "--resume"
+    ]
+  }
+}

@@ -9,6 +9,7 @@ use commands::memory_fs::*;
 use commands::tool_discovery::discover_tools;
 use commands::mcp_setup::setup_mcp;
 use commands::handoff::hand_off_tool;
+use commands::fresh_session::start_fresh_session_cmd;
 use commands::projects::find_projects;
 use commands::planning_docs::{read_planning_document, write_planning_document};
 
@@ -50,6 +51,8 @@ pub fn run() {
             // Automatic MCP setup for discovered tools (D5)
             setup_mcp,
             hand_off_tool,
+            // Next phase in a fresh session (E11, HND-7)
+            start_fresh_session_cmd,
             // Projects under the folders the person configured (E2)
             find_projects,
             // Planning documents in docs/planning of a project (E5)
