@@ -133,6 +133,29 @@ use crate::commands::tool_discovery::{discover, DiscoveredTool, SystemView};
 /// Our entry's name in every tool's MCP config.
 pub const SERVER_NAME: &str = "omni-orchestrator";
 
+/// The entry's name in a config file shared by every project (P-E6-02): one entry per project,
+/// `omni-orchestrator-<folder>-<id>`, where the id comes from the full path (FNV-1a, stable across
+/// builds), so two projects with the same folder name do not collide and a second handoff never
+/// replaces the first project's entry. A project's own config file keeps the plain name.
+pub fn shared_entry_name(project: &Path) -> String {
+    let full = project.to_string_lossy();
+    let mut hash: u32 = 0x811c9dc5;
+    for byte in full.as_bytes() {
+        hash ^= u32::from(*byte);
+        hash = hash.wrapping_mul(0x01000193);
+    }
+    let folder: String = project
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let folder = folder.trim_matches('-').chars().take(40).collect::<String>();
+    let folder = if folder.is_empty() { "project".to_string() } else { folder };
+    format!("{}-{}-{:06x}", SERVER_NAME, folder, hash & 0x00ff_ffff)
+}
+
 /// How a tool starts the OmniOrchestrator MCP server.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerCommand {
@@ -233,7 +256,12 @@ pub fn setup_tool(
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
         Err(e) => return Err(manual(format!("{} could not be read ({}).", path.display(), e))),
     };
-    let (text, status, format) = merge_mcp_entry(existing.as_deref(), preferred, SERVER_NAME, &entry_for(server, project))
+    // A config inside the project belongs to it; any other config is shared by every project.
+    let name = match project {
+        Some(p) if !path.starts_with(p) => shared_entry_name(p),
+        _ => SERVER_NAME.to_string(),
+    };
+    let (text, status, format) = merge_mcp_entry(existing.as_deref(), preferred, &name, &entry_for(server, project))
         .map_err(|why| manual(format!("{}: {}.", path.display(), why)))?;
 
     let mut backup_path = None;

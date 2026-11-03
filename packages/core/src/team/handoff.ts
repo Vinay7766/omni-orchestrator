@@ -70,7 +70,7 @@ export function startSteps(level: 1 | 2 | 3, toolName: string, model?: string): 
   if (level === 3) {
     return [
       `Open the project folder in ${tool} (it may already be open).`,
-      `Open ${tool}'s AI chat or agent panel. If ${tool} asks to allow the "omni-orchestrator" MCP server, allow it; if it does not list it, restart ${tool}.`,
+      `Open ${tool}'s AI chat or agent panel. If ${tool} asks to allow an MCP server whose name starts with "omni-orchestrator", allow it; if it does not list one, restart ${tool}.`,
       pick,
       `Type: "Call get_context from omni-orchestrator, then start my next task." The AI loads the project memory and its task.`,
       "When it says the task is done, come back here: the task list and the phase history update by themselves.",

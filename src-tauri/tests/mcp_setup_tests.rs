@@ -368,3 +368,34 @@ fn the_server_command_carries_the_persons_skills_folder_for_every_tool() {
     assert_eq!(with.args, vec!["/app/main.js".to_string(), "--user-skills".into(), "/data/omni/skills".into()]);
     assert_eq!(with.command, server.command);
 }
+
+#[test]
+fn two_projects_in_a_shared_user_config_each_keep_their_own_entry() {
+    // P-E6-02: a tool whose MCP settings live in the person's home folder is shared by every
+    // project; handing off a second project must not replace the first one's entry.
+    let home = temp("shared-home");
+    let config = home.join(".nebula").join("mcp.json");
+    fs::create_dir_all(config.parent().unwrap()).unwrap();
+    fs::write(&config, "{}").unwrap();
+    let first = temp("shared-orbit");
+    let second = temp("shared-comet");
+    setup_tool(&nebula(Some(&config), Some(3)), None, &home, Some(&first), &server()).unwrap();
+    setup_tool(&nebula(Some(&config), Some(3)), None, &home, Some(&second), &server()).unwrap();
+
+    let servers = read_json(&config)["mcpServers"].as_object().unwrap().clone();
+    let ours: Vec<_> = servers.iter().filter(|(name, _)| name.starts_with("omni-orchestrator")).collect();
+    assert_eq!(ours.len(), 2, "{:?}", servers.keys().collect::<Vec<_>>());
+    for project in [&first, &second] {
+        let p = project.to_string_lossy();
+        assert!(
+            ours.iter().any(|(_, e)| e["args"].as_array().unwrap().iter().any(|a| a.as_str() == Some(&p))),
+            "no entry serves {p}"
+        );
+    }
+    // Names are stable: handing the same project off again changes nothing.
+    let again = setup_tool(&nebula(Some(&config), Some(3)), None, &home, Some(&first), &server()).unwrap();
+    assert_eq!(again.status, MergeStatus::Unchanged);
+    for d in [home, first, second] {
+        let _ = fs::remove_dir_all(d);
+    }
+}

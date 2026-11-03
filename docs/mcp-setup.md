@@ -61,6 +61,13 @@ documentation are listed, with sources, in [`packages/core/adapters/`](../packag
   project when the tool starts servers in the project folder.
 - An AI tool can also pass `projectPath` to any tool call.
 
+### One entry per project in a shared settings file
+
+When the app sets up a tool whose MCP settings are in your home folder (shared by every project),
+it adds one entry per project, named `omni-orchestrator-<project folder>-<id>`, so connecting a
+second project never replaces the first one. A settings file inside the project keeps the plain
+name `omni-orchestrator`.
+
 ### Your own skills
 
 `--user-skills <folder>` adds the skills you added, edited or switched off in the app's Skills
