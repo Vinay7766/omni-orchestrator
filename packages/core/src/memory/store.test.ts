@@ -181,6 +181,23 @@ describe("appendEvent", () => {
     expect(result.ok && result.redactions).toBe(1);
     expect(readFileSync(agentsFile("events.jsonl"), "utf8")).not.toContain(secret);
   });
+
+  it("redacts secrets in the actor's tool and model names too (RT-5, RT-6)", async () => {
+    const store = await created();
+    const secret = "sk" + "-proj-" + "aB3dE5gH7jK9mN1pQ2rS4tU6vW8xY0zAbCdEfGh";
+    const result = await store.appendEvent({
+      type: "lesson_recorded",
+      actor: { kind: "agent", tool: `made-up-client ${secret}`, model: `made-up-model ${secret}` },
+      payload: { lesson: "keys do not belong in names" },
+    });
+    expect(result.ok && result.redactions).toBe(2);
+    expect(readFileSync(agentsFile("events.jsonl"), "utf8")).not.toContain(secret);
+    expect(result.ok && result.event.actor).toMatchObject({
+      kind: "agent",
+      tool: expect.stringMatching(/^made-up-client \[REDACTED:/),
+      model: expect.stringMatching(/^made-up-model \[REDACTED:/),
+    });
+  });
 });
 
 describe("state follows the event log", () => {
