@@ -12,6 +12,7 @@ import { PlanningPanel } from "../planning/PlanningPanel";
 import { TaskProposalPanel } from "../planning/TaskProposalPanel";
 import type { readTaskProposal } from "../../lib/task-proposal";
 import { TeamPanel, type TeamFns } from "../team/TeamPanel";
+import { FreshSessionPanel, type FreshSessionFns } from "../team/FreshSessionPanel";
 
 /** Planning phases run with the person's own model (E5). */
 export interface PlanningFns {
@@ -35,6 +36,12 @@ function wantsTaskList(detail: Extract<ProjectDetailResult, { ok: true }>): bool
 function readyToHandOff(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
   const architecture = detail.history.find((e) => e.phase === "architecture");
   return architecture?.status === "approved" && (detail.taskCount ?? 0) > 0;
+}
+
+/** The phase to start fresh: the next one, once an earlier phase is approved (HND-7). */
+function freshPhase(detail: Extract<ProjectDetailResult, { ok: true }>): string | null {
+  const next = detail.history.find((e) => e.isNext);
+  return next && detail.history.some((e) => e.status === "approved") ? next.phase : null;
 }
 
 /** How decisions are recorded for a project root (the app passes lib/decisions over invoke). */
@@ -62,6 +69,8 @@ interface ProjectDetailProps {
   planning?: PlanningFns;
   /** When given, the person selects the tools for the build and hands it to them (E6). */
   team?: TeamFns;
+  /** When given, the next phase can be started in a fresh session after an approval (E11). */
+  fresh?: FreshSessionFns;
   /** When given, the page follows the project's memory and reloads on changes made elsewhere (E7). */
   watch?: (root: string, onChange: () => void, onError: (message: string) => void) => () => void;
 }
@@ -69,7 +78,7 @@ interface ProjectDetailProps {
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team, watch }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team, fresh, watch }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
@@ -194,6 +203,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
             />
           )}
           {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
+          {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
           {detail.workflow && <WorkflowChart workflow={detail.workflow} />}
           <PhaseHistory entries={detail.history} decisions={decisions} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} revision={revision} />}

@@ -178,6 +178,29 @@ describe("ProjectDetail: tools for the build (E6)", () => {
   });
 });
 
+describe("ProjectDetail: fresh session per phase (E11)", () => {
+  const team = { formatVersion: 1 as const, updatedAt: "2026-11-03T10:00:00Z", members: [{ toolId: "made-up-cli", name: "Made-up CLI", capability: 2, confirmedByPerson: true, addedAt: "2026-11-03T10:00:00Z" }] };
+  const fresh = { loadTeam: () => Promise.resolve({ ok: true as const, team }), start: vi.fn() };
+  const withHistory = (first: "approved" | "awaiting_review"): ProjectDetailResult => ({
+    ...detail,
+    history: [
+      { phase: "prd", status: first, isNext: first !== "approved", submissions: [], changeRequests: [], sessions: [] },
+      { phase: "architecture", status: "not_started", isNext: first === "approved", submissions: [], changeRequests: [], sessions: [] },
+    ],
+  });
+
+  it("offers the next phase in a fresh session once a phase is approved", async () => {
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withHistory("approved"))} onBack={vi.fn()} fresh={fresh} />);
+    expect(await screen.findByRole("button", { name: "Start architecture in a fresh session" })).toBeDefined();
+  });
+
+  it("does not offer it while nothing is approved yet", async () => {
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withHistory("awaiting_review"))} onBack={vi.fn()} fresh={fresh} />);
+    await screen.findByRole("heading", { name: "Orbit" });
+    expect(screen.queryByRole("heading", { name: "Next phase in a fresh session" })).toBeNull();
+  });
+});
+
 describe("ProjectDetail: live updates (E7)", () => {
   it("reloads when the project's memory changes elsewhere, keeping the page on screen (E7)", async () => {
     const later: ProjectDetailResult = { ...detail, history: [{ ...detail.history[0], status: "awaiting_review" }] };

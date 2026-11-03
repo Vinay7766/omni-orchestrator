@@ -9,6 +9,8 @@ import { addEntry, loadMemoryFiles, updateProjectDetails } from "../../lib/memor
 import type { Invoke } from "@omni/core";
 import { discoverTools, handOffTool, loadTeam, saveTeamSelection } from "../../lib/team";
 import type { TeamFns } from "../team/TeamPanel";
+import type { FreshSessionFns } from "../team/FreshSessionPanel";
+import { startFreshSession } from "../../lib/fresh-session";
 import { watchProject } from "../../lib/live";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
@@ -36,6 +38,12 @@ const team: TeamFns = {
   load: (root) => loadTeam(tauri, root),
   save: (root, selection) => saveTeamSelection(tauri, root, selection),
   handOff: (root, toolId) => handOffTool(tauri, root, toolId),
+};
+
+/** The next phase in a fresh session (E11): the project's tools, and the start command. */
+const fresh: FreshSessionFns = {
+  loadTeam: (root) => loadTeam(tauri, root),
+  start: (root, toolId) => startFreshSession(tauri, root, toolId),
 };
 
 /** Live updates (E7): the open project follows its events.jsonl through the app's backend. */
@@ -81,6 +89,6 @@ export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns 
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} watch={watch} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} fresh={fresh} watch={watch} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };
