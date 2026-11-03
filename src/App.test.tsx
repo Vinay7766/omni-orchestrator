@@ -441,7 +441,7 @@ describe("OmniOrchestrator App", () => {
         find_projects: () => Promise.resolve({ roots: [created.root], errors: [] }),
         byok_complete: () =>
           Promise.resolve({
-            text: '```json\n{"tasks":[{"title":"Data model","requirements":["REQ-1"],"kinds":["backend"]},{"title":"List screen","kinds":["interface","tests"]}]}\n```',
+            text: '```json\n{"tasks":[{"title":"Data model","requirements":["REQ-1"],"kinds":["backend"],"tool":"made-up-editor","model":"made-up-model","reason":"The only tool."},{"title":"List screen","kinds":["interface","tests"],"tool":"made-up-editor","model":"made-up-model","reason":"The only tool."}]}\n```',
             provider: "ollama",
             model: "made-up-model",
           }),
