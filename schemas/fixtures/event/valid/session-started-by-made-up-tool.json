@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0101",
+  "time": "2026-11-03T10:00:00Z",
+  "type": "session_started",
+  "actor": {
+    "kind": "agent",
+    "tool": "made-up-agent",
+    "model": "made-up-model"
+  },
+  "payload": {
+    "phase": "prd",
+    "transcript": "made-up-agent://sessions/42"
+  }
+}

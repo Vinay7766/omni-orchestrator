@@ -26,6 +26,8 @@ export interface PhaseHistoryEntry {
   }[];
   changeRequests: { time: string; by: Actor; notes: string }[];
   decision?: { kind: "approved" | "skipped"; time: string; by: Actor; reason?: string };
+  /** The tool sessions that worked on this phase, oldest first (HND-8). */
+  sessions: { id: string; by: Actor; started: string; ended?: string; transcript?: string }[];
 }
 
 const isDone = (status: PhaseStatus | undefined) => status === "approved" || status === "skipped";
@@ -51,12 +53,19 @@ export function buildPhaseHistory(
         ...(optional[phase] !== undefined ? { optionalQuestion: optional[phase] } : {}),
         submissions: [],
         changeRequests: [],
+        sessions: [],
       },
     ]),
   );
 
+  const sessions = new Map<string, PhaseHistoryEntry["sessions"][number]>();
   for (const event of events) {
     const payload = event.payload as Record<string, unknown>;
+    if (event.type === "session_ended") {
+      const session = sessions.get(String(payload.sessionId));
+      if (session) session.ended = event.time;
+      continue;
+    }
     const entry = typeof payload.phase === "string" ? entries.get(payload.phase) : undefined;
     if (!entry) continue;
     const at = { time: event.time, by: event.actor };
@@ -79,6 +88,12 @@ export function buildPhaseHistory(
       case "phase_approved":
         entry.decision = { kind: "approved", ...at };
         break;
+      case "session_started": {
+        const session = { id: event.id, by: event.actor, started: event.time, ...(typeof payload.transcript === "string" ? { transcript: payload.transcript } : {}) };
+        sessions.set(event.id, session);
+        entry.sessions.push(session);
+        break;
+      }
       case "phase_skipped":
         entry.decision = { kind: "skipped", ...at, ...(typeof payload.reason === "string" ? { reason: payload.reason } : {}) };
         break;

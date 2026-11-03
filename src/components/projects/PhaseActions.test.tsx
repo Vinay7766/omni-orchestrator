@@ -8,6 +8,7 @@ const entry = (over: Partial<PhaseHistoryEntry> & { phase: string }): PhaseHisto
   isNext: false,
   submissions: [],
   changeRequests: [],
+  sessions: [],
   ...over,
 });
 

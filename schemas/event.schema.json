@@ -42,7 +42,9 @@
         "decision_recorded",
         "problem_recorded",
         "lesson_recorded",
-        "memory_updated"
+        "memory_updated",
+        "session_started",
+        "session_ended"
       ]
     },
     "actor": {
@@ -424,6 +426,42 @@
         },
         "type": "object"
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "session_started"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/sessionStarted"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "session_ended"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/sessionEnded"
+          }
+        },
+        "type": "object"
+      }
     }
   ],
   "$defs": {
@@ -779,6 +817,36 @@
             "full",
             "simple"
           ]
+        }
+      }
+    },
+    "sessionStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "An AI tool session began work on the project (HND-8). The actor names the tool and model. The session's id is this event's id. A project index of sessions, not a copy of them: no prompt or transcript text is stored.",
+      "properties": {
+        "phase": {
+          "$ref": "urn:omni:schema:common#/$defs/phaseId",
+          "description": "The phase being worked on when the session started; absent when every phase is done."
+        },
+        "transcript": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Where the tool keeps this session's transcript (a file path or the tool's own link), only when the tool lets it be read. Shown to the person, never opened automatically."
+        }
+      }
+    },
+    "sessionEnded": {
+      "type": "object",
+      "required": [
+        "sessionId"
+      ],
+      "additionalProperties": false,
+      "description": "The session that started with event `sessionId` ended (HND-8).",
+      "properties": {
+        "sessionId": {
+          "$ref": "urn:omni:schema:common#/$defs/id"
         }
       }
     }

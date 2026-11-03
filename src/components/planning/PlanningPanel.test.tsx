@@ -12,6 +12,7 @@ const entry = (phase: string, status: PhaseHistoryEntry["status"]): PhaseHistory
   isNext: true,
   submissions: [],
   changeRequests: [],
+  sessions: [],
 });
 
 describe("PlanningPanel", () => {

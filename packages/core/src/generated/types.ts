@@ -134,6 +134,10 @@ export type CommonRelPath1 = string;
  * Path relative to the project root, forward slashes, never absolute, never leaving the project.
  */
 export type CommonRelPath2 = string;
+/**
+ * A phase id from schemas/phases.json (checked in code; schemas cannot read that list).
+ */
+export type CommonPhaseId1 = string;
 
 /**
  * Every project-memory file type, keyed by schema name.
@@ -288,7 +292,9 @@ export interface Event1 {
     | "decision_recorded"
     | "problem_recorded"
     | "lesson_recorded"
-    | "memory_updated";
+    | "memory_updated"
+    | "session_started"
+    | "session_ended";
   actor: CommonActor;
   payload: {};
   /**
@@ -612,4 +618,26 @@ export interface EventPhaseSkipped {
 export interface EventProjectUpdated {
   name?: string;
   mode?: "full" | "simple";
+}
+/**
+ * An AI tool session began work on the project (HND-8). The actor names the tool and model. The session's id is this event's id. A project index of sessions, not a copy of them: no prompt or transcript text is stored.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "event_sessionStarted".
+ */
+export interface EventSessionStarted {
+  phase?: CommonPhaseId1;
+  /**
+   * Where the tool keeps this session's transcript (a file path or the tool's own link), only when the tool lets it be read. Shown to the person, never opened automatically.
+   */
+  transcript?: string;
+}
+/**
+ * The session that started with event `sessionId` ended (HND-8).
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "event_sessionEnded".
+ */
+export interface EventSessionEnded {
+  sessionId: CommonId;
 }

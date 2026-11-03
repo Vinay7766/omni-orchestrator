@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0104",
+  "time": "2026-11-03T10:00:00Z",
+  "type": "session_started",
+  "actor": {
+    "kind": "agent",
+    "tool": "made-up-agent"
+  },
+  "payload": {
+    "phase": "prd",
+    "prompt": "full transcript text copied here"
+  }
+}

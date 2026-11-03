@@ -8,7 +8,7 @@ const detail: ProjectDetailResult = {
   name: "Orbit",
   flow: "build",
   mode: "full",
-  history: [{ phase: "idea-review", status: "in_progress", isNext: true, submissions: [], changeRequests: [] }],
+  history: [{ phase: "idea-review", status: "in_progress", isNext: true, submissions: [], changeRequests: [], sessions: [] }],
 };
 
 describe("ProjectDetail", () => {
@@ -44,11 +44,11 @@ describe("ProjectDetail: decisions (E3 slice 3)", () => {
     name: "Orbit planner",
     flow: "build",
     mode: "full",
-    history: [{ phase: "prd", status: "awaiting_review", isNext: true, submissions: [], changeRequests: [] }],
+    history: [{ phase: "prd", status: "awaiting_review", isNext: true, submissions: [], changeRequests: [], sessions: [] }],
   };
   const approved: ProjectDetailResult = {
     ...awaiting,
-    history: [{ phase: "prd", status: "approved", isNext: false, submissions: [], changeRequests: [] }],
+    history: [{ phase: "prd", status: "approved", isNext: false, submissions: [], changeRequests: [], sessions: [] }],
   } as ProjectDetailResult;
 
   it("records a decision, announces the result, and reloads the history", async () => {
@@ -118,8 +118,8 @@ describe("ProjectDetail: the task list (E5 slice 5)", () => {
     mode: "full",
     taskCount,
     history: [
-      { phase: "architecture", status: "approved", isNext: false, submissions: [], changeRequests: [] },
-      { phase: "build", status: "in_progress", isNext: true, submissions: [], changeRequests: [] },
+      { phase: "architecture", status: "approved", isNext: false, submissions: [], changeRequests: [], sessions: [] },
+      { phase: "build", status: "in_progress", isNext: true, submissions: [], changeRequests: [], sessions: [] },
     ],
   });
   const planning = {
@@ -151,8 +151,8 @@ describe("ProjectDetail: tools for the build (E6)", () => {
     mode: "full",
     taskCount,
     history: [
-      { phase: "architecture", status: architecture, isNext: architecture !== "approved", submissions: [], changeRequests: [] },
-      { phase: "build", status: "in_progress", isNext: architecture === "approved", submissions: [], changeRequests: [] },
+      { phase: "architecture", status: architecture, isNext: architecture !== "approved", submissions: [], changeRequests: [], sessions: [] },
+      { phase: "build", status: "in_progress", isNext: architecture === "approved", submissions: [], changeRequests: [], sessions: [] },
     ],
   });
   const team = {
