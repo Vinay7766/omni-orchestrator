@@ -12,11 +12,17 @@ describe("server arguments", () => {
     expect(parseArgs(["--project", "C:\\repos\\orbit"], "D:/x")).toEqual({ ok: true, startDir: "C:/repos/orbit" });
   });
 
+  it("takes the person's own skills folder with --user-skills, in any order (SKL-5)", () => {
+    expect(parseArgs(["--user-skills", "/data/omni/skills"], "/w")).toEqual({ ok: true, startDir: "/w", userSkillsDir: "/data/omni/skills" });
+    expect(parseArgs(["--user-skills", "/data/s", "--project", "/repos/orbit"], "/w")).toEqual({ ok: true, startDir: "/repos/orbit", userSkillsDir: "/data/s" });
+    expect(parseArgs(["--project", "/repos/orbit", "--user-skills", "C:\\Data\\skills"], "/w")).toEqual({ ok: true, startDir: "/repos/orbit", userSkillsDir: "C:/Data/skills" });
+  });
+
   it("refuses anything it does not understand, with usage", () => {
-    for (const argv of [["--project"], ["--project", ""], ["--verbose"], ["extra"]]) {
+    for (const argv of [["--project"], ["--project", ""], ["--verbose"], ["extra"], ["--user-skills"], ["--user-skills", "relative/skills"], ["--project", "/a", "--project", "/b"]]) {
       const result = parseArgs(argv, "/w");
       expect(result.ok, argv.join(" ")).toBe(false);
-      if (!result.ok) expect(result.message).toMatch(/usage: .*--project <folder>/i);
+      if (!result.ok) expect(result.message).toMatch(/usage: .*--project <folder>.*--user-skills <folder>/i);
     }
   });
 });

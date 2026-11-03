@@ -61,6 +61,12 @@ documentation are listed, with sources, in [`packages/core/adapters/`](../packag
   project when the tool starts servers in the project folder.
 - An AI tool can also pass `projectPath` to any tool call.
 
+### Your own skills
+
+`--user-skills <folder>` adds the skills you added, edited or switched off in the app's Skills
+area. The app writes it into each tool's entry for you. The folder is the app's own skills
+folder (absolute path); without it, tools get the bundled skills only.
+
 ## Check that it works
 
 1. Restart the tool, or reload its MCP servers.

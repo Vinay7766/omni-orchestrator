@@ -20,7 +20,8 @@ if (!args.ok) {
 
 const server = createServer({
   fs: createNodeFs(),
-  skills: createSkillDirectorySource(skillsDir),
+  // The person's own skills (SKL-5): --user-skills, written by the app into each tool's MCP entry.
+  skills: createSkillDirectorySource(skillsDir, args.userSkillsDir ? { userDir: args.userSkillsDir } : {}),
   startDir: args.startDir,
   commits: createGitCommitChecker(),
 });

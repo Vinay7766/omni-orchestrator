@@ -75,6 +75,39 @@ describe("stdio server", () => {
     }
   }, 60_000);
 
+  it("serves the person's own skills from --user-skills, and never one they switched off (SKL-5)", async () => {
+    const userDir = mkdtempSync(join(tmpdir(), "omni-mcp-user-skills-")).replace(/\\/g, "/");
+    const client = new Client({ name: "made-up-client", version: "0.0.1" });
+    try {
+      const own = {
+        id: "my-made-up-skill", name: "My made-up skill", description: "A person's own skill for the build phase.",
+        category: "custom", attribution: { name: "The person", sourceUrl: "https://example.com", verified: false },
+        enabled: true, isCustom: true, license: "MIT", phases: ["build"], domains: ["general"],
+      };
+      writeFileSync(join(userDir, "catalog.json"), JSON.stringify([own]));
+      mkdirSync(join(userDir, own.id));
+      writeFileSync(join(userDir, own.id, "SKILL.md"), "MY OWN METHOD");
+      // Switch off whichever bundled skill the build phase lists first.
+      await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(pkgDir, "dist", "main.js"), "--project", root], stderr: "pipe" }));
+      const before = (await client.callTool({ name: "get_context", arguments: {} })).structuredContent as { skills: { id: string; reason: string }[] };
+      const off = before.skills.find((sk) => sk.reason === "phase")!.id;
+      await client.close();
+      writeFileSync(join(userDir, "skills.json"), JSON.stringify({ formatVersion: 1, skills: { [off]: { enabled: false } } }));
+
+      await client.connect(
+        new StdioClientTransport({ command: process.execPath, args: [join(pkgDir, "dist", "main.js"), "--project", root, "--user-skills", userDir], stderr: "pipe" }),
+      );
+      const ctx = (await client.callTool({ name: "get_context", arguments: {} })).structuredContent as { skills: { id: string }[] };
+      expect(ctx.skills.map((sk) => sk.id)).toContain(own.id);
+      expect(ctx.skills.map((sk) => sk.id)).not.toContain(off);
+      const full = await client.callTool({ name: "get_phase_skills", arguments: { ids: [own.id] } });
+      expect(JSON.stringify(full.content)).toContain("MY OWN METHOD");
+    } finally {
+      await client.close();
+      rmSync(userDir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it("refuses unknown arguments instead of guessing", () => {
     let failed = false;
     try {
