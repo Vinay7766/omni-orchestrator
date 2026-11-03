@@ -50,7 +50,7 @@ export { readTeam, saveTeam, TEAM_FILE } from "./team/team.js";
 export { buildFreshSession, FRESH_SESSION_FILE, FRESH_SESSION_LAUNCH_TEXT } from "./team/fresh-session.js";
 export type { FreshSession, FreshSessionInput } from "./team/fresh-session.js";
 export type { Team, TeamMember, TeamSelection, ReadTeamResult, SaveTeamResult } from "./team/team.js";
-export { buildHandoff, HANDOFF_FILE } from "./team/handoff.js";
+export { buildHandoff, HANDOFF_FILE, startSteps } from "./team/handoff.js";
 export type { Handoff, HandoffInput, HandoffTask } from "./team/handoff.js";
 
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES, STACK_ADR_PHASES, OPTIONAL_PHASES } from "./generated/contract.js";

@@ -7,7 +7,7 @@
  * Task titles and the project name come from memory written by models and people, and the result
  * is read by other AI tools as instructions, so they are kept to one short line each.
  */
-import type { State } from "../generated/types.js";
+import type { State, Team } from "../generated/types.js";
 import { MEMORY_DIR } from "../constants.js";
 
 export type HandoffTask = State["tasks"][number];
@@ -30,6 +30,10 @@ export interface HandoffInput {
   state: State;
   /** The text of .agents/summary.md, or null when it does not exist yet. */
   summary: string | null;
+  /** The person's tools (D): with tasks assigned to them, each tool is pointed at its own. */
+  team?: Team["members"];
+  /** The tool this handoff is for (D). */
+  toolId?: string;
 }
 
 export interface Handoff {
@@ -48,14 +52,59 @@ function pickNextTask(tasks: State["tasks"]): HandoffTask | null {
   return tasks.find((t) => t.status === "in_progress") ?? tasks.find((t) => t.status !== "done") ?? null;
 }
 
+/** Who does what (D): every task given to a tool, as one short line each. */
+function splitLines(tasks: State["tasks"], team: Team["members"]): string[] {
+  const name = (id: string) => oneLine(team.find((m) => m.toolId === id)?.name ?? id);
+  return tasks
+    .filter((t) => t.assignedTool)
+    .map((t) => `- ${t.id}: ${oneLine(t.title)}: ${name(t.assignedTool!)}${t.assignedModel ? `, with ${oneLine(t.assignedModel)}` : ""}${t.status === "done" ? " (done)" : ""}`);
+}
+
+/**
+ * How the person starts work in a tool, step by step (D, NTU-1), by what the tool can do. No tool
+ * is named in the steps beyond the one the person chose.
+ */
+export function startSteps(level: 1 | 2 | 3, toolName: string, model?: string): string[] {
+  const tool = oneLine(toolName);
+  const pick = model ? `Choose the model ${oneLine(model)} in ${tool}'s model picker.` : `Choose the model you want to use in ${tool}.`;
+  if (level === 3) {
+    return [
+      `Open the project folder in ${tool} (it may already be open).`,
+      `Open ${tool}'s AI chat or agent panel. If ${tool} asks to allow the "omni-orchestrator" MCP server, allow it; if it does not list it, restart ${tool}.`,
+      pick,
+      `Type: "Call get_context from omni-orchestrator, then start my next task." The AI loads the project memory and its task.`,
+      "When it says the task is done, come back here: the task list and the phase history update by themselves.",
+    ];
+  }
+  if (level === 2) {
+    return [
+      `Open the project folder in ${tool} (it may already be open).`,
+      `Open ${tool}'s AI chat or agent panel.`,
+      pick,
+      `Type: "Read AGENTS.md and start the next task given to ${tool}." The AI reads the project memory from the files.`,
+      "When it is done, ask it to record the result in the project memory as AGENTS.md says, then check it here.",
+    ];
+  }
+  return [
+    `Open ${tool} and start a new chat.`,
+    pick,
+    "Copy the handoff package below and paste it into the chat as your first message.",
+    `${tool} cannot change the project's files: copy its changes into your project (or ask a tool that can), and paste the test output back.`,
+    "Record what was done here, or with a tool connected to the project.",
+  ];
+}
+
 function taskLine(task: HandoffTask | null): string {
   if (!task) return "No task is open. Ask the person what to do next before changing code.";
   const kinds = task.kinds && task.kinds.length > 0 ? ` (${task.kinds.join(", ")})` : "";
   return `${task.id}: ${oneLine(task.title)}${kinds}`;
 }
 
-export function buildHandoff({ projectName, state, summary }: HandoffInput): Handoff {
-  const nextTask = pickNextTask(state.tasks);
+export function buildHandoff({ projectName, state, summary, team = [], toolId }: HandoffInput): Handoff {
+  const assigned = state.tasks.some((t) => t.assignedTool);
+  const mine = assigned && toolId ? state.tasks.filter((t) => t.assignedTool === toolId) : state.tasks;
+  const nextTask = pickNextTask(mine);
+  const split = assigned ? splitLines(state.tasks, team) : [];
   const name = oneLine(projectName);
   const phase = state.currentPhase ?? "not started";
   const rules = [
@@ -74,7 +123,11 @@ export function buildHandoff({ projectName, state, summary }: HandoffInput): Han
     `2. Otherwise read \`${MEMORY_DIR}/summary.md\` (where the project stands), \`${MEMORY_DIR}/lessons.md\` (corrections from the person) and the approved documents in \`docs/planning/\`.`,
     "",
     `Current phase: ${phase}`,
-    `Next task: ${taskLine(nextTask)}`,
+    // AGENTS.md is shared by every tool: with tasks given to tools it lists the whole split, and
+    // each tool finds its own tasks there (D).
+    ...(split.length
+      ? ["", "Who does what (work only on the tasks given to your tool; if you are not sure which tool you are, ask the person):", ...split]
+      : [`Next task: ${taskLine(nextTask)}`]),
     "",
     "Rules:",
     ...rules,
@@ -87,6 +140,7 @@ export function buildHandoff({ projectName, state, summary }: HandoffInput): Han
     "",
     `Current phase: ${phase}`,
     `Next task: ${taskLine(nextTask)}`,
+    ...(assigned && toolId ? [`Your tasks: ${mine.map((t) => t.id).join(", ") || "none yet"}`] : []),
     "",
     "## Where the project stands",
     "",

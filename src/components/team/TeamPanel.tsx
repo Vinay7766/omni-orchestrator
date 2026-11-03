@@ -101,6 +101,17 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns; handOffReady?: bo
     if (result.ok) onSaved?.();
   };
 
+  /** One click for the whole team (D): each tool in turn, each with its own result and steps. */
+  const handOffAll = async () => {
+    if (!team) return;
+    setBusy(true);
+    for (const m of team.members) {
+      const outcome = await fns.handOff(root, m.toolId);
+      setOutcomes((o) => ({ ...o, [m.toolId]: outcome }));
+    }
+    setBusy(false);
+  };
+
   const handOff = async (toolId: string) => {
     setBusy(true);
     const outcome = await fns.handOff(root, toolId);
@@ -186,7 +197,20 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns; handOffReady?: bo
       )}
       {team && team.members.length > 0 && handOffReady && (
         <div className="space-y-3 border-t border-zinc-800 pt-3">
-          <h4 className="text-xs font-semibold text-zinc-300">Hand off the build</h4>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-zinc-300">Hand off the build</h4>
+            {team.members.length > 1 && (
+              <button
+                type="button"
+                onClick={() => void handOffAll()}
+                disabled={busy}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              >
+                Set up and open all
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500">Each tool gets the whole plan and its own tasks; the steps to start appear under each one.</p>
           {team.members.map((m) => (
             <div key={m.toolId} className="space-y-2">
               <button

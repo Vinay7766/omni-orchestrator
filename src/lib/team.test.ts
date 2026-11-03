@@ -87,6 +87,18 @@ describe("team (app)", () => {
     expect(sent.agentsBlock).toContain("T-1: Shopping list data model");
   });
 
+  it("returns the step-by-step guide for the tool, naming the model its next task asks for (D)", async () => {
+    await project(true);
+    const store = await open();
+    await new TaskEngine(store).create(agent, { taskId: "T-2", title: "List screen", kinds: ["interface"], assignedTool: "example-editor", assignedModel: "made-up-large", assignmentReason: "r" });
+    await saveTeamSelection(invoke, root, [{ ...editor, models: ["made-up-large"] }]);
+    const r = await handOffTool(invoke, root, "example-editor");
+    expect(r.ok && r.steps?.join(" ")).toContain("made-up-large");
+    expect(r.ok && r.steps?.join(" ")).toMatch(/get_context/);
+    const sent = calls.find((c) => c.command === "hand_off_tool")!.args.request as { agentsBlock: string };
+    expect(sent.agentsBlock).toContain("T-2: List screen");
+  });
+
   it("saves the handoff package for a chat-only tool and returns it to show", async () => {
     await project(true);
     await saveTeamSelection(invoke, root, [chat]);

@@ -38,6 +38,18 @@ export const HandoffResultView: React.FC<{ name: string; outcome: HandOffOutcome
         </ul>
       )}
       {result.mcp && <p className="break-words">{result.mcp.message}</p>}
+      {outcome.steps && outcome.steps.length > 0 && (
+        <div className="rounded-lg border border-indigo-900/60 bg-indigo-950/20 p-3">
+          <p className="font-medium text-indigo-200 mb-1.5">How to start in {name}</p>
+          <ol aria-label={`How to start in ${name}`} className="list-decimal pl-5 space-y-1 text-zinc-300">
+            {outcome.steps.map((step) => (
+              <li key={step} className="break-words">
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {result.mcpProblem && (
         <div className="flex gap-2 text-amber-300">
           <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />

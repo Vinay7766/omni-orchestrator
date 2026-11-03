@@ -140,4 +140,14 @@ describe("TeamPanel", () => {
     expect(screen.queryByRole("button", { name: /set up and open example editor/i })).toBeNull();
     expect(screen.getByText(/once the task list is approved/i)).toBeDefined();
   });
+
+  it("sets up and opens every tool in the team with one click, each with its own result (D)", async () => {
+    const two = { ...SAVED, members: [...SAVED.members, { toolId: "zeta", name: "Zeta", capability: 2 as const, confirmedByPerson: true, addedAt: "2026-11-03T10:00:00Z" }] };
+    const fns = await setup({ load: vi.fn().mockResolvedValue({ ok: true, team: two }) });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /set up and open all/i }));
+    });
+    expect(fns.handOff.mock.calls.map((c: unknown[]) => c[1])).toEqual(["example-editor", "zeta"]);
+    expect(screen.getByRole("region", { name: "Handoff to Zeta" })).toBeDefined();
+  });
 });

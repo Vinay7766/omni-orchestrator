@@ -16,12 +16,23 @@ import {
   type Invoke,
   type Team,
   type TeamSelection,
+  startSteps,
 } from "@omni/core";
 import { DESKTOP_PERSON } from "./decisions";
 import type { DiscoveredTool, HandoffResult } from "./types";
 
 type Failure = { ok: false; error: string };
-export type HandOffOutcome = { ok: true; result: HandoffResult; handoffPackage?: string; buildStarted: boolean; buildProblem?: string } | Failure;
+export type HandOffOutcome =
+  | {
+      ok: true;
+      result: HandoffResult;
+      handoffPackage?: string;
+      buildStarted: boolean;
+      buildProblem?: string;
+      /** How the person starts work in this tool, step by step (D). */
+      steps?: string[];
+    }
+  | Failure;
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : typeof error === "string" ? error : String(error));
 
@@ -72,7 +83,15 @@ export async function handOffTool(invoke: Invoke, rootIn: string, toolId: string
     if (!member) return { ok: false, error: `"${toolId}" is not one of the tools selected for this project. Select it and save first.` };
 
     const state = await store.readState();
-    const handoff = buildHandoff({ projectName: store.readProject().name, state, summary: await store.readFile("summary.md") });
+    const handoff = buildHandoff({
+      projectName: store.readProject().name,
+      state,
+      summary: await store.readFile("summary.md"),
+      team: team.team?.members ?? [],
+      toolId,
+    });
+    const model = handoff.nextTask?.assignedModel ?? member.models?.[0];
+    const steps = startSteps(member.capability as 1 | 2 | 3, member.name, model);
     if (member.capability === 1) await store.writeFile(HANDOFF_FILE, handoff.package);
     const result = (await invoke("hand_off_tool", {
       request: { projectPath: root, toolId, agentsBlock: handoff.agentsBlock },
@@ -86,7 +105,14 @@ export async function handOffTool(invoke: Invoke, rootIn: string, toolId: string
       buildStarted = started.ok;
       if (!started.ok) buildProblem = `The build phase could not be started: ${started.issues.map((i) => i.message).join("; ")}`;
     }
-    return { ok: true, result, buildStarted, ...(buildProblem ? { buildProblem } : {}), ...(member.capability === 1 ? { handoffPackage: handoff.package } : {}) };
+    return {
+      ok: true,
+      result,
+      buildStarted,
+      steps,
+      ...(buildProblem ? { buildProblem } : {}),
+      ...(member.capability === 1 ? { handoffPackage: handoff.package } : {}),
+    };
   } catch (error) {
     return { ok: false, error: reason(error) };
   }
