@@ -69,6 +69,14 @@ describe("validateMemoryFile: rules the schemas cannot express", () => {
     expect(validateMemoryFile("skills-config", good).ok).toBe(true);
   });
 
+  it("rejects a team that lists the same tool twice", () => {
+    const team = fixture("team", "valid", "two-members.json");
+    const twice = { ...team, members: [team.members[0], { ...team.members[0], capability: 2 }] };
+    const result = validateMemoryFile("team", twice);
+    expect(!result.ok && result.issues.some((i) => i.path === "/members/1/toolId")).toBe(true);
+    expect(validateMemoryFile("team", team).ok).toBe(true);
+  });
+
   it("rejects a design note whose chosen approach is not one of its approaches", () => {
     const note = { ...fixture("design-note", "valid", "two-approaches.json"), chosen: "not-listed" };
     const result = validateMemoryFile("design-note", note);

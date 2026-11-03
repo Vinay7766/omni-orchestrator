@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "updatedAt": "2026-11-03T10:00:00Z",
+  "members": [
+    { "toolId": "example-editor", "name": "Example Editor", "capability": 3, "confirmedByPerson": false, "addedAt": "2026-11-03T10:00:00Z" },
+    { "toolId": "chat-site", "name": "Chat Site", "capability": 1, "confirmedByPerson": true, "addedAt": "2026-11-03T10:00:00Z" }
+  ]
+}

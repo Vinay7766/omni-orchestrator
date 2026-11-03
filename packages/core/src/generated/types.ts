@@ -147,6 +147,7 @@ export interface MemoryFileTypes {
   "skill-catalog": SkillCatalog;
   "skills-config": SkillsConfig;
   state: State;
+  team: Team;
 }
 /**
  * Optional known details for one AI tool (TOOL-5): packages/core/adapters/<id>.json. Discovery and integration work without any adapter; an adapter only adds details checked against the tool's own docs.
@@ -380,6 +381,38 @@ export interface State {
     kinds?: CommonWorkKinds;
   }[];
   lastEventId: CommonId | null;
+}
+/**
+ * .agents/team.json: the AI tools the person selected for this project (TOOL-2, TEAM-1), each at the capability level it is set up with. Written only for the person's own selection.
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "Team".
+ */
+export interface Team {
+  formatVersion: CommonFormatVersion;
+  updatedAt: CommonTimestamp;
+  /**
+   * Selected tools, at most one entry per tool id (checked in code). Empty when the person has selected none.
+   */
+  members: {
+    /**
+     * The id tool discovery gives this tool.
+     */
+    toolId: string;
+    /**
+     * The name discovery found in the tool's own files (untrusted text, length capped).
+     */
+    name: string;
+    /**
+     * 3 = MCP, 2 = reads instruction files, 1 = chat only (handoff package).
+     */
+    capability: number;
+    /**
+     * True when the person chose the level themselves because discovery could not tell (or found a lower one).
+     */
+    confirmedByPerson: boolean;
+    addedAt: CommonTimestamp;
+  }[];
 }
 /**
  * A skill the agent followed, with evidence (SKL-8). A name alone is not enough.

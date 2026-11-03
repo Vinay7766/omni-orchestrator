@@ -38,6 +38,8 @@ export { resolvePhaseSkills } from "./skills/resolve.js";
 export type { CatalogEntry, SkillSource, ResolvedSkill } from "./skills/resolve.js";
 export { TaskEngine, checkTaskAction, designNotePath } from "./engine/tasks.js";
 export type { TaskAction, TaskResult } from "./engine/tasks.js";
+export { readTeam, saveTeam, TEAM_FILE } from "./team/team.js";
+export type { Team, TeamMember, TeamSelection, ReadTeamResult, SaveTeamResult } from "./team/team.js";
 
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES, STACK_ADR_PHASES, OPTIONAL_PHASES } from "./generated/contract.js";
 export type * from "./generated/types.js";

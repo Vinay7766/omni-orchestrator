@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omni:schema:team",
+  "title": "Team",
+  "description": ".agents/team.json: the AI tools the person selected for this project (TOOL-2, TEAM-1), each at the capability level it is set up with. Written only for the person's own selection.",
+  "type": "object",
+  "required": ["formatVersion", "updatedAt", "members"],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": { "$ref": "urn:omni:schema:common#/$defs/formatVersion" },
+    "updatedAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" },
+    "members": {
+      "description": "Selected tools, at most one entry per tool id (checked in code). Empty when the person has selected none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["toolId", "name", "capability", "confirmedByPerson", "addedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "toolId": {
+            "description": "The id tool discovery gives this tool.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "name": { "description": "The name discovery found in the tool's own files (untrusted text, length capped).", "type": "string", "minLength": 1, "maxLength": 200 },
+          "capability": {
+            "description": "3 = MCP, 2 = reads instruction files, 1 = chat only (handoff package).",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "confirmedByPerson": {
+            "description": "True when the person chose the level themselves because discovery could not tell (or found a lower one).",
+            "type": "boolean"
+          },
+          "addedAt": { "$ref": "urn:omni:schema:common#/$defs/timestamp" }
+        }
+      }
+    }
+  }
+}

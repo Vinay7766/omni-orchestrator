@@ -1,0 +1,5 @@
+{
+  "formatVersion": 1,
+  "updatedAt": "2026-11-03T10:00:00Z",
+  "members": [{ "toolId": "Example-Editor", "name": "Example Editor", "capability": 2, "confirmedByPerson": false, "addedAt": "2026-11-03T10:00:00Z" }]
+}

@@ -78,6 +78,12 @@ function semanticIssues(name: SchemaName, data: Record<string, unknown>): Valida
         ),
       );
     }
+    case "team": {
+      const ids = ((data.members as { toolId: string }[]) ?? []).map((m) => m.toolId);
+      return ids.flatMap((id, i) =>
+        ids.indexOf(id) < i ? [{ path: `/members/${i}/toolId`, message: `tool "${id}" is already in the team` }] : [],
+      );
+    }
     case "design-note": {
       const names = ((data.approaches as { name: string }[]) ?? []).map((a) => a.name);
       return names.includes(data.chosen as string)
