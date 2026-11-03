@@ -11,17 +11,37 @@ const label = "block text-xs font-medium text-zinc-300 mb-1";
  * E5 (PLAN-1): the person types the idea, names the project and chooses where it goes. The
  * project is created with the idea saved in it; the planning phases then run from the project.
  */
+/** What the person has typed so far. Kept by the caller, so it survives switching areas. */
+export interface IdeaDraft {
+  idea: string;
+  name: string;
+  /** Undefined until the person changes it: the default folder is shown. */
+  parent?: string;
+}
+
 export const StartFromIdea: React.FC<{
   defaultParent: string;
   providerReady: boolean;
   create: (input: { parent: string; name: string; idea: string }) => Promise<CreateResult>;
   onCreated: (root: string, parent: string) => void;
   onOpenSettings: () => void;
-}> = ({ defaultParent, providerReady, create, onCreated, onOpenSettings }) => {
+  /** With both, the form's text lives with the caller (tester feedback: it was lost on leaving). */
+  draft?: IdeaDraft;
+  onDraftChange?: (draft: IdeaDraft) => void;
+}> = ({ defaultParent, providerReady, create, onCreated, onOpenSettings, draft, onDraftChange }) => {
   const id = useId();
-  const [idea, setIdea] = useState("");
-  const [name, setName] = useState("");
-  const [parent, setParent] = useState(defaultParent);
+  const [local, setLocal] = useState<IdeaDraft>({ idea: "", name: "" });
+  const current = draft && onDraftChange ? draft : local;
+  const update = (change: Partial<IdeaDraft>) => {
+    const next = { ...current, ...change };
+    if (draft && onDraftChange) onDraftChange(next);
+    else setLocal(next);
+  };
+  const { idea, name } = current;
+  const parent = current.parent ?? defaultParent;
+  const setIdea = (value: string) => update({ idea: value });
+  const setName = (value: string) => update({ name: value });
+  const setParent = (value: string) => update({ parent: value });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

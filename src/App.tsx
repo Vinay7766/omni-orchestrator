@@ -20,13 +20,14 @@ import { ProjectsView } from "./components/projects/ProjectsView";
 import { AreaNav, type Area } from "./components/layout/AreaNav";
 import { SetupGuide, type SetupChecks } from "./components/setup/SetupGuide";
 import { discoverTools } from "./lib/team";
-import { StartFromIdea } from "./components/planning/StartFromIdea";
+import { StartFromIdea, type IdeaDraft } from "./components/planning/StartFromIdea";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
 import { runPhase } from "./lib/phase-runner";
 import { approveTaskList, proposeTasks, readTaskProposal } from "./lib/task-proposal";
 import type { PlanningFns } from "./components/projects/ProjectDetail";
 
 const tauri = (command: string, args?: Record<string, unknown>) => invoke(command, args);
+const EMPTY_IDEA_DRAFT: IdeaDraft = { idea: "", name: "" };
 
 /** The setup guide's checks on this computer (E9, NTU-4). */
 const setupChecks: SetupChecks = {
@@ -40,6 +41,7 @@ export function App() {
   const [area, setArea] = useState<Area>("projects");
   // A project to open when the Projects area shows (one just created from an idea).
   const [openRoot, setOpenRoot] = useState<string | undefined>(undefined);
+  const [ideaDraft, setIdeaDraft] = useState<IdeaDraft>(EMPTY_IDEA_DRAFT);
   // Pitch mode's conversation (the idea area is a form, not a chat, since E5).
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingTrack, setLoadingTrack] = useState<TrackType | null>(null);
@@ -238,7 +240,12 @@ export function App() {
                   defaultParent={defaultProjectPath}
                   providerReady={hasProvider(byokConfig)}
                   create={(input) => createProjectFromIdea(tauri, input)}
-                  onCreated={(root, parent) => void handleProjectCreated(root, parent)}
+                  onCreated={(root, parent) => {
+                    setIdeaDraft(EMPTY_IDEA_DRAFT);
+                    void handleProjectCreated(root, parent);
+                  }}
+                  draft={ideaDraft}
+                  onDraftChange={setIdeaDraft}
                   onOpenSettings={() => setArea("settings")}
                 />
               </ErrorBoundary>

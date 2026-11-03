@@ -118,6 +118,21 @@ describe("OmniOrchestrator App", () => {
     expect(nav().getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
   });
 
+  it("keeps what the person typed in the idea form when they switch areas and come back (tester feedback)", async () => {
+    await renderApp();
+    await openArea("Start from an idea");
+    fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A made-up alarm app" } });
+    fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Made-up alarm" } });
+    fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: "C:/somewhere/else" } });
+
+    await openArea("Skills");
+    await openArea("Start from an idea");
+
+    expect((screen.getByLabelText(/your idea/i) as HTMLTextAreaElement).value).toBe("A made-up alarm app");
+    expect((screen.getByLabelText(/project name/i) as HTMLInputElement).value).toBe("Made-up alarm");
+    expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe("C:/somewhere/else");
+  });
+
   it("creates a project from an idea, adds its folder to Projects and opens it", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-idea-")).replace(/\\/g, "/");
     try {
@@ -149,6 +164,11 @@ describe("OmniOrchestrator App", () => {
       expect(readFileSync(`${base}/orbit/docs/planning/idea.md`, "utf8")).toContain("A shared shopping list");
       expect(saved).toEqual([{ settings: { ...SETTINGS, projectFolders: ["C:/work", base] } }]);
       expect(nav().getByRole("button", { name: "Projects" }).getAttribute("aria-current")).toBe("page");
+
+      // Once the project exists, the form starts empty again.
+      await openArea("Start from an idea");
+      expect((screen.getByLabelText(/your idea/i) as HTMLTextAreaElement).value).toBe("");
+      expect((screen.getByLabelText(/project name/i) as HTMLInputElement).value).toBe("");
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
