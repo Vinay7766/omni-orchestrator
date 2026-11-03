@@ -9,10 +9,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { MemoryStore, type SkillSource } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { createServer } from "./server.js";
+import { closeServer, createServer, sessionRecorded } from "./server.js";
 
 const fs = createNodeFs();
 const agent = { kind: "agent" as const, tool: "made-up-agent" };
@@ -22,13 +23,19 @@ const FAKE_KEY = "sk" + "-ant-" + "api03-" + "Ab3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dF3h
 
 let root: string;
 let client: Client;
+const servers: McpServer[] = [];
 
 /** Connects a client that names itself however the attacker likes. */
 async function connect(name: string) {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  await createServer({ fs, skills, startDir: root }).connect(serverSide);
+  const server = createServer({ fs, skills, startDir: root });
+  servers.push(server);
+  await server.connect(serverSide);
   client = new Client({ name, version: "0.0.1" });
   await client.connect(clientSide);
+  // The session record is written in the background after connecting; wait so the tests see
+  // a settled log (CI on macOS saw it land after the first tool call).
+  await sessionRecorded(server);
 }
 
 const logged = () =>
@@ -49,6 +56,8 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await client?.close();
+  // Wait for each server's session end to be written before the folder is deleted.
+  await Promise.all(servers.splice(0).map((s) => closeServer(s)));
   rmSync(root, { recursive: true, force: true });
 });
 

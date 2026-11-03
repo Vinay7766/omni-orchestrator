@@ -3,10 +3,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { MemoryStore, type CatalogEntry, type SkillSource } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { closeServer, createServer } from "./server.js";
+import { closeServer, createServer, sessionRecorded } from "./server.js";
 
 const fs = createNodeFs();
 const agent = { kind: "agent" as const, tool: "made-up-agent" };
@@ -34,12 +35,18 @@ const skills: SkillSource = {
 
 let root: string;
 let client: Client;
+const servers: McpServer[] = [];
 
 async function connect(startDir: string) {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  await createServer({ fs, skills, startDir }).connect(serverSide);
+  const server = createServer({ fs, skills, startDir });
+  servers.push(server);
+  await server.connect(serverSide);
   client = new Client({ name: "made-up-client", version: "0.0.1" });
   await client.connect(clientSide);
+  // The session record is written in the background after connecting; wait so the tests see
+  // a settled log (CI on macOS saw it land after the first tool call).
+  await sessionRecorded(server);
 }
 
 beforeEach(async () => {
@@ -59,6 +66,8 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await client?.close();
+  // Wait for each server's session end to be written before the folder is deleted.
+  await Promise.all(servers.splice(0).map((s) => closeServer(s)));
   rmSync(root, { recursive: true, force: true });
 });
 

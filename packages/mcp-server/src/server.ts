@@ -382,7 +382,10 @@ function recordSession(server: McpServer, deps: ContextDeps): void {
       report("recorded", error instanceof Error ? error.message : String(error));
       return null;
     });
+    void session.then(() => markStarted());
   };
+  let markStarted!: () => void;
+  sessionStarts.set(server, new Promise<void>((resolve) => (markStarted = resolve)));
 
   let ending: Promise<void> = Promise.resolve();
   const previous = server.server.onclose;
@@ -400,6 +403,14 @@ function recordSession(server: McpServer, deps: ContextDeps): void {
 }
 
 const sessionEnds = new WeakMap<McpServer, () => Promise<void>>();
+const sessionStarts = new WeakMap<McpServer, Promise<void>>();
+
+/** Resolves once the connected tool's session is recorded (or found not to need a record). The
+ * record is written in the background after the tool connects; callers that need it in memory
+ * before the tool's first call (tests, embedders) wait here. */
+export function sessionRecorded(server: McpServer): Promise<void> {
+  return sessionStarts.get(server) ?? Promise.resolve();
+}
 
 /** Closes the connection and resolves once the session's end is recorded, so the process can exit. */
 export async function closeServer(server: McpServer): Promise<void> {
