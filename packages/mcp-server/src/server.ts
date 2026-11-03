@@ -164,6 +164,12 @@ export function createServer(deps: ContextDeps): McpServer {
               taskId: z.string().regex(/^[A-Za-z0-9._:-]{1,200}$/).describe("Short id, e.g. T-1."),
               title: z.string().min(1).max(300),
               requirements: z.array(z.string().min(1)).optional().describe("Requirement ids this task delivers."),
+              kinds: z
+                .array(z.string().regex(/^[a-z][a-z0-9-]{0,39}$/))
+                .min(1)
+                .max(8)
+                .optional()
+                .describe("Kinds of work it involves, as short lowercase tags (for example backend, interface, tests)."),
             }),
           )
           .min(1),

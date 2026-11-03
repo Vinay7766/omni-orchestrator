@@ -88,6 +88,20 @@ describe("create_tasks", () => {
     expect(await taskIds()).toEqual([]);
   });
 
+  it("keeps the kinds of work a task involves (P-E5-08)", async () => {
+    const result = await createTasks(deps(), actor, { tasks: [{ taskId: "T-1", title: "Parser", kinds: ["backend", "tests"] }] });
+    if (!result.ok) throw new Error(result.message);
+    expect((await store.readState()).tasks[0].kinds).toEqual(["backend", "tests"]);
+  });
+
+  it("creates nothing when a later task has kinds that are not short tags", async () => {
+    for (const kinds of [["Back End"], [], Array.from({ length: 9 }, (_, i) => `k${i}`), ["x".repeat(41)]]) {
+      const result = await createTasks(deps(), actor, { tasks: [{ taskId: "T-1", title: "Fine" }, { taskId: "T-2", title: "Tagged", kinds }] });
+      expect(result.ok, JSON.stringify(kinds).slice(0, 40)).toBe(false);
+    }
+    expect(await taskIds()).toEqual([]);
+  });
+
   it("creates nothing while the phase is under review", async () => {
     await store.appendEvent({ type: "memory_updated", actor, payload: { files: [".agents/summary.md"] } });
     await store.appendEvent({ type: "phase_submitted", actor, payload: { phase: "idea-review", documents: ["a.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "u.md" } });

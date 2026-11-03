@@ -143,6 +143,16 @@ describe("MCP server", () => {
     expect(trivial.structuredContent).toEqual({ taskId: "T-2", status: "designed" });
   });
 
+  it("keeps the kinds of work sent with create_tasks through MCP, and refuses ones that are not tags", async () => {
+    await connect(root);
+    await client.callTool({ name: "create_tasks", arguments: { tasks: [{ taskId: "T-2", title: "Screens", kinds: ["interface", "tests"] }] } });
+    const opened = await MemoryStore.open(createNodeFs(), root);
+    if (!opened.ok) throw new Error("memory unreadable");
+    expect((await opened.store.readState()).tasks.find((t) => t.id === "T-2")?.kinds).toEqual(["interface", "tests"]);
+    const bad = await client.callTool({ name: "create_tasks", arguments: { tasks: [{ taskId: "T-3", title: "Data", kinds: ["Back End"] }] } });
+    expect(bad.isError).toBe(true);
+  });
+
   it("start_task first hands over the declared skills, through MCP", async () => {
     await connect(root);
     await client.callTool({ name: "create_tasks", arguments: { tasks: [{ taskId: "T-2", title: "Screens" }] } });

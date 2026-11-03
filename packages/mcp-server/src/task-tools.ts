@@ -9,11 +9,16 @@ const messages = (issues: { path: string; message: string }[]) =>
 
 /** Same rules as the schemas' id and task title, checked up front so a batch is all or nothing. */
 const TASK_ID = /^[A-Za-z0-9._:-]{1,200}$/;
+/** The schemas' workKinds: 1 to 8 different short lowercase tags. */
+const KIND = /^[a-z][a-z0-9-]{0,39}$/;
+const validKinds = (kinds: string[]) => kinds.length >= 1 && kinds.length <= 8 && new Set(kinds).size === kinds.length && kinds.every((k) => KIND.test(k));
 
 export interface NewTask {
   taskId: string;
   title: string;
   requirements?: string[];
+  /** The kinds of work it involves (free-text tags), for assigning it to the tool that fits best. */
+  kinds?: string[];
 }
 
 /** Creates tasks in order. The whole batch is checked first, so a rejected batch creates nothing. */
@@ -35,6 +40,9 @@ export async function createTasks(
     }
     if (task.title.trim() === "" || task.title.length > 300) {
       return { ok: false, message: `task "${task.taskId}" needs a title of 1 to 300 characters (nothing was created)` };
+    }
+    if (task.kinds !== undefined && !validKinds(task.kinds)) {
+      return { ok: false, message: `task "${task.taskId}" needs 1 to 8 different kinds, each a short lowercase tag such as backend or tests (nothing was created)` };
     }
     const check = checkTaskAction(planned, events, { kind: "create", ...task });
     if (!check.ok) return { ok: false, message: `${messages(check.issues)} (nothing was created)` };
