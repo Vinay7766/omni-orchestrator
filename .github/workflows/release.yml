@@ -59,7 +59,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'OmniOrchestrator v__VERSION__'
-          releaseBody: 'See the release assets below for Windows (.exe/.msi), macOS (.dmg), and Linux (.AppImage/.deb).'
+          releaseBody: 'Private tester release. Read the notes first: https://github.com/Vinay7766/omni-orchestrator/blob/v__VERSION__/docs/releases/v__VERSION__.md (known limits: approvals can be forged by a local program, installers are unsigned). Installers below for Windows (.exe/.msi), macOS (.dmg) and Linux (.AppImage/.deb).'
           releaseDraft: true
-          prerelease: false
+          prerelease: true
           args: ${{ matrix.args }}
