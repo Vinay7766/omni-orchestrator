@@ -87,3 +87,39 @@ into PROBLEMS.md under F2 with a severity. F3 (README) may only claim what this 
 | # | What happened | Severity | Step |
 |---|---------------|----------|------|
 | | | | |
+
+## Results: owner's run, 2026-11-03
+
+Run by the owner on Windows with two AI tools from different vendors, on `v0.1-pending-fixes`
+(before the tester-feedback fixes H3-H7 were added). Reported per area:
+
+| Area | Checks | Result |
+|------|--------|--------|
+| Planning with a real model | 1.1-1.6, 1.8 | pass |
+| Review summary at the gate (C18) | 1.3, 1.4 | pass |
+| No "Approved as a batch" label after one-by-one approvals | 1.7 | pass |
+| Layout, keyboard, screen reader | 2.1-2.3 | done (Narrator steps given; reported done) |
+| Skills switch and edit stay as saved | 2.4 | pass |
+| Handoff, AGENTS.md block | 3.1-3.5 | handoff pass; the "no AI attribution" line (3.3) was **not seen**: the project was handed off before the C19 change. To recheck on a fresh handoff |
+| Tool A works, tool B continues from memory alone (F2's core) | 4.1-4.5 | **pass** |
+| No key in events.jsonl, commits authored by the person | 4.3, 4.6 | pass |
+| Live updates between app and extension | 5.1-5.5 | **not run yet** |
+| Session tree and fresh sessions | 6.1-6.4 | pass |
+
+Still open for F2 to be complete:
+1. Section 5 (live updates between the app and the extension, P-E7-01).
+2. Check 3.3 again, on a project handed off with the current code.
+3. Added after this run (tester feedback, H3-H7), seen in tests only so far: your own skills reaching
+   a real tool, the chat-style start, the document conversation, the computer check, tools and
+   models before the task list with "Set up and open all", and the next phase in the editor's chat.
+   Check them in the same sitting as item 1.
+
+### Tester feedback from this run (all addressed in v0.1 except H8)
+
+Form text lost on switching areas (fixed, H1); request changes needed a second click (H2); no way
+to add skills, and skill edits did not reach the IDE tools (H3); no way to answer a document's
+questions, and no conversation before planning (H4); nobody checked whether the person needed help
+with the tools (H5); tools and models should come before the task list, with tasks split by fit
+and a guide to start (H6); the next phase should open in the editor's chat (H7); pitch mode and the
+overall UI/UX need work (H8, deferred by the owner); why files are written into the project (answered;
+no change, by the owner's decision).
