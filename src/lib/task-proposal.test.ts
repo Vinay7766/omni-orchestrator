@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MemoryStore, PhaseEngine, type Invoke } from "@omni/core";
+import { MemoryStore, PhaseEngine, saveTeam, type Invoke } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { approveTaskList, parseTaskProposal, proposeTasks, readTaskProposal } from "./task-proposal";
 import { createProjectFromIdea } from "./planning";
@@ -161,6 +161,55 @@ describe("proposing and approving the task list", () => {
     expect(approval.type).toBe("decision_recorded");
     expect(approval.actor).toEqual(DESKTOP_PERSON);
     expect(approval.refs).toEqual({ files: ["docs/planning/tasks.md"] });
+  });
+
+  // D: the task list is built around the person's tools and the models they use in each.
+  const team = async (members: { toolId: string; name: string; capability: 1 | 2 | 3; models?: string[] }[]) => {
+    const saved = await saveTeam({ store: await open(), fs: node, root }, DESKTOP_PERSON, members.map((m) => ({ ...m, confirmedByPerson: false })));
+    if (!saved.ok) throw new Error(saved.message);
+  };
+  const ASSIGNED = [
+    { title: "Shopping list data model", kinds: ["backend"], tool: "made-up-cli", model: "made-up-fast", reason: "Backend work suits the command-line agent." },
+    { title: "List screen", kinds: ["interface"], tool: "made-up-editor", model: "made-up-large", reason: "Interface work suits the editor's strongest model." },
+  ];
+
+  it("gives the model the person's tools and models, and keeps each task's tool, model and reason", async () => {
+    await team([
+      { toolId: "made-up-editor", name: "Made-up Editor", capability: 3, models: ["made-up-large"] },
+      { toolId: "made-up-cli", name: "Made-up CLI", capability: 2, models: ["made-up-fast"] },
+    ]);
+    reply = () => Promise.resolve({ text: proposal(ASSIGNED), provider: "ollama", model: "made-up-model" });
+    const r = await proposeTasks(invoke, root, { byok, skills: [breakdown] });
+    expect(r).toMatchObject({ ok: true });
+    expect(prompts[0]).toContain("made-up-editor");
+    expect(prompts[0]).toContain("made-up-large");
+    expect(prompts[0]).toMatch(/"tool"/);
+    const read = await readTaskProposal(invoke, root);
+    expect(read.ok && read.tasks[1]).toMatchObject({ assignedTool: "made-up-editor", assignedModel: "made-up-large", assignmentReason: "Interface work suits the editor's strongest model." });
+    expect(readFileSync(`${root}/docs/planning/tasks.md`, "utf8")).toContain("Made-up Editor");
+
+    await approveTaskList(invoke, root);
+    const tasks = (await (await open()).readState()).tasks;
+    expect(tasks.map((t) => [t.assignedTool, t.assignedModel])).toEqual([["made-up-cli", "made-up-fast"], ["made-up-editor", "made-up-large"]]);
+  });
+
+  it("refuses a list that gives a task to a tool or model outside the person's team", async () => {
+    await team([{ toolId: "made-up-editor", name: "Made-up Editor", capability: 3, models: ["made-up-large"] }]);
+    reply = () => Promise.resolve({ text: proposal([{ ...ASSIGNED[0], tool: "someone-elses-tool" }]), provider: "ollama", model: "made-up-model" });
+    const outside = await proposeTasks(invoke, root, { byok, skills: [breakdown] });
+    expect(outside).toMatchObject({ ok: false });
+    if (!outside.ok) expect(outside.error).toMatch(/someone-elses-tool/);
+    reply = () => Promise.resolve({ text: proposal([{ ...ASSIGNED[1], model: "a-model-not-listed" }]), provider: "ollama", model: "made-up-model" });
+    const model = await proposeTasks(invoke, root, { byok, skills: [breakdown] });
+    expect(model).toMatchObject({ ok: false });
+    if (!model.ok) expect(model.error).toMatch(/a-model-not-listed/);
+  });
+
+  it("accepts a task without a model for a tool the person listed no models for", async () => {
+    await team([{ toolId: "made-up-editor", name: "Made-up Editor", capability: 3 }]);
+    reply = () => Promise.resolve({ text: proposal([{ title: "List screen", kinds: ["interface"], tool: "made-up-editor", reason: "The only tool." }]), provider: "ollama", model: "made-up-model" });
+    const r = await proposeTasks(invoke, root, { byok, skills: [breakdown] });
+    expect(r).toMatchObject({ ok: true });
   });
 
   it("will not propose or approve once the project has tasks", async () => {

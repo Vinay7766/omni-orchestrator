@@ -78,6 +78,18 @@ export const TaskProposalPanel: React.FC<{
                   {t.requirements && <span>Requirements: {t.requirements.join(", ")}. </span>}
                   <span>Kinds: {t.kinds.join(", ")}</span>
                 </div>
+                {t.assignedTool && (
+                  <div className="mt-1 text-indigo-300">
+                    For <span className="font-medium">{t.assignedTool}</span>
+                    {t.assignedModel && (
+                      <>
+                        {" "}
+                        with <span className="font-medium">{t.assignedModel}</span>
+                      </>
+                    )}
+                    {t.assignmentReason && <span className="text-zinc-400">: {t.assignmentReason}</span>}
+                  </div>
+                )}
               </li>
             ))}
           </ol>

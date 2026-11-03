@@ -80,4 +80,17 @@ describe("TaskProposalPanel", () => {
     expect(screen.getByText(/task 2 has no title/)).toBeDefined();
     expect(screen.getByRole("button", { name: /write the task list/i })).toBeDefined();
   });
+
+  it("shows which tool and model each task is for, and why (D)", async () => {
+    await setup({
+      read: vi.fn().mockResolvedValue({
+        ...PROPOSAL,
+        tasks: [{ taskId: "T-1", title: "List screen", kinds: ["interface"], assignedTool: "made-up-editor", assignedModel: "made-up-large", assignmentReason: "Strong at interface work" }],
+      }),
+    });
+    const item = screen.getByText("List screen").closest("li")!;
+    expect(item.textContent).toContain("made-up-editor");
+    expect(item.textContent).toContain("made-up-large");
+    expect(item.textContent).toContain("Strong at interface work");
+  });
 });
