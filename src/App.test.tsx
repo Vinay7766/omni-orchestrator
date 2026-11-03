@@ -133,6 +133,46 @@ describe("OmniOrchestrator App", () => {
     expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe("C:/somewhere/else");
   });
 
+  it("talks the idea through with the person's model, then saves the conversation with the new project (C)", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-chat-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const prompts: string[] = [];
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      mockBackend({
+        get_default_project_path: () => Promise.resolve(base),
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434" }, keyStorage: { available: true } }),
+        save_app_settings: () => Promise.resolve(),
+        byok_complete: (args) => {
+          prompts.push((args as { request: { prompt: string } }).request.prompt);
+          return Promise.resolve({ text: "A list the whole family shares.\nREADY: A shared family shopping list", provider: "ollama", model: "made-up-model" });
+        },
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Send to the AI" }));
+      });
+      expect(await screen.findByText("A list the whole family shares.")).toBeDefined();
+      expect(prompts[0]).toContain("A shared shopping list");
+
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /start the phases/i }));
+      });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 10_000 });
+      const idea = readFileSync(`${base}/orbit/docs/planning/idea.md`, "utf8");
+      expect(idea).toContain("A shared family shopping list");
+      expect(idea).toContain("**AI:** A list the whole family shares.");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("creates a project from an idea, adds its folder to Projects and opens it", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-idea-")).replace(/\\/g, "/");
     try {

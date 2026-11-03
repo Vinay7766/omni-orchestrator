@@ -22,6 +22,7 @@ import { AreaNav, type Area } from "./components/layout/AreaNav";
 import { SetupGuide, type SetupChecks } from "./components/setup/SetupGuide";
 import { discoverTools } from "./lib/team";
 import { StartFromIdea, type IdeaDraft } from "./components/planning/StartFromIdea";
+import { chatTurn } from "./lib/idea-chat";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
 import { runPhase } from "./lib/phase-runner";
 import { approveTaskList, proposeTasks, readTaskProposal } from "./lib/task-proposal";
@@ -246,6 +247,9 @@ export function App() {
                   defaultParent={defaultProjectPath}
                   providerReady={hasProvider(byokConfig)}
                   create={(input) => createProjectFromIdea(tauri, input)}
+                  chat={(messages) =>
+                    chatTurn(tauri, byokConfig, { kind: "idea", messages, skill: skills.find((sk) => sk.id === "understand-intent" && sk.enabled)?.content })
+                  }
                   onCreated={(root, parent) => {
                     setIdeaDraft(EMPTY_IDEA_DRAFT);
                     void handleProjectCreated(root, parent);
