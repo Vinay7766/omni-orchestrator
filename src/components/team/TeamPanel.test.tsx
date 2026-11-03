@@ -15,7 +15,7 @@ const SAVED = {
 };
 const RESULT = { toolId: "example-editor", level: 3, files: ["AGENTS.md created."], mcp: null, mcpProblem: "The MCP server is not built yet.", launched: true, message: "Example Editor was opened with the project." };
 
-async function setup(over: Record<string, unknown> = {}) {
+async function setup(over: Record<string, unknown> = {}, props: { handOffReady?: boolean } = {}) {
   const fns = {
     discover: vi.fn().mockResolvedValue({ ok: true, tools: [EDITOR, CLI] }),
     load: vi.fn().mockResolvedValue({ ok: true, team: null }),
@@ -24,7 +24,7 @@ async function setup(over: Record<string, unknown> = {}) {
     ...over,
   };
   await act(async () => {
-    render(<TeamPanel root="/p" fns={fns} />);
+    render(<TeamPanel root="/p" fns={fns} {...props} />);
   });
   return fns;
 }
@@ -115,5 +115,29 @@ describe("TeamPanel", () => {
   it("says so when discovery fails instead of showing an empty list", async () => {
     await setup({ discover: vi.fn().mockResolvedValue({ ok: false, error: "registry unreadable" }) });
     expect(screen.getByRole("alert").textContent).toMatch(/registry unreadable/);
+  });
+
+  // D: the tools and the models used in each come first; the task list is built around them.
+  it("saves the models the person uses in each selected tool", async () => {
+    const fns = await setup();
+    fireEvent.click(checkbox(/Example Editor/));
+    fireEvent.change(screen.getByLabelText("Models you use in Example Editor"), { target: { value: "made-up-large, made-up-fast, made-up-large" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /save the selection/i }));
+    });
+    expect(fns.save).toHaveBeenCalledWith("/p", [
+      { toolId: "example-editor", name: "Example Editor", capability: 3, confirmedByPerson: false, models: ["made-up-large", "made-up-fast"] },
+    ]);
+  });
+
+  it("shows the saved models again", async () => {
+    await setup({ load: vi.fn().mockResolvedValue({ ok: true, team: { ...SAVED, members: [{ ...SAVED.members[0], models: ["made-up-large"] }] } }) });
+    expect((screen.getByLabelText("Models you use in Example Editor") as HTMLInputElement).value).toBe("made-up-large");
+  });
+
+  it("waits for the approved task list before handing off, and says so", async () => {
+    await setup({ load: vi.fn().mockResolvedValue({ ok: true, team: SAVED }) }, { handOffReady: false });
+    expect(screen.queryByRole("button", { name: /set up and open example editor/i })).toBeNull();
+    expect(screen.getByText(/once the task list is approved/i)).toBeDefined();
   });
 });

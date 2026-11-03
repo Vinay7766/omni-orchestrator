@@ -31,17 +31,23 @@ export interface PlanningFns {
   saveDiscussion?: (root: string, phase: string, messages: ChatMessage[]) => Promise<void>;
 }
 
-/** The architecture is approved, the build is the next phase, and no tasks exist yet. */
-function wantsTaskList(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
-  const architecture = detail.history.find((e) => e.phase === "architecture");
-  const next = detail.history.find((e) => e.isNext);
-  return architecture?.status === "approved" && next?.phase === "build" && detail.taskCount === 0;
+/** The architecture is approved: the person chooses the tools and models for the build (D). */
+function architectureApproved(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
+  return detail.history.find((e) => e.phase === "architecture")?.status === "approved";
 }
 
-/** The architecture is approved and the task list exists: the build can be handed to tools (E6). */
+/**
+ * The build is next, no tasks exist yet, and the team is chosen: the task list is written around
+ * those tools and models (D). Without a team it waits (the team panel says so).
+ */
+function wantsTaskList(detail: Extract<ProjectDetailResult, { ok: true }>, teamRequired: boolean): boolean {
+  const next = detail.history.find((e) => e.isNext);
+  return architectureApproved(detail) && next?.phase === "build" && detail.taskCount === 0 && (!teamRequired || (detail.teamSize ?? 0) > 0);
+}
+
+/** The task list exists: the build can be handed to the tools (E6). */
 function readyToHandOff(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
-  const architecture = detail.history.find((e) => e.phase === "architecture");
-  return architecture?.status === "approved" && (detail.taskCount ?? 0) > 0;
+  return architectureApproved(detail) && (detail.taskCount ?? 0) > 0;
 }
 
 /** The phase to start fresh: the next one, once an earlier phase is approved (HND-7). */
@@ -125,6 +131,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
       stop();
     };
   }, [watch, root, load]);
+
+  const reload = useCallback(async () => {
+    setDetail(await load(root).catch(failed));
+  }, [load, root]);
 
   // After a decision: show its result and reload, keeping the current history on screen meanwhile.
   const record = useCallback(
@@ -221,7 +231,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               }
             />
           )}
-          {planning && wantsTaskList(detail) && (
+          {team && architectureApproved(detail) && (
+            <TeamPanel key={`${detail.taskCount ?? 0}`} root={root} fns={team} handOffReady={readyToHandOff(detail)} onSaved={reload} />
+          )}
+          {planning && wantsTaskList(detail, !!team) && (
             <TaskProposalPanel
               providerReady={planning.providerReady}
               read={readProposal}
@@ -229,7 +242,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               approve={() => record(planning.approveTasks(root))}
             />
           )}
-          {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
+
           {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
           {detail.workflow && <WorkflowChart workflow={detail.workflow} />}
           <PhaseHistory entries={detail.history} decisions={decisions} review={detail.review} />

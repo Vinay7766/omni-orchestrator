@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeInvoke } from "./lib/testing/fake-invoke";
-import { MemoryStore, PhaseEngine } from "@omni/core";
+import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { createProjectFromIdea } from "./lib/planning";
 
@@ -428,6 +428,11 @@ describe("OmniOrchestrator App", () => {
         await engine.approve({ kind: "human", tool: "omni-desktop" }, phase);
       }
       await engine.start({ kind: "human", tool: "omni-desktop" }, "build");
+      // D: the person chose the tools and models before the task list is written.
+      const saved = await saveTeam({ store: opened.store, fs: createNodeFs(), root: created.root }, { kind: "human", tool: "omni-desktop" }, [
+        { toolId: "made-up-editor", name: "Made-up Editor", capability: 3, confirmedByPerson: false, models: ["made-up-model"] },
+      ]);
+      if (!saved.ok) throw new Error(saved.message);
 
       const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
       mockBackend({

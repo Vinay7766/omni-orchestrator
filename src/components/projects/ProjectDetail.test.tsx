@@ -167,10 +167,10 @@ describe("ProjectDetail: tools for the build (E6)", () => {
     expect(await screen.findByRole("region", { name: "Tools for the build" })).toBeDefined();
   });
 
-  it("does not show them before there is a task list, or before the architecture is approved", async () => {
+  it("asks for the tools as soon as the architecture is approved, before the task list (D), and never earlier", async () => {
     const { unmount } = render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withTasks(0, "approved"))} onBack={vi.fn()} team={team} />);
     await screen.findByRole("heading", { name: "Orbit" });
-    expect(screen.queryByRole("region", { name: "Tools for the build" })).toBeNull();
+    expect(await screen.findByRole("region", { name: "Tools for the build" })).toBeDefined();
     unmount();
     render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withTasks(2, "awaiting_review"))} onBack={vi.fn()} team={team} />);
     await screen.findByRole("heading", { name: "Orbit" });

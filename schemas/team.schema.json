@@ -39,7 +39,6 @@
           "models": {
             "description": "The models the person uses in this tool, as they typed them (TOOL-2, TOOL-6). Used to assign tasks to the best tool and model (D).",
             "type": "array",
-            "maxItems": 20,
             "uniqueItems": true,
             "items": { "type": "string", "minLength": 1, "maxLength": 200 }
           }

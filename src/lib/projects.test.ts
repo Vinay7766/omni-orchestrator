@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MemoryStore, PhaseEngine } from "@omni/core";
+import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { loadProjectDetail, loadProjects } from "./projects";
 import { fakeInvoke } from "./testing/fake-invoke";
@@ -84,6 +84,17 @@ describe("loadProjectDetail (E3)", () => {
     const detail = await loadProjectDetail(fakeInvoke([]), await project("nebula", "idea-review"));
     if (!detail.ok) throw new Error(detail.error);
     expect(detail.review).toBeUndefined();
+  });
+
+  it("says how many tools the person selected, so the task list can wait for them (D)", async () => {
+    const root = await project("comet", "idea-review");
+    const before = await loadProjectDetail(fakeInvoke([]), root);
+    expect(before.ok && before.teamSize).toBe(0);
+    const opened = await MemoryStore.open(node, root);
+    if (!opened.ok) throw new Error("no project");
+    await saveTeam({ store: opened.store, fs: node, root }, { kind: "human", tool: "omni-desktop" }, [{ toolId: "made-up-editor", name: "Made-up Editor", capability: 3, confirmedByPerson: false }]);
+    const after = await loadProjectDetail(fakeInvoke([]), root);
+    expect(after.ok && after.teamSize).toBe(1);
   });
 
   it("reads a real project's name and phase history over the app's file commands", async () => {

@@ -31,13 +31,21 @@ const LEVELS: { value: Level; label: string }[] = [
 
 const foundLabel = (row: Row) => (row.missing ? "not found on this computer now" : row.found ? `level ${row.found}` : "level unknown, please confirm");
 
-/** Tools for the build (E6): the person selects them, confirms levels, saves, and hands off. */
-export const TeamPanel: React.FC<{ root: string; fns: TeamFns }> = ({ root, fns }) => {
+/** The models typed for a tool: comma or line separated, trimmed, each once (TOOL-6: free text). */
+const parseModels = (text: string) => [...new Set(text.split(/[,\n]/).map((m) => m.trim()).filter(Boolean))].slice(0, 20);
+
+/**
+ * Tools for the build (E6, D): the person selects them, confirms levels, says which models they use
+ * in each, and saves; the task list is then built around this team. Handing off waits for the
+ * approved task list (`handOffReady`), so each tool gets its own tasks.
+ */
+export const TeamPanel: React.FC<{ root: string; fns: TeamFns; handOffReady?: boolean; onSaved?: () => void }> = ({ root, fns, handOffReady = true, onSaved }) => {
   const [tools, setTools] = useState<DiscoveredTool[] | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [chosen, setChosen] = useState<Record<string, Level | null>>({});
   const [saved, setSaved] = useState<{ ok: boolean; message: string } | null>(null);
+  const [models, setModels] = useState<Record<string, string>>({});
   const [outcomes, setOutcomes] = useState<Record<string, HandOffOutcome>>({});
   const [busy, setBusy] = useState(false);
 
@@ -51,6 +59,7 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns }> = ({ root, fns 
       const members = loaded.ok ? (loaded.team?.members ?? []) : [];
       setTeam(loaded.ok ? loaded.team : null);
       setChosen(Object.fromEntries(members.map((m) => [m.toolId, m.capability as Level])));
+      setModels(Object.fromEntries(members.map((m) => [m.toolId, (m.models ?? []).join(", ")])));
     });
     return () => {
       current = false;
@@ -81,13 +90,15 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns }> = ({ root, fns 
     setBusy(true);
     const selection = selected.map((r) => {
       const level = chosen[r.id] as Level;
-      return { toolId: r.id, name: r.name, capability: level, confirmedByPerson: r.found === null || level > r.found };
+      const typed = parseModels(models[r.id] ?? "");
+      return { toolId: r.id, name: r.name, capability: level, confirmedByPerson: r.found === null || level > r.found, ...(typed.length ? { models: typed } : {}) };
     });
     const result = await fns.save(root, selection);
     setSaved(result);
     const loaded = await fns.load(root);
     if (loaded.ok) setTeam(loaded.team);
     setBusy(false);
+    if (result.ok) onSaved?.();
   };
 
   const handOff = async (toolId: string) => {
@@ -132,6 +143,20 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns }> = ({ root, fns 
                 </select>
               )}
             </div>
+            {row.id in chosen && (
+              <div className="pt-1">
+                <label htmlFor={`models-${row.id}`} className="block text-xs text-zinc-400 mb-1">
+                  Models you use in {row.name}
+                </label>
+                <input
+                  id={`models-${row.id}`}
+                  value={models[row.id] ?? ""}
+                  onChange={(e) => setModels((m) => ({ ...m, [row.id]: e.target.value }))}
+                  placeholder="For example the model names your plan includes, separated by commas"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg text-xs text-zinc-200 px-2.5 py-1.5 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
             {row.evidence.length > 0 && (
               <details className="text-xs text-zinc-500">
                 <summary className="cursor-pointer">Why it was found</summary>
@@ -154,7 +179,12 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns }> = ({ root, fns 
         Save the selection
       </button>
       {saved && <p role={saved.ok ? "status" : "alert"} className={`text-sm break-words ${saved.ok ? "text-emerald-400" : "text-red-400"}`}>{saved.message}</p>}
-      {team && team.members.length > 0 && (
+      {team && team.members.length > 0 && !handOffReady && (
+        <p className="text-xs text-zinc-400 border-t border-zinc-800 pt-3">
+          Next: the AI writes the task list around these tools and models. You hand the build to them once the task list is approved.
+        </p>
+      )}
+      {team && team.members.length > 0 && handOffReady && (
         <div className="space-y-3 border-t border-zinc-800 pt-3">
           <h4 className="text-xs font-semibold text-zinc-300">Hand off the build</h4>
           {team.members.map((m) => (
