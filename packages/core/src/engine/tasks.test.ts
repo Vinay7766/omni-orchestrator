@@ -73,6 +73,19 @@ describe("creating tasks", () => {
     expect((await store.readState()).tasks[0]).toEqual({ id: "T-1", title: "List screen", status: "todo", kinds: ["interface", "tests"] });
   });
 
+  it("keeps the tool and model a task is given to, with the reason (D)", async () => {
+    const created = await tasks.create(agent, {
+      taskId: "T-1", title: "List screen", kinds: ["interface"],
+      assignedTool: "made-up-editor", assignedModel: "made-up-model-large", assignmentReason: "Strong at interface work",
+    });
+    expect(created.ok).toBe(true);
+    expect((await store.readState()).tasks[0]).toEqual({
+      id: "T-1", title: "List screen", status: "todo", kinds: ["interface"], assignedTool: "made-up-editor", assignedModel: "made-up-model-large",
+    });
+    const event = (await store.readEvents()).events.find((e) => e.type === "task_created");
+    expect(event?.payload).toMatchObject({ assignmentReason: "Strong at interface work" });
+  });
+
   it("refuses kinds that are not short lowercase tags", async () => {
     const result = await tasks.create(agent, { taskId: "T-1", title: "List screen", kinds: ["User Interface!"] });
     expect(result.ok).toBe(false);

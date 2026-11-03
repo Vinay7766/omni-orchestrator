@@ -20,6 +20,12 @@
     },
     "commitSha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
     "nonEmptyText": { "type": "string", "minLength": 1 },
+    "modelName": {
+      "type": "string",
+      "description": "A model's name as the person or the tool gives it. Free text: no fixed model list (TOOL-6).",
+      "minLength": 1,
+      "maxLength": 200
+    },
     "workKinds": {
       "type": "array",
       "description": "The kinds of work a task involves (for example interface, backend, tests, security, documentation): short free-text tags, no fixed list, used later to assign tasks to the tools that fit them best.",

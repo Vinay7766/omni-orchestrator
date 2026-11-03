@@ -56,6 +56,14 @@ describe("team (core)", () => {
     expect(JSON.stringify(last.payload)).toContain("Chat Site (level 1, confirmed by the person)");
   });
 
+  it("keeps the models the person uses in each tool, and names them in the decision (D)", async () => {
+    await saveTeam({ store, fs, root }, person, [{ ...editor, models: ["made-up-model-large", "made-up-model-fast"] }], "2026-11-03T10:00:00Z");
+    const read = await readTeam(store);
+    expect(read.ok && read.team?.members[0].models).toEqual(["made-up-model-large", "made-up-model-fast"]);
+    const last = (await store.readEvents()).events.at(-1)!;
+    expect(JSON.stringify(last.payload)).toContain("models: made-up-model-large, made-up-model-fast");
+  });
+
   it("keeps when each tool was first added when the selection changes", async () => {
     await saveTeam({ store, fs, root }, person, [editor], "2026-11-03T10:00:00Z");
     await saveTeam({ store, fs, root }, person, [editor, chat], "2026-11-03T11:00:00Z");

@@ -9,8 +9,15 @@ type SkillUse = { skill: string; evidence: string };
 type TestEvidence = { command: string; exitCode: number; outputTail: string };
 type Refs = { files?: string[]; commits?: string[] };
 
+/** Which team tool and model a task is given to, and why (D); all optional. */
+export interface Assignment {
+  assignedTool?: string;
+  assignedModel?: string;
+  assignmentReason?: string;
+}
+
 export type TaskAction =
-  | { kind: "create"; taskId: string; title: string; requirements?: string[]; kinds?: string[] }
+  | { kind: "create"; taskId: string; title: string; requirements?: string[]; kinds?: string[] } & Assignment
   | { kind: "design"; taskId: string }
   | { kind: "trivial"; taskId: string; reason: string }
   | { kind: "start"; taskId: string; declaredSkills?: string[]; acknowledgedSkills?: string[] }
@@ -117,6 +124,9 @@ function toEventInput(action: TaskAction, actor: Actor): EventInput {
           title: action.title,
           ...(action.requirements ? { requirements: action.requirements } : {}),
           ...(action.kinds ? { kinds: action.kinds } : {}),
+          ...(action.assignedTool ? { assignedTool: action.assignedTool } : {}),
+          ...(action.assignedModel ? { assignedModel: action.assignedModel } : {}),
+          ...(action.assignmentReason ? { assignmentReason: action.assignmentReason } : {}),
         },
       };
     case "design":
@@ -147,7 +157,7 @@ export type TaskResult = { ok: true; event: Event; warning?: string } | { ok: fa
 export class TaskEngine {
   constructor(private readonly store: MemoryStore) {}
 
-  create(actor: Actor, task: { taskId: string; title: string; requirements?: string[]; kinds?: string[] }): Promise<TaskResult> {
+  create(actor: Actor, task: { taskId: string; title: string; requirements?: string[]; kinds?: string[] } & Assignment): Promise<TaskResult> {
     return this.act(actor, { kind: "create", ...task });
   }
 

@@ -127,6 +127,13 @@ export type CommonWorkKinds =
   | [string, string, string, string, string, string, string]
   | [string, string, string, string, string, string, string, string];
 /**
+ * A model's name as the person or the tool gives it. Free text: no fixed model list (TOOL-6).
+ *
+ * This interface was referenced by `MemoryFileTypes`'s JSON-Schema
+ * via the `definition` "common_modelName".
+ */
+export type CommonModelName = string;
+/**
  * Path relative to the project root, forward slashes, never absolute, never leaving the project.
  */
 export type CommonRelPath1 = string;
@@ -134,6 +141,14 @@ export type CommonRelPath1 = string;
  * Path relative to the project root, forward slashes, never absolute, never leaving the project.
  */
 export type CommonRelPath2 = string;
+/**
+ * The team tool this task is given to (D): a toolId in team.json when the task was created.
+ */
+export type CommonId1 = string;
+/**
+ * The model to use in that tool: one the person listed for it.
+ */
+export type CommonModelName1 = string;
 /**
  * A phase id from schemas/phases.json (checked in code; schemas cannot read that list).
  */
@@ -409,6 +424,7 @@ export interface State {
     trivialReason?: CommonNonEmptyText;
     assignedTool?: CommonId;
     kinds?: CommonWorkKinds;
+    assignedModel?: CommonModelName;
   }[];
   lastEventId: CommonId | null;
 }
@@ -442,6 +458,186 @@ export interface Team {
      */
     confirmedByPerson: boolean;
     addedAt: CommonTimestamp;
+    /**
+     * The models the person uses in this tool, as they typed them (TOOL-2, TOOL-6). Used to assign tasks to the best tool and model (D).
+     *
+     * @maxItems 20
+     */
+    models?:
+      | []
+      | [string]
+      | [string, string]
+      | [string, string, string]
+      | [string, string, string, string]
+      | [string, string, string, string, string]
+      | [string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string, string, string, string]
+      | [string, string, string, string, string, string, string, string, string, string, string]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ]
+      | [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string,
+          string
+        ];
   }[];
 }
 /**
@@ -554,6 +750,12 @@ export interface EventTaskCreated {
   title: string;
   requirements?: string[];
   kinds?: CommonWorkKinds;
+  assignedTool?: CommonId1;
+  assignedModel?: CommonModelName1;
+  /**
+   * Why this tool and model fit the task, in one line.
+   */
+  assignmentReason?: string;
 }
 /**
  * This interface was referenced by `MemoryFileTypes`'s JSON-Schema

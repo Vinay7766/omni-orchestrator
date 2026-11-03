@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "flow": "build",
+  "currentPhase": "build",
+  "phases": {
+    "architecture": {
+      "status": "approved",
+      "submittedAt": "2026-11-02T10:00:00Z",
+      "decidedAt": "2026-11-02T10:00:00Z"
+    },
+    "build": {
+      "status": "in_progress"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T-1",
+      "title": "Shopping list screen",
+      "status": "todo",
+      "kinds": [
+        "interface",
+        "tests"
+      ],
+      "assignedTool": "made-up-editor",
+      "assignedModel": "made-up-model-large"
+    }
+  ],
+  "lastEventId": "evt-0010"
+}

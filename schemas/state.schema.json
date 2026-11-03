@@ -37,7 +37,8 @@
           "designNote": { "$ref": "urn:omni:schema:common#/$defs/relPath" },
           "trivialReason": { "$ref": "urn:omni:schema:common#/$defs/nonEmptyText" },
           "assignedTool": { "$ref": "urn:omni:schema:common#/$defs/id" },
-          "kinds": { "$ref": "urn:omni:schema:common#/$defs/workKinds" }
+          "kinds": { "$ref": "urn:omni:schema:common#/$defs/workKinds" },
+          "assignedModel": { "$ref": "urn:omni:schema:common#/$defs/modelName" }
         }
       }
     },

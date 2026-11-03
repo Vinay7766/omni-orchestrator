@@ -37,7 +37,8 @@ export async function readTeam(store: { readFile(name: string): Promise<string |
 }
 
 function memberLabel(member: TeamSelection): string {
-  return `${member.name} (level ${member.capability}${member.confirmedByPerson ? ", confirmed by the person" : ""})`;
+  const models = member.models && member.models.length > 0 ? `, models: ${member.models.join(", ")}` : "";
+  return `${member.name} (level ${member.capability}${member.confirmedByPerson ? ", confirmed by the person" : ""}${models})`;
 }
 
 /** Saves the person's selection to team.json and records it as their decision. */

@@ -639,6 +639,20 @@
         },
         "kinds": {
           "$ref": "urn:omni:schema:common#/$defs/workKinds"
+        },
+        "assignedTool": {
+          "description": "The team tool this task is given to (D): a toolId in team.json when the task was created.",
+          "$ref": "urn:omni:schema:common#/$defs/id"
+        },
+        "assignedModel": {
+          "description": "The model to use in that tool: one the person listed for it.",
+          "$ref": "urn:omni:schema:common#/$defs/modelName"
+        },
+        "assignmentReason": {
+          "description": "Why this tool and model fit the task, in one line.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
         }
       }
     },
