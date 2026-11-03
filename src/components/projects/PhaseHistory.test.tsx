@@ -12,6 +12,7 @@ const entry = (over: Partial<PhaseHistoryEntry> & { phase: string }): PhaseHisto
   isNext: false,
   submissions: [],
   changeRequests: [],
+  sessions: [],
   ...over,
 });
 
@@ -126,5 +127,30 @@ describe("PhaseHistory (GATE-5)", () => {
     render(<PhaseHistory entries={[entry({ phase: "idea-review", status: "approved" }), entry({ phase: "research", isNext: true })]} />);
     expect(within(item("research")).getByText("Next")).toBeDefined();
     expect(within(item("idea-review")).queryByText("Next")).toBeNull();
+  });
+
+  it("lists the phase's sessions with tool, start and end, and the transcript link where readable (E10, HND-8)", () => {
+    render(
+      <PhaseHistory
+        entries={[
+          entry({
+            phase: "prd",
+            sessions: [
+              { id: "evt-1", by: agent, started: T, ended: T, transcript: "made-up-agent://sessions/42" },
+              { id: "evt-2", by: person, started: T },
+            ],
+          }),
+          entry({ phase: "architecture" }),
+        ]}
+      />,
+    );
+    const sessions = within(item("prd")).getByRole("list", { name: "Sessions" });
+    const rows = within(sessions).getAllByRole("listitem");
+    expect(rows[0].textContent).toContain("made-up-agent, made-up-model");
+    expect(rows[0].textContent).toContain("ended");
+    expect(rows[0].textContent).toContain("made-up-agent://sessions/42");
+    expect(rows[1].textContent).toContain("a person (omni-desktop)");
+    expect(rows[1].textContent).toContain("still open");
+    expect(within(item("architecture")).queryByRole("list", { name: "Sessions" })).toBeNull();
   });
 });

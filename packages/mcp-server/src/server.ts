@@ -9,7 +9,8 @@ import { buildContext, type ContextDeps } from "./context.js";
 import { getPhaseSkills, submitPhase } from "./phase-tools.js";
 import { completeTask, createTasks, markTaskTrivial, startTask, submitDesignNote } from "./task-tools.js";
 import { recordDecision, recordLesson, recordProblem } from "./record-tools.js";
-import { STACK_ADR_PHASES, STACK_ADR_SECTIONS, type Event } from "@omni/core";
+import { endSession, startSession, STACK_ADR_PHASES, STACK_ADR_SECTIONS, type Event, type MemoryStore } from "@omni/core";
+import { openProject } from "./project.js";
 import { SERVER_INFO } from "./info.js";
 
 const task = z.object({
@@ -53,6 +54,7 @@ const errorResult = (message: string) => ({ content: [{ type: "text" as const, t
 
 export function createServer(deps: ContextDeps): McpServer {
   const server = new McpServer({ name: SERVER_INFO.name, version: SERVER_INFO.version });
+  recordSession(server, deps);
 
   server.registerTool(
     "get_context",
@@ -354,6 +356,55 @@ export function createServer(deps: ContextDeps): McpServer {
   );
 
   return server;
+}
+
+/**
+ * The session tree (HND-8): once the tool has connected, its session is recorded in the project the
+ * server was started in, and ended when the connection closes. Tools only read through get_context,
+ * so the record is written here rather than there. Failures are reported on stderr and never stop
+ * the server: a session record is an index, not a gate.
+ */
+function recordSession(server: McpServer, deps: ContextDeps): void {
+  let session: Promise<{ store: MemoryStore; id: string } | null> = Promise.resolve(null);
+  const report = (what: string, message: string) => console.error(`omni-orchestrator MCP server: the session could not be ${what}: ${message}`);
+
+  server.server.oninitialized = () => {
+    session = (async () => {
+      const opened = await openProject(deps, undefined);
+      if (!opened.ok) return null; // Not started inside a project: nothing to record.
+      const started = await startSession(opened.store, agentActor(server));
+      if (!started.ok) {
+        report("recorded", started.message);
+        return null;
+      }
+      return { store: opened.store, id: started.sessionId };
+    })().catch((error: unknown) => {
+      report("recorded", error instanceof Error ? error.message : String(error));
+      return null;
+    });
+  };
+
+  let ending: Promise<void> = Promise.resolve();
+  const previous = server.server.onclose;
+  server.server.onclose = () => {
+    previous?.();
+    ending = session
+      .then(async (s) => {
+        if (!s) return;
+        const ended = await endSession(s.store, agentActor(server), s.id);
+        if (!ended.ok) report("ended", ended.message);
+      })
+      .catch((error: unknown) => report("ended", error instanceof Error ? error.message : String(error)));
+  };
+  sessionEnds.set(server, () => ending);
+}
+
+const sessionEnds = new WeakMap<McpServer, () => Promise<void>>();
+
+/** Closes the connection and resolves once the session's end is recorded, so the process can exit. */
+export async function closeServer(server: McpServer): Promise<void> {
+  await server.close();
+  await sessionEnds.get(server)?.();
 }
 
 /**

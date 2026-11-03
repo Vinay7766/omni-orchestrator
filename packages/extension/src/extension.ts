@@ -3,7 +3,7 @@
  * API per @types/vscode 1.90 (engines ^1.90.0), so editors built on older VS Code versions load it.
  */
 import * as vscode from "vscode";
-import { findProject, joinPath, MEMORY_DIR, MemoryStore, normalizePath, watchEvents, type EventWatch } from "@omni/core";
+import { endSession, findProject, joinPath, MEMORY_DIR, MemoryStore, normalizePath, startSession, watchEvents, type EventWatch } from "@omni/core";
 import { createNodeChangeTrigger, createNodeFs } from "@omni/core/node";
 import { approvePhase, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
 import { idleStatusText, statusText } from "./status.js";
@@ -12,6 +12,8 @@ const fs = createNodeFs();
 
 let store: MemoryStore | null = null;
 let watch: EventWatch | null = null;
+/** This editor window's session in the open project (HND-8), ended when the project closes. */
+let session: { store: MemoryStore; id: string } | null = null;
 
 /** The person at this editor. The editor's own name, whatever fork it is. */
 const person = () => ({ kind: "human" as const, tool: vscode.env.appName || "editor" });
@@ -67,24 +69,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }),
     ),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void openProject(item)),
-    { dispose: stopWatching },
+    { dispose: () => void stopWatching() },
   );
   await openProject(item);
 }
 
-export function deactivate(): void {
-  stopWatching();
+export function deactivate(): Promise<void> {
+  return stopWatching();
 }
 
-function stopWatching(): void {
+/** Stops following the project and records the end of this window's session in it. */
+async function stopWatching(): Promise<void> {
   watch?.stop();
   watch = null;
   store = null;
+  const ending = session;
+  session = null;
+  if (!ending) return;
+  const ended = await endSession(ending.store, person(), ending.id).catch((e: unknown) => ({ ok: false as const, message: String(e) }));
+  if (!ended.ok) console.error("OmniOrchestrator: the session end could not be recorded:", ended.message);
 }
 
 /** The first workspace folder inside an OmniOrchestrator project; the status bar follows it live. */
 async function openProject(item: vscode.StatusBarItem): Promise<void> {
-  stopWatching();
+  await stopWatching();
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     const found = await findProject(fs, normalizePath(folder.uri.fsPath));
     if (!found.ok) continue;
@@ -93,6 +101,11 @@ async function openProject(item: vscode.StatusBarItem): Promise<void> {
     store = opened.store;
     const project = store.readProject();
     item.tooltip = `OmniOrchestrator: ${project.name} (${found.root})`;
+    // The person's editor session in this project. The editor's AI chats are not visible to an
+    // extension, so this records the window, named by the editor, not a particular chat.
+    const started = await startSession(store, person());
+    if (started.ok) session = { store, id: started.sessionId };
+    else console.error("OmniOrchestrator: the session could not be recorded:", started.message);
     watch = watchEvents(
       store.follow(),
       createNodeChangeTrigger(joinPath(found.root, MEMORY_DIR)),

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { MemoryStore, type CatalogEntry, type SkillSource } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { createServer } from "./server.js";
+import { closeServer, createServer } from "./server.js";
 
 const fs = createNodeFs();
 const agent = { kind: "agent" as const, tool: "made-up-agent" };
@@ -232,6 +232,48 @@ describe("MCP server", () => {
     for (const projectPath of [42, ""]) {
       const result = await client.callTool({ name: "get_context", arguments: { projectPath } });
       expect(result.isError, `projectPath ${JSON.stringify(projectPath)}`).toBe(true);
+    }
+  });
+});
+
+describe("MCP server: session tree (E10, HND-8)", () => {
+  const sessionEvents = async () => {
+    const opened = await MemoryStore.open(fs, root);
+    if (!opened.ok) throw new Error("project not readable");
+    return (await opened.store.readEvents()).events.filter((e) => e.type === "session_started" || e.type === "session_ended");
+  };
+
+  it("records a session for the connecting tool, named by its client info, and ends it when the tool disconnects", async () => {
+    await connect(root);
+    await vi.waitFor(async () => expect((await sessionEvents()).map((e) => e.type)).toEqual(["session_started"]));
+    const [started] = await sessionEvents();
+    expect(started.actor).toEqual({ kind: "agent", tool: "made-up-client" });
+    expect(started.payload).toEqual({ phase: "idea-review" });
+
+    await client.close();
+    await vi.waitFor(async () => expect((await sessionEvents()).map((e) => e.type)).toEqual(["session_started", "session_ended"]));
+    expect((await sessionEvents())[1].payload).toEqual({ sessionId: started.id });
+  });
+
+  it("has the session's end written by the time closeServer resolves (what main.ts waits for before exiting)", async () => {
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const server = createServer({ fs, skills, startDir: root });
+    await server.connect(serverSide);
+    client = new Client({ name: "made-up-client", version: "0.0.1" });
+    await client.connect(clientSide);
+    await vi.waitFor(async () => expect((await sessionEvents()).length).toBe(1));
+    await closeServer(server);
+    expect((await sessionEvents()).map((e) => e.type)).toEqual(["session_started", "session_ended"]);
+  });
+
+  it("records nothing when the server was not started inside a project", async () => {
+    const outside = mkdtempSync(join(tmpdir(), "omni-mcp-outside-")).replace(/\\/g, "/");
+    try {
+      await connect(outside);
+      await client.listTools();
+      expect(await sessionEvents()).toEqual([]);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
     }
   });
 });

@@ -111,4 +111,31 @@ describe("bundled extension", () => {
       (Module as unknown as { _load: unknown })._load = load;
     }
   }, 30_000);
+
+  it("records the editor's session when the project opens and ends it when the extension stops (E10, HND-8)", async () => {
+    const vscode = fakeVscode(root);
+    const load = (Module as unknown as { _load: (r: string, ...rest: unknown[]) => unknown })._load;
+    (Module as unknown as { _load: unknown })._load = (request: string, ...rest: unknown[]) =>
+      request === "vscode" ? vscode.api : load(request, ...rest);
+    const ext = createRequire(import.meta.url)(join(pkgDir, "dist", "extension.cjs"));
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    const opened = await MemoryStore.open(createNodeFs(), root);
+    if (!opened.ok) throw new Error("reopen");
+    const sessions = async () => (await opened.store.readEvents()).events.filter((e) => e.type.startsWith("session_"));
+    const before = (await sessions()).length;
+    try {
+      await ext.activate(context);
+      const started = (await sessions()).slice(before);
+      expect(started.map((e) => e.type)).toEqual(["session_started"]);
+      expect(started[0].actor).toEqual({ kind: "human", tool: "Made-up Editor" });
+
+      await ext.deactivate();
+      const after = (await sessions()).slice(before);
+      expect(after.map((e) => e.type)).toEqual(["session_started", "session_ended"]);
+      expect(after[1].payload).toEqual({ sessionId: started[0].id });
+    } finally {
+      for (const d of context.subscriptions) d.dispose();
+      (Module as unknown as { _load: unknown })._load = load;
+    }
+  }, 30_000);
 });

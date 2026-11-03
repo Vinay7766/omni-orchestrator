@@ -54,6 +54,26 @@ function Submissions({ entry }: { entry: PhaseHistoryEntry }) {
   );
 }
 
+/** The tool sessions that worked on this phase (HND-8). A transcript link is shown, never opened. */
+function Sessions({ entry }: { entry: PhaseHistoryEntry }) {
+  if (!entry.sessions?.length) return null;
+  return (
+    <ul className="mt-2 space-y-1 text-xs text-zinc-400" aria-label="Sessions">
+      {entry.sessions.map((s) => (
+        <li key={s.id}>
+          Session: {who(s.by)} · {when(s.started)} · {s.ended ? `ended ${when(s.ended)}` : "still open"}
+          {s.transcript && (
+            <span>
+              {" "}
+              · Transcript: <span className="font-mono text-zinc-300 break-all">{s.transcript}</span>
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Decision({ entry }: { entry: PhaseHistoryEntry }) {
   const d = entry.decision;
   if (d) {
@@ -93,6 +113,7 @@ export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: 
             <span className={`text-xs shrink-0 ${tone}`}>{statusWords(entry.status)}</span>
           </div>
           {entry.started && <p className="mt-1 text-xs text-zinc-500">Started by {who(entry.started.by)} · {when(entry.started.time)}</p>}
+          <Sessions entry={entry} />
           <Submissions entry={entry} />
           {entry.changeRequests.map((c, i) => (
             <p key={c.time + i} className="mt-2 text-xs text-amber-300 break-words">
