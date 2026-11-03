@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { ExternalLink } from "../ExternalLink";
 import { CheckCircle2, Circle, CircleAlert, FolderOpen, Info, Loader2, RefreshCw, type LucideIcon } from "lucide-react";
 import type { DiscoveredTool } from "../../lib/types";
 
@@ -109,7 +110,7 @@ export const SetupGuide: React.FC<{ checks: SetupChecks; onGoToProjects: () => v
           <p>After installing, press Check again.</p>
         </Step>
         <Step title="Install Git" status={git}>
-          <p>Git keeps the history of your project and sends it to GitHub. Download it from git-scm.com (type that address in your browser), run the installer and keep the default choices.</p>
+          <p>Git keeps the history of your project and sends it to GitHub. Download it from <ExternalLink url="https://git-scm.com/downloads" className="text-indigo-300 hover:text-indigo-200">git-scm.com/downloads</ExternalLink>, run the installer and keep the default choices.</p>
         </Step>
         <Step title="Choose where your projects live" status={folderStatus}>
           <p>Your projects are ordinary folders on this computer. OmniOrchestrator looks for projects in the folders you add under Projects.</p>
@@ -132,10 +133,10 @@ export const SetupGuide: React.FC<{ checks: SetupChecks; onGoToProjects: () => v
           {openProblem && <p role="alert" className="text-red-400 break-words">The folder could not be opened: {openProblem}</p>}
         </Step>
         <Step title="Create a GitHub account" status={{ kind: "unchecked", text: "Not checked: this happens on github.com" }}>
-          <p>GitHub stores a copy of your project online. Go to github.com/signup in your browser and follow the steps there. It is free for personal projects.</p>
+          <p>GitHub stores a copy of your project online. Go to <ExternalLink url="https://github.com/signup" className="text-indigo-300 hover:text-indigo-200">github.com/signup</ExternalLink> and follow the steps there. It is free for personal projects.</p>
         </Step>
         <Step title="Put a project on GitHub (first push)" status={{ kind: "unchecked", text: "Not checked: this happens on github.com and in a terminal" }}>
-          <p>1. On github.com/new, create an empty repository (do not add a README there).</p>
+          <p>1. On <ExternalLink url="https://github.com/new" className="text-indigo-300 hover:text-indigo-200">github.com/new</ExternalLink>, create an empty repository (do not add a README there).</p>
           <p>2. Open a terminal in your project folder and run these lines one by one, using your own names:</p>
           <Code>{PUSH}</Code>
           <p>The first push opens a browser window to sign in to GitHub. OmniOrchestrator&apos;s own memory files are kept out of Git when you hand a project to a tool.</p>

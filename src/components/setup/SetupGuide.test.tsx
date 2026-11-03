@@ -64,12 +64,20 @@ describe("SetupGuide", () => {
     const push = step("Put a project on GitHub (first push)");
     expect(push.textContent).toContain("git push -u origin main");
     expect(push.textContent).toContain("github.com/new");
-    expect(screen.queryAllByRole("link")).toEqual([]);
+    // The website steps are the person's; since P-E9-02 the sites are https links (tested below).
     await act(async () => {});
   });
 
   it("reports a check that failed instead of showing it as missing", async () => {
     render(<SetupGuide checks={checks({ tools: () => Promise.resolve({ ok: false, error: "discovery failed: access denied" }) })} onGoToProjects={vi.fn()} />);
     expect(await within(step("Install an AI coding tool")).findByText("Could not check: discovery failed: access denied")).toBeDefined();
+  });
+
+  it("links the sites it names, as https links that open in the browser (P-E9-02)", async () => {
+    render(<SetupGuide checks={checks()} onGoToProjects={vi.fn()} />);
+    const hrefs = [...document.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(expect.arrayContaining(["https://git-scm.com/downloads", "https://github.com/signup", "https://github.com/new"]));
+    expect(hrefs.every((h) => h?.startsWith("https://"))).toBe(true);
+    await screen.findAllByText(/./);
   });
 });

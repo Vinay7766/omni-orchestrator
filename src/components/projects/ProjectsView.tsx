@@ -12,6 +12,7 @@ import type { TeamFns } from "../team/TeamPanel";
 import type { FreshSessionFns } from "../team/FreshSessionPanel";
 import { startFreshSession } from "../../lib/fresh-session";
 import { watchProject } from "../../lib/live";
+import { showRefInFolder } from "../../lib/refs";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
 const tauri: Invoke = (command, args) => invoke(command, args);
@@ -21,6 +22,12 @@ const decide: DecideFns = {
   requestChanges: (root, phase, notes) => requestChanges(tauri, root, phase, notes),
   run: (root, phase) => runOptional(tauri, root, phase),
   skip: (root, phase, reason) => skipOptional(tauri, root, phase, reason),
+};
+
+/** Files and commits in the workflow details (P-E8-02): a file's folder opens; a commit is copied. */
+const refs = {
+  showInFolder: (root: string, path: string) => showRefInFolder(tauri, root, path),
+  copy: (text: string) => navigator.clipboard.writeText(text),
 };
 
 /** The project's name and mode, changed by the person. */
@@ -89,6 +96,6 @@ export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns 
       </p>
     );
   }
-  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} fresh={fresh} watch={watch} />;
+  if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} fresh={fresh} watch={watch} refs={refs} />;
   return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
 };

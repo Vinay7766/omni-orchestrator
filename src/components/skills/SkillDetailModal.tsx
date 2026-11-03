@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { PhaseBadges } from "./PhaseBadges";
 import type { Skill } from "../../lib/types";
-import { CheckCircle2, ExternalLink, X, Save, Edit3, Eye } from "lucide-react";
+import { CheckCircle2, X, Save, Edit3, Eye } from "lucide-react";
+import { ExternalLink as SafeLink } from "../ExternalLink";
 
 interface SkillDetailModalProps {
   skill: Skill;
@@ -61,14 +62,9 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
               )}
               <span className="text-zinc-600">•</span>
-              <a
-                href={skill.attribution.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-indigo-400 hover:text-indigo-300 inline-flex items-center gap-1"
-              >
-                Source Repo <ExternalLink className="w-3 h-3" />
-              </a>
+              <SafeLink url={skill.attribution.sourceUrl} className="text-indigo-400 hover:text-indigo-300">
+                Source
+              </SafeLink>
             </div>
           </div>
 

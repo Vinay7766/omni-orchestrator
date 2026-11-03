@@ -66,14 +66,14 @@ describe("red team: unsafe link targets from user-editable skill data (T4.2)", (
 
   it("RT-8 (T4.2): a javascript: source URL never reaches the link with the attacker's code", () => {
     const { container } = render(<SkillCard skill={skill({}, "javascript:window.__redTeam='link ran'")} onToggle={() => {}} />);
-    const href = sourceLink(container).getAttribute("href") ?? "";
-    // React 19 replaces javascript: URLs with one that only throws; the payload must be gone.
+    const href = sourceLink(container)?.getAttribute("href") ?? "";
+    // Since RT-9's fix no link is made for a non-https address at all; either way the payload must be gone.
     expect(href).not.toContain("__redTeam");
   });
 
-  // RT-9: other non-web schemes pass straight through to href (React only blocks javascript:).
-  // The threat model's preferred control is an https-only allow-list; there is none today.
-  it.fails("RT-9 (T4.2): only an https: source URL is turned into a link (data: and file: are refused)", () => {
+  // RT-9: other non-web schemes used to pass straight through to href (React only blocks
+  // javascript:). Fixed 2026-11-03: only https links become links (lib/external-link.ts).
+  it("RT-9 (T4.2): only an https: source URL is turned into a link (data: and file: are refused)", () => {
     for (const url of ["data:text/html,<script>alert(1)</script>", "file:///C:/Windows/System32/calc.exe"]) {
       const { container, unmount } = render(<SkillCard skill={skill({}, url)} onToggle={() => {}} />);
       const href = sourceLink(container)?.getAttribute("href") ?? "";

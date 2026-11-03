@@ -6,6 +6,7 @@ import type { ProjectDetailResult } from "../../lib/projects";
 import type { DecisionResult } from "../../lib/decisions";
 import { PhaseHistory } from "./PhaseHistory";
 import { WorkflowChart } from "./WorkflowChart";
+import { RefActionsContext } from "./WorkflowDetails";
 import type { PhaseDecisions } from "./PhaseActions";
 import { MemoryPanel } from "./MemoryPanel";
 import { ProjectDetailsForm } from "./ProjectDetailsForm";
@@ -85,12 +86,14 @@ interface ProjectDetailProps {
   fresh?: FreshSessionFns;
   /** When given, the page follows the project's memory and reloads on changes made elsewhere (E7). */
   watch?: (root: string, onChange: () => void, onError: (message: string) => void) => () => void;
+  /** When given, files in the workflow details open their folder and commits can be copied (P-E8-02). */
+  refs?: { showInFolder: (root: string, path: string) => Promise<void>; copy: (text: string) => Promise<void> };
 }
 
 const failed = (e: unknown): ProjectDetailResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) });
 
 /** One project: its phase history, read from its memory, and the person's decisions (E3). */
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team, fresh, watch }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack, decide, details, memory, planning, team, fresh, watch, refs }) => {
   const [detail, setDetail] = useState<ProjectDetailResult | null>(null);
   const [outcome, setOutcome] = useState<DecisionResult | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
@@ -244,7 +247,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           )}
 
           {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
-          {detail.workflow && <WorkflowChart workflow={detail.workflow} />}
+          {detail.workflow && (
+            <RefActionsContext.Provider value={refs ? { showInFolder: (path) => refs.showInFolder(root, path), copy: refs.copy } : {}}>
+              <WorkflowChart workflow={detail.workflow} />
+            </RefActionsContext.Provider>
+          )}
           <PhaseHistory entries={detail.history} decisions={decisions} review={detail.review} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} revision={revision} />}
         </>

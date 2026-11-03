@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import type { Workflow } from "@omni/core";
 import { WorkflowChart } from "./WorkflowChart";
+import { RefActionsContext } from "./WorkflowDetails";
 
 // E8 / VIS-1..3: chart of phases, gates and tasks; node details; an equivalent list.
 
@@ -75,6 +76,45 @@ describe("WorkflowChart", () => {
     expect(gate).toHaveTextContent("Approved by a person (omni-desktop)");
     expect(gate).toHaveTextContent("abc1234");
     expect(screen.getByRole("button", { name: "Gate prd review: approved" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows a file in its folder and copies a commit, when the page offers it (P-E8-02)", async () => {
+    const showInFolder = vi.fn().mockResolvedValue(undefined);
+    const copy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RefActionsContext.Provider value={{ showInFolder, copy }}>
+        <WorkflowChart workflow={workflow} />
+      </RefActionsContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Gate prd review: approved" }));
+    const gate = screen.getByRole("region", { name: "Details: prd review" });
+    await act(async () => {
+      fireEvent.click(within(gate).getByRole("button", { name: "Copy commit abc1234" }));
+    });
+    expect(copy).toHaveBeenCalledWith("abc1234");
+    fireEvent.click(screen.getByRole("button", { name: "Phase prd: approved" }));
+    const details = screen.getByRole("region", { name: "Details: prd" });
+    const show = within(details).queryAllByRole("button", { name: /^Show .* in its folder$/ });
+    expect(show.length).toBeGreaterThan(0);
+    await act(async () => {
+      fireEvent.click(show[0]);
+    });
+    expect(showInFolder).toHaveBeenCalled();
+  });
+
+  it("shows why a folder could not be opened", async () => {
+    const showInFolder = vi.fn().mockRejectedValue("docs does not exist.");
+    render(
+      <RefActionsContext.Provider value={{ showInFolder }}>
+        <WorkflowChart workflow={workflow} />
+      </RefActionsContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Phase prd: approved" }));
+    const details = screen.getByRole("region", { name: "Details: prd" });
+    await act(async () => {
+      fireEvent.click(within(details).getAllByRole("button", { name: /^Show .* in its folder$/ })[0]);
+    });
+    expect(within(details).getByRole("alert")).toHaveTextContent("docs does not exist.");
   });
 
   it("says when nothing is recorded for a node yet", () => {

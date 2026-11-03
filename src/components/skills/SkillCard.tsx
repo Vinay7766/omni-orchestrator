@@ -1,7 +1,8 @@
 import React from "react";
 import { PhaseBadges } from "./PhaseBadges";
 import type { Skill } from "../../lib/types";
-import { CheckCircle2, ExternalLink, Eye, Edit3 } from "lucide-react";
+import { CheckCircle2, Eye, Edit3 } from "lucide-react";
+import { ExternalLink as SafeLink } from "../ExternalLink";
 
 interface SkillCardProps {
   skill: Skill;
@@ -86,15 +87,9 @@ export const SkillCard: React.FC<SkillCardProps> = ({
             </button>
           )}
 
-          <a
-            href={skill.attribution.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
-            title="View Source Repository"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <SafeLink url={skill.attribution.sourceUrl} title="View Source Repository" className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors">
+            <span className="sr-only">Source of {skill.name}</span>
+          </SafeLink>
         </div>
       </div>
     </div>
