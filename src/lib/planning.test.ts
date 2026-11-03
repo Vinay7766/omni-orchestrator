@@ -45,6 +45,13 @@ describe("createProjectFromIdea", () => {
     expect(idea).toContain("**AI:** Indoor plants, outdoor, or both?");
   });
 
+  it("creates the project in simple mode for a person who asked for guidance (G, NTU-2)", async () => {
+    const r = await createProjectFromIdea(fakeInvoke(), { parent: base, name: "Guided", idea: "x", mode: "simple" });
+    expect(r.ok).toBe(true);
+    const opened = await MemoryStore.open(node, `${base}/guided`);
+    expect(opened.ok && opened.store.readProject().mode).toBe("simple");
+  });
+
   it("refuses a relative parent folder", async () => {
     const r = await createProjectFromIdea(fakeInvoke(), { parent: "projects", name: "Orbit", idea: "x" });
     expect(r).toMatchObject({ ok: false });

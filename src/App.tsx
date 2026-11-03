@@ -23,6 +23,8 @@ import { SetupGuide, type SetupChecks } from "./components/setup/SetupGuide";
 import { discoverTools } from "./lib/team";
 import { StartFromIdea, type IdeaDraft } from "./components/planning/StartFromIdea";
 import { chatTurn, discussionMarkdown } from "./lib/idea-chat";
+import { checkComputer, type ComputerCheck } from "./lib/computer-check";
+import { ComputerCheckNotice } from "./components/setup/ComputerCheckNotice";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
 import { runPhase } from "./lib/phase-runner";
 import { approveTaskList, proposeTasks, readTaskProposal } from "./lib/task-proposal";
@@ -30,6 +32,24 @@ import type { PlanningFns } from "./components/projects/ProjectDetail";
 
 const tauri = (command: string, args?: Record<string, unknown>) => invoke(command, args);
 const EMPTY_IDEA_DRAFT: IdeaDraft = { idea: "", name: "" };
+
+/** The person's answer to the computer check (G), remembered on this computer only. */
+const GUIDANCE_KEY = "omni.guidance";
+function readGuidance(): "guided" | "dismissed" | null {
+  try {
+    const v = window.localStorage.getItem(GUIDANCE_KEY);
+    return v === "guided" || v === "dismissed" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveGuidance(v: "guided" | "dismissed") {
+  try {
+    window.localStorage.setItem(GUIDANCE_KEY, v);
+  } catch {
+    // Not remembered; the notice may show again next time.
+  }
+}
 
 /** The setup guide's checks on this computer (E9, NTU-4). */
 const setupChecks: SetupChecks = {
@@ -44,6 +64,8 @@ export function App() {
   // A project to open when the Projects area shows (one just created from an idea).
   const [openRoot, setOpenRoot] = useState<string | undefined>(undefined);
   const [ideaDraft, setIdeaDraft] = useState<IdeaDraft>(EMPTY_IDEA_DRAFT);
+  const [computer, setComputer] = useState<ComputerCheck | null>(null);
+  const [guidance, setGuidance] = useState<"guided" | "dismissed" | null>(() => readGuidance());
   // Pitch mode's conversation (the idea area is a form, not a chat, since E5).
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingTrack, setLoadingTrack] = useState<TrackType | null>(null);
@@ -56,6 +78,15 @@ export function App() {
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
   const [defaultProjectPath, setDefaultProjectPath] = useState<string>("");
+
+  // G: look at the computer once, so a person without the tools is offered guidance.
+  useEffect(() => {
+    let current = true;
+    void checkComputer(setupChecks).then((check) => current && setComputer(check));
+    return () => {
+      current = false;
+    };
+  }, []);
 
   useEffect(() => {
     loadInitialData();
@@ -251,7 +282,23 @@ export function App() {
                   key={defaultProjectPath}
                   defaultParent={defaultProjectPath}
                   providerReady={hasProvider(byokConfig)}
-                  create={(input) => createProjectFromIdea(tauri, input)}
+                  create={(input) => createProjectFromIdea(tauri, { ...input, mode: guidance === "guided" ? "simple" : "full" })}
+                  notice={
+                    computer && guidance === null ? (
+                      <ComputerCheckNotice
+                        check={computer}
+                        onGuide={() => {
+                          setGuidance("guided");
+                          saveGuidance("guided");
+                          setArea("setup");
+                        }}
+                        onDismiss={() => {
+                          setGuidance("dismissed");
+                          saveGuidance("dismissed");
+                        }}
+                      />
+                    ) : null
+                  }
                   chat={(messages) =>
                     chatTurn(tauri, byokConfig, { kind: "idea", messages, skill: skills.find((sk) => sk.id === "understand-intent" && sk.enabled)?.content })
                   }

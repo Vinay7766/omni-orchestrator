@@ -173,6 +173,29 @@ describe("OmniOrchestrator App", () => {
     }
   }, 30_000);
 
+  it("offers guided help when the computer has none of the tools needed, and opens the setup guide (G)", async () => {
+    mockBackend({ git_version: () => Promise.resolve(null), discover_tools: () => Promise.resolve([]) });
+    await renderApp();
+    await openArea("Start from an idea");
+    const notice = await screen.findByRole("region", { name: "Computer check" });
+    expect(notice.textContent).toMatch(/did not find the tools you need/i);
+    expect(notice.textContent).toContain("Git");
+    await act(async () => {
+      fireEvent.click(within(notice).getByRole("button", { name: /yes, guide me/i }));
+    });
+    expect(nav().getByRole("button", { name: "Setup guide" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("does not offer help when the tools are there", async () => {
+    mockBackend({
+      git_version: () => Promise.resolve("git version 2.47.0"),
+      discover_tools: () => Promise.resolve([{ id: "made-up-editor", name: "Made-up Editor", category: "editor", capability: 3, evidence: [], needsConfirmation: false }]),
+    });
+    await renderApp();
+    await openArea("Start from an idea");
+    expect(screen.queryByRole("region", { name: "Computer check" })).toBeNull();
+  });
+
   it("creates a project from an idea, adds its folder to Projects and opens it", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-idea-")).replace(/\\/g, "/");
     try {

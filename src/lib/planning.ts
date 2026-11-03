@@ -40,6 +40,8 @@ export async function createProjectFromIdea(
     conversation?: ChatMessage[];
     /** The idea in one sentence, when the AI said it had understood. */
     summary?: string | null;
+    /** Simple mode for a person who asked for guidance (G, NTU-2). */
+    mode?: "full" | "simple";
   },
 ): Promise<CreateResult> {
   const name = input.name.trim();
@@ -52,7 +54,7 @@ export async function createProjectFromIdea(
 
   const root = normalizePath(`${input.parent}/${folder}`);
   try {
-    const created = await MemoryStore.create(createInvokeFs(invoke), root, { name, flow: "build", mode: "full", actor: DESKTOP_PERSON });
+    const created = await MemoryStore.create(createInvokeFs(invoke), root, { name, flow: "build", mode: input.mode ?? "full", actor: DESKTOP_PERSON });
     if (!created.ok) {
       const text = created.issues.map((i) => i.message).join("; ");
       return { ok: false, error: /already exists/.test(text) ? `A project already exists in ${root}.` : text };
