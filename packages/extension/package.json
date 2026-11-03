@@ -32,6 +32,10 @@
       {
         "command": "omni.decidePhase",
         "title": "OmniOrchestrator: Decide optional phase"
+      },
+      {
+        "command": "omni.startNextPhaseInChat",
+        "title": "OmniOrchestrator: Start the next phase in a fresh chat"
       }
     ]
   },

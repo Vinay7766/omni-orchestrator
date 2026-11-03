@@ -7,6 +7,7 @@ import { endSession, findProject, joinPath, MEMORY_DIR, MemoryStore, normalizePa
 import { createNodeChangeTrigger, createNodeFs } from "@omni/core/node";
 import { approvePhase, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
 import { idleStatusText, statusText } from "./status.js";
+import { startNextPhaseInChat, type ChatHost } from "./chat.js";
 
 const fs = createNodeFs();
 
@@ -34,6 +35,23 @@ const ui: GateUi = {
   show: (message) => void vscode.window.showInformationMessage(message),
 };
 
+const chatHost: ChatHost = {
+  execute: (command, arg) => Promise.resolve(vscode.commands.executeCommand(command, arg)),
+  copy: (text) => Promise.resolve(vscode.env.clipboard.writeText(text)),
+  show: (message) => void vscode.window.showInformationMessage(message),
+};
+
+const START_IN_CHAT = "Start it in a fresh chat";
+
+/** After an approval, offers to start the next phase in a fresh chat here (E, HND-7). */
+async function offerFreshChat(s: MemoryStore): Promise<void> {
+  const state = await s.readState();
+  const phase = state.currentPhase;
+  if (!phase || state.phases[phase]?.status !== "in_progress") return;
+  const choice = await vscode.window.showInformationMessage(`"${phase}" is next. Start it in a fresh chat, so it does not carry the long conversation before it?`, START_IN_CHAT);
+  if (choice === START_IN_CHAT) await startNextPhaseInChat(s, chatHost);
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const item = vscode.window.createStatusBarItem("omni.status", vscode.StatusBarAlignment.Left, 100);
   item.name = "OmniOrchestrator";
@@ -51,7 +69,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     item,
-    vscode.commands.registerCommand("omni.approvePhase", withStore((s) => approvePhase(s, person(), ui))),
+    vscode.commands.registerCommand(
+      "omni.approvePhase",
+      withStore(async (s) => {
+        await approvePhase(s, person(), ui);
+        await offerFreshChat(s);
+      }),
+    ),
+    vscode.commands.registerCommand("omni.startNextPhaseInChat", withStore((s) => startNextPhaseInChat(s, chatHost).then(() => undefined))),
     vscode.commands.registerCommand("omni.requestChanges", withStore((s) => requestChanges(s, person(), ui))),
     vscode.commands.registerCommand("omni.decidePhase", withStore((s) => decideOptionalPhase(s, person(), ui))),
     vscode.commands.registerCommand(
@@ -64,7 +89,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           return;
         }
         const choice = await vscode.window.showQuickPick(["Approve", "Request changes"], { title: `Review "${phase}"` });
-        if (choice === "Approve") await approvePhase(s, person(), ui);
+        if (choice === "Approve") {
+          await approvePhase(s, person(), ui);
+          await offerFreshChat(s);
+        }
         if (choice === "Request changes") await requestChanges(s, person(), ui);
       }),
     ),

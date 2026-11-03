@@ -73,6 +73,7 @@ describe("bundled extension", () => {
       "omni.decidePhase",
       "omni.requestChanges",
       "omni.review",
+      "omni.startNextPhaseInChat",
     ]);
   });
 
