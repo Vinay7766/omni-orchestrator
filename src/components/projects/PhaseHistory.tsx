@@ -1,6 +1,6 @@
 import React from "react";
 import { CheckCircle2, Circle, CircleDashed, Clock, MessageSquareWarning, SkipForward, type LucideIcon } from "lucide-react";
-import type { PhaseHistoryEntry } from "@omni/core";
+import type { GateReview, PhaseHistoryEntry } from "@omni/core";
 import { statusWords } from "../../lib/phase-status";
 import { PhaseActions, type PhaseDecisions } from "./PhaseActions";
 
@@ -82,6 +82,11 @@ function Decision({ entry }: { entry: PhaseHistoryEntry }) {
       <p className="mt-2 text-xs text-zinc-300">
         {verb} by {d.by.kind === "human" ? `a person (${d.by.tool})` : who(d.by)} · {when(d.time)}
         {d.reason ? <span className="text-zinc-400"> · Reason: {d.reason}</span> : null}
+        {d.batch ? (
+          <span className="block mt-1 text-amber-300">
+            Approved as a batch: {d.batch.join(", ")}. These phases were approved within a minute of each other, without time to review each one.
+          </span>
+        ) : null}
       </p>
     );
   }
@@ -96,9 +101,54 @@ function Decision({ entry }: { entry: PhaseHistoryEntry }) {
   return null;
 }
 
+/** What the person needs at the gate (C18, GATE-6): the latest hand-in and what changed since the
+ * last gate, all from memory. Shown only on the phase waiting for review. */
+function ReviewSummary({ review }: { review: GateReview }) {
+  const s = review.submission;
+  const since = review.since.from ? `Since the last gate (${when(review.since.from)})` : "Since the project started";
+  return (
+    <section aria-label="Review summary" className="mt-3 rounded-lg border border-amber-900/50 bg-amber-950/10 p-3 text-xs text-zinc-300 space-y-1.5">
+      <p className="font-medium text-amber-200">Review summary</p>
+      <p>
+        Submitted by {who(s.by)} · {when(s.time)} · {s.documents.length} document{s.documents.length === 1 ? "" : "s"}, {s.skillsUsed.length} skill
+        {s.skillsUsed.length === 1 ? "" : "s"} with evidence
+      </p>
+      {review.earlierChangeRequests.map((c, i) => (
+        <p key={c.time + i} className="text-amber-300 break-words">
+          You asked for changes before: {c.notes}
+        </p>
+      ))}
+      {review.since.items.length === 0 ? (
+        <p>{since}: nothing else was recorded.</p>
+      ) : (
+        <>
+          <p>{since}:</p>
+          <ul className="ml-4 list-disc" aria-label="Recorded since the last gate">
+            {review.since.items.map((item, i) => (
+              <li key={item.time + i} className="break-words">
+                {item.text}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {review.since.files.length > 0 && (
+        <p className="break-all">
+          Files: <span className="font-mono text-zinc-200">{review.since.files.join(", ")}</span>
+        </p>
+      )}
+      {review.since.commits.length > 0 && (
+        <p className="break-all">
+          Commits: <span className="font-mono text-zinc-200">{review.since.commits.join(", ")}</span>
+        </p>
+      )}
+    </section>
+  );
+}
+
 /** Every phase of a project with what it produced and what was decided (GATE-5); with
  * `decisions`, also the person's decisions that apply (E3 slice 3). */
-export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: PhaseDecisions }> = ({ entries, decisions }) => (
+export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: PhaseDecisions; review?: GateReview }> = ({ entries, decisions, review }) => (
   <ol aria-label="Phases" className="rounded-xl border border-zinc-800 bg-zinc-900/40">
     {entries.map((entry) => {
       const { icon: Icon, tone } = STATUS_STYLE[entry.status] ?? STATUS_STYLE.not_started;
@@ -121,6 +171,7 @@ export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: 
             </p>
           ))}
           <Decision entry={entry} />
+          {review && review.phase === entry.phase && entry.status === "awaiting_review" && <ReviewSummary review={review} />}
           {decisions && <PhaseActions entry={entry} decisions={decisions} />}
         </li>
       );

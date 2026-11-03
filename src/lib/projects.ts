@@ -3,7 +3,7 @@
  * project's memory is read through @omni/core over the memfs commands, the same code the MCP
  * server and the extension use, so the app shows real project data only.
  */
-import { buildPhaseHistory, buildWorkflow, createInvokeFs, MemoryStore, normalizePath, projectOverview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow } from "@omni/core";
+import { buildGateReview, buildPhaseHistory, buildWorkflow, createInvokeFs, MemoryStore, normalizePath, projectOverview, type GateReview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow } from "@omni/core";
 
 export type ProjectRow = { root: string; ok: true; overview: ProjectOverview } | { root: string; ok: false; error: string };
 
@@ -33,7 +33,7 @@ export async function loadProjects(invoke: Invoke, folders: string[]): Promise<P
 
 /** One project's phase history for the detail screen (E3, GATE-5). */
 export type ProjectDetailResult =
-  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow }
+  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow; /** The phase waiting for the person, summarised for review (C18). */ review?: GateReview }
   | { ok: false; error: string };
 
 export async function loadProjectDetail(invoke: Invoke, root: string): Promise<ProjectDetailResult> {
@@ -43,6 +43,8 @@ export async function loadProjectDetail(invoke: Invoke, root: string): Promise<P
     const project = opened.store.readProject();
     const state = await opened.store.readState();
     const { events } = await opened.store.readEvents();
+    const waiting = state.currentPhase && state.phases[state.currentPhase]?.status === "awaiting_review" ? state.currentPhase : null;
+    const review = waiting ? buildGateReview(events, waiting) : null;
     return {
       ok: true,
       name: project.name,
@@ -51,6 +53,7 @@ export async function loadProjectDetail(invoke: Invoke, root: string): Promise<P
       history: buildPhaseHistory(project.flow, state, events),
       taskCount: state.tasks.length,
       workflow: buildWorkflow(project.flow, state, events),
+      ...(review ? { review } : {}),
     };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };

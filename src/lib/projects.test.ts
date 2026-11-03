@@ -64,6 +64,28 @@ describe("loadProjects", () => {
 });
 
 describe("loadProjectDetail (E3)", () => {
+  it("builds the gate review for the phase waiting for the person (C18)", async () => {
+    const root = await project("orbit", "idea-review");
+    const opened = await MemoryStore.open(node, root);
+    if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
+    const submitted = await opened.store.appendEvent({
+      type: "phase_submitted",
+      actor: agent,
+      payload: { phase: "idea-review", documents: ["docs/planning/idea-review.md"], skillsUsed: [{ skill: "idea-review", evidence: "e" }] },
+    });
+    if (!submitted.ok) throw new Error(JSON.stringify(submitted.issues));
+    const detail = await loadProjectDetail(fakeInvoke([]), root);
+    if (!detail.ok) throw new Error(detail.error);
+    expect(detail.review?.phase).toBe("idea-review");
+    expect(detail.review?.submission.documents).toEqual(["docs/planning/idea-review.md"]);
+  });
+
+  it("has no gate review when no phase is waiting for the person", async () => {
+    const detail = await loadProjectDetail(fakeInvoke([]), await project("nebula", "idea-review"));
+    if (!detail.ok) throw new Error(detail.error);
+    expect(detail.review).toBeUndefined();
+  });
+
   it("reads a real project's name and phase history over the app's file commands", async () => {
     const root = await project("orbit", "idea-review");
     const detail = await loadProjectDetail(fakeInvoke([]), root);

@@ -205,7 +205,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           {team && readyToHandOff(detail) && <TeamPanel root={root} fns={team} />}
           {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
           {detail.workflow && <WorkflowChart workflow={detail.workflow} />}
-          <PhaseHistory entries={detail.history} decisions={decisions} />
+          <PhaseHistory entries={detail.history} decisions={decisions} review={detail.review} />
           {memory && <MemoryPanel root={root} load={memory.load} add={memory.add} revision={revision} />}
         </>
       )}
