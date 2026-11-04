@@ -14,7 +14,7 @@ export interface IdeaDraft {
   /** The message being written (the idea itself, before the conversation starts). */
   idea: string;
   name: string;
-  /** Undefined until the person changes it: the default folder is shown. */
+  /** Only ever what the person typed (retest bug 3): the app never makes one up. */
   parent?: string;
   /** The conversation so far (C). */
   messages?: ChatMessage[];
@@ -31,7 +31,6 @@ type CreateInput = { parent: string; name: string; idea: string; conversation: C
  * idea can still start the phases directly. Replies are model text, shown as plain text only.
  */
 export const StartFromIdea: React.FC<{
-  defaultParent: string;
   providerReady: boolean;
   create: (input: CreateInput) => Promise<CreateResult>;
   onCreated: (root: string, parent: string) => void;
@@ -43,7 +42,7 @@ export const StartFromIdea: React.FC<{
   onDraftChange?: (draft: IdeaDraft) => void;
   /** Shown above the conversation, for example the computer check (G). */
   notice?: React.ReactNode;
-}> = ({ defaultParent, providerReady, create, onCreated, onOpenSettings, chat, draft, onDraftChange, notice }) => {
+}> = ({ providerReady, create, onCreated, onOpenSettings, chat, draft, onDraftChange, notice }) => {
   const id = useId();
   const [local, setLocal] = useState<IdeaDraft>({ idea: "", name: "" });
   const current = draft && onDraftChange ? draft : local;
@@ -55,7 +54,7 @@ export const StartFromIdea: React.FC<{
   const { idea, name } = current;
   const messages = current.messages ?? [];
   const summary = current.summary ?? null;
-  const parent = current.parent ?? defaultParent;
+  const parent = current.parent ?? "";
   const [busy, setBusy] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +169,13 @@ export const StartFromIdea: React.FC<{
               <label htmlFor={`${id}-parent`} className={label}>
                 Parent folder
               </label>
-              <input id={`${id}-parent`} value={parent} onChange={(e) => update({ parent: e.target.value })} className={field} />
+              <input
+                id={`${id}-parent`}
+                value={parent}
+                onChange={(e) => update({ parent: e.target.value })}
+                placeholder="The folder that will hold the project, for example D:\Projects"
+                className={field}
+              />
             </div>
           </div>
           {folder && (

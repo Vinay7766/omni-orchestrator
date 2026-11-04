@@ -7,7 +7,6 @@ import { StartFromIdea } from "./StartFromIdea";
 
 function setup(over: Partial<React.ComponentProps<typeof StartFromIdea>> = {}) {
   const props = {
-    defaultParent: "C:/work",
     providerReady: true,
     create: vi.fn().mockResolvedValue({ ok: true, root: "C:/work/plant-helper" }),
     onCreated: vi.fn(),
@@ -38,7 +37,15 @@ describe("StartFromIdea", () => {
   it("shows where the project folder will be", () => {
     setup();
     fill(/project name/i, "Plant Helper!");
+    fill(/parent folder/i, "C:/work");
     expect(screen.getByText("C:/work/plant-helper")).toBeDefined();
+  });
+
+  it("starts with an empty parent folder and a neutral example, never a folder the person did not choose (retest bug 3)", () => {
+    setup();
+    const parent = screen.getByLabelText(/parent folder/i) as HTMLInputElement;
+    expect(parent.value).toBe("");
+    expect(parent.placeholder).toMatch(/for example/i);
   });
 
   it("cannot create until there is an idea and a name", () => {
@@ -48,6 +55,7 @@ describe("StartFromIdea", () => {
     fill(/your idea/i, "Reminds me to water plants");
     expect(button.disabled).toBe(true);
     fill(/project name/i, "Plant Helper");
+    fill(/parent folder/i, "C:/work");
     expect(button.disabled).toBe(false);
   });
 
@@ -55,6 +63,7 @@ describe("StartFromIdea", () => {
     const props = setup();
     fill(/your idea/i, "Reminds me to water plants");
     fill(/project name/i, "Plant Helper");
+    fill(/parent folder/i, "C:/work");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /create project/i }));
     });
@@ -66,6 +75,7 @@ describe("StartFromIdea", () => {
     const props = setup({ create: vi.fn().mockResolvedValue({ ok: false, error: "A project already exists in C:/work/plant-helper." }) });
     fill(/your idea/i, "x");
     fill(/project name/i, "Plant Helper");
+    fill(/parent folder/i, "C:/work");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /create project/i }));
     });
@@ -116,6 +126,7 @@ describe("StartFromIdea", () => {
     fill(/your idea/i, "Reminds me to water plants");
     await send();
     fill(/project name/i, "Plant Helper");
+    fill(/parent folder/i, "C:/work");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /start the phases/i }));
     });
@@ -136,6 +147,7 @@ describe("StartFromIdea", () => {
     fill(/your idea/i, "Reminds me to water plants");
     expect((screen.getByRole("button", { name: /^send/i }) as HTMLButtonElement).disabled).toBe(true);
     fill(/project name/i, "Plant Helper");
+    fill(/parent folder/i, "C:/work");
     expect((screen.getByRole("button", { name: /start the phases/i }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

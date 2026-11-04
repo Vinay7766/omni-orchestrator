@@ -81,7 +81,6 @@ export function App() {
 
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [defaultProjectPath, setDefaultProjectPath] = useState<string>("");
 
   // G: look at the computer once, the first time "Start from an idea" is opened, never when the
   // app opens or a page refreshes (owner's v0.1 issue A: no setup work on open).
@@ -120,12 +119,6 @@ export function App() {
       // Fallback
     }
 
-    try {
-      const path = await invoke<string>("get_default_project_path");
-      setDefaultProjectPath(path.replace(/\\/g, "/"));
-    } catch {
-      setDefaultProjectPath("");
-    }
   };
 
   // A project created from an idea: its parent folder joins the Projects folder list (so it is
@@ -284,8 +277,6 @@ export function App() {
             <div className="flex-1 overflow-y-auto">
               <ErrorBoundary panelName="Start from an idea">
                 <StartFromIdea
-                  key={defaultProjectPath}
-                  defaultParent={defaultProjectPath}
                   providerReady={hasProvider(byokConfig)}
                   create={(input) => createProjectFromIdea(tauri, { ...input, mode: guidance === "guided" ? "simple" : "full" })}
                   notice={
@@ -308,7 +299,8 @@ export function App() {
                     chatTurn(tauri, byokConfig, { kind: "idea", messages, skill: skills.find((sk) => sk.id === "understand-intent" && sk.enabled)?.content })
                   }
                   onCreated={(root, parent) => {
-                    setIdeaDraft(EMPTY_IDEA_DRAFT);
+                    // The folder the person typed is kept for the next project; nothing else (bug 3).
+                    setIdeaDraft({ ...EMPTY_IDEA_DRAFT, ...(ideaDraft.parent ? { parent: ideaDraft.parent } : {}) });
                     void handleProjectCreated(root, parent);
                   }}
                   draft={ideaDraft}

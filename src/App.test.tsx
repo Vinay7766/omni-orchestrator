@@ -112,7 +112,10 @@ describe("OmniOrchestrator App", () => {
     await openArea("Start from an idea");
 
     expect(screen.getByLabelText(/your idea/i)).toBeDefined();
-    expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe("C:/Users/test/Projects");
+    // Retest bug 3 (2026-11-04): no folder is made up for the person; the box starts empty.
+    const parent = screen.getByLabelText(/parent folder/i) as HTMLInputElement;
+    expect(parent.value).toBe("");
+    expect(parent.placeholder).not.toMatch(/test|MyApp/);
     expect(screen.getByRole("region", { name: /set up an ai model/i })).toBeDefined();
     expect(screen.queryByLabelText("Prompt Input")).toBeNull();
 
@@ -148,6 +151,35 @@ describe("OmniOrchestrator App", () => {
     expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe("C:/somewhere/else");
   });
 
+  it("keeps the parent folder the person typed for the next project, and nothing they did not type (retest bug 3)", async () => {
+    const base = mkdtempSync(join(tmpdir(), "omni-app-parent-")).replace(/\\/g, "/");
+    try {
+      const files = fakeInvoke([`${base}/orbit`]);
+      const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
+      mockBackend({
+        get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434" }, keyStorage: { available: true } }),
+        save_app_settings: () => Promise.resolve(),
+        ...Object.fromEntries(
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+        ),
+      });
+      await renderApp();
+      await openArea("Start from an idea");
+      fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
+      fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: base } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /start the phases/i }));
+      });
+      await screen.findByRole("heading", { name: "Orbit" }, { timeout: 10_000 });
+      await openArea("Start from an idea");
+      expect((screen.getByLabelText(/parent folder/i) as HTMLInputElement).value).toBe(base);
+      expect((screen.getByLabelText(/project name/i) as HTMLInputElement).value).toBe("");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("talks the idea through with the person's model, then saves the conversation with the new project (C)", async () => {
     const base = mkdtempSync(join(tmpdir(), "omni-app-chat-")).replace(/\\/g, "/");
     try {
@@ -155,7 +187,6 @@ describe("OmniOrchestrator App", () => {
       const prompts: string[] = [];
       const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
       mockBackend({
-        get_default_project_path: () => Promise.resolve(base),
         get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434" }, keyStorage: { available: true } }),
         save_app_settings: () => Promise.resolve(),
         byok_complete: (args) => {
@@ -176,6 +207,7 @@ describe("OmniOrchestrator App", () => {
       expect(prompts[0]).toContain("A shared shopping list");
 
       fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: base } });
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /start the phases/i }));
       });
@@ -233,7 +265,6 @@ describe("OmniOrchestrator App", () => {
       const saved: unknown[] = [];
       const passThrough = (cmd: string) => (args?: unknown) => files(cmd, args as Record<string, unknown>);
       mockBackend({
-        get_default_project_path: () => Promise.resolve(base),
         get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434" }, keyStorage: { available: true } }),
         save_app_settings: (args) => {
           saved.push(args);
@@ -249,6 +280,7 @@ describe("OmniOrchestrator App", () => {
 
       fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
       fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: base } });
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /create project/i }));
       });
@@ -279,7 +311,6 @@ describe("OmniOrchestrator App", () => {
         enabled: true, content: "IDEA REVIEW METHOD", isCustom: false, phases: ["idea-review"], license: "MIT",
       };
       mockBackend({
-        get_default_project_path: () => Promise.resolve(base),
         get_skills: () => Promise.resolve([ideaSkill]),
         get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" }, keyStorage: { available: true } }),
         save_app_settings: () => Promise.resolve(),
@@ -299,6 +330,7 @@ describe("OmniOrchestrator App", () => {
       await openArea("Start from an idea");
       fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
       fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: base } });
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /create project/i }));
       });
@@ -336,7 +368,6 @@ describe("OmniOrchestrator App", () => {
       const doc = (verdict: string) =>
         `# Idea review\n\nVerdict: ${verdict}\n\n## Understanding check\n\nA list families share.\n\n## Skills applied\n\n- idea-review: checked problem and users\n`;
       mockBackend({
-        get_default_project_path: () => Promise.resolve(base),
         get_skills: () =>
           Promise.resolve([
             {
@@ -359,6 +390,7 @@ describe("OmniOrchestrator App", () => {
       await openArea("Start from an idea");
       fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
       fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: base } });
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /create project/i }));
       });
@@ -392,7 +424,6 @@ describe("OmniOrchestrator App", () => {
       const doc = (verdict: string) =>
         `# Idea review\n\nVerdict: ${verdict}\n\n## Understanding check\n\nA list families share.\n\n## Skills applied\n\n- idea-review: checked problem and users\n`;
       mockBackend({
-        get_default_project_path: () => Promise.resolve(base),
         get_skills: () =>
           Promise.resolve([
             {
@@ -417,6 +448,7 @@ describe("OmniOrchestrator App", () => {
       await openArea("Start from an idea");
       fireEvent.change(screen.getByLabelText(/your idea/i), { target: { value: "A shared shopping list" } });
       fireEvent.change(screen.getByLabelText(/project name/i), { target: { value: "Orbit" } });
+      fireEvent.change(screen.getByLabelText(/parent folder/i), { target: { value: base } });
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /create project/i }));
       });
