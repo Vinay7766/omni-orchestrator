@@ -27,7 +27,7 @@ describe("red team: build pipeline (T5.4)", () => {
 });
 
 describe("red team: content policy (T4.3)", () => {
-  it.fails("RT-17 (T4.3): the web view loads no images from other sites (no channel for sending data out)", () => {
+  it("RT-17 (T4.3): the web view loads no images from other sites (no channel for sending data out)", () => {
     const csp = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8")).app.security.csp as string;
     const img = csp.split(";").map((d) => d.trim()).find((d) => d.startsWith("img-src")) ?? "";
     expect(img.split(/\s+/)).not.toContain("https:");
