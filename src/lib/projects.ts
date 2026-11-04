@@ -3,7 +3,7 @@
  * project's memory is read through @omni/core over the memfs commands, the same code the MCP
  * server and the extension use, so the app shows real project data only.
  */
-import { buildGateReview, buildPhaseHistory, buildWorkflow, importTaskUpdates, readTeam, type ImportResult, createInvokeFs, MemoryStore, normalizePath, projectOverview, type GateReview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow } from "@omni/core";
+import { buildGateReview, buildPhaseHistory, buildWorkflow, importTaskUpdates, readTeam, type ImportResult, createInvokeFs, MemoryStore, normalizePath, projectOverview, type GateReview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow, desktopStoreOptions } from "@omni/core";
 
 export type ProjectRow = { root: string; ok: true; overview: ProjectOverview } | { root: string; ok: false; error: string };
 
@@ -20,7 +20,7 @@ export async function loadProjects(invoke: Invoke, folders: string[]): Promise<P
   const projects = await Promise.all(
     found.roots.map(async (root): Promise<ProjectRow> => {
       try {
-        const opened = await MemoryStore.open(fs, normalizePath(root));
+        const opened = await MemoryStore.open(fs, normalizePath(root), desktopStoreOptions(invoke));
         if (!opened.ok) return { root, ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
         return { root, ok: true, overview: await projectOverview(opened.store) };
       } catch (error) {
@@ -38,7 +38,7 @@ export type ProjectDetailResult =
 
 export async function loadProjectDetail(invoke: Invoke, root: string): Promise<ProjectDetailResult> {
   try {
-    const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root));
+    const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root), desktopStoreOptions(invoke));
     if (!opened.ok) return { ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
     // Tools without MCP report progress in .agents/task-updates.jsonl; it is applied before reading,
     // so a refresh shows their work and never an older status (owner's v0.1 issue B).

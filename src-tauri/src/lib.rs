@@ -12,6 +12,7 @@ use commands::handoff::hand_off_tool;
 use commands::fresh_session::start_fresh_session_cmd;
 use commands::setup_guide::{git_version, open_folder};
 use commands::projects::find_projects;
+use commands::decisions::{sign_decision, trust_status, verify_decisions};
 use commands::planning_docs::{read_planning_document, write_planning_document};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -64,6 +65,10 @@ pub fn run() {
             open_folder,
             // Projects under the folders the person configured (E2)
             find_projects,
+            // Signed person decisions (C17)
+            sign_decision,
+            verify_decisions,
+            trust_status,
             // Planning documents in docs/planning of a project (E5)
             write_planning_document,
             read_planning_document

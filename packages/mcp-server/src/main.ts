@@ -5,7 +5,8 @@
  */
 import { fileURLToPath } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createGitCommitChecker, createNodeFs, createSkillDirectorySource } from "@omni/core/node";
+import { appDataDir, createFileTrust, createGitCommitChecker, createNodeFs, createSkillDirectorySource, TRUST_FILE } from "@omni/core/node";
+import { dirname, join } from "node:path";
 import { parseArgs } from "./args.js";
 import { closeServer, createServer } from "./server.js";
 import { registeredProjectsFrom } from "./project.js";
@@ -29,6 +30,9 @@ const server = createServer({
   startDir: args.startDir,
   commits: createGitCommitChecker(),
   // Projects the person registered in the app; besides its own project, the only ones it opens (RT-14).
+  // A person's decision counts only when signed by the app (C17): the app's trust file sits next
+  // to its projects list (or in its data folder when run on its own).
+  trust: createFileTrust(join(args.projectsFile ? dirname(args.projectsFile) : appDataDir(), TRUST_FILE)),
   ...(args.projectsFile ? { registeredProjects: registeredProjectsFrom(createNodeFs(), args.projectsFile) } : {}),
 });
 

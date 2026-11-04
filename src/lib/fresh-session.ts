@@ -4,7 +4,7 @@
  * in the session tree (HND-8) here, unless the tool is connected over MCP, whose server records
  * the session itself when the tool connects.
  */
-import { buildFreshSession, createInvokeFs, MemoryStore, normalizePath, readTeam, startSession, type Invoke } from "@omni/core";
+import { buildFreshSession, createInvokeFs, MemoryStore, normalizePath, readTeam, startSession, type Invoke, desktopStoreOptions } from "@omni/core";
 
 export interface FreshSessionResult {
   toolId: string;
@@ -24,7 +24,7 @@ const reason = (error: unknown) => (error instanceof Error ? error.message : typ
 export async function startFreshSession(invoke: Invoke, rootIn: string, toolId: string): Promise<FreshSessionOutcome> {
   const root = normalizePath(rootIn);
   try {
-    const opened = await MemoryStore.open(createInvokeFs(invoke), root);
+    const opened = await MemoryStore.open(createInvokeFs(invoke), root, desktopStoreOptions(invoke));
     if (!opened.ok) return { ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
     const store = opened.store;
     const team = await readTeam(store);

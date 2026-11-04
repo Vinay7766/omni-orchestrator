@@ -30,6 +30,12 @@ reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], def
 # Linux. MIT OR Apache-2.0. https://docs.rs/keyring/4.2.0/keyring/v1/index.html
 keyring = "4.2.0"
 tauri-plugin-dialog = "2"
+# C17: the person's gate decisions are signed with Ed25519 after a native confirmation; the
+# private key stays in the OS credential store. BSD-3-Clause / MIT OR Apache-2.0.
+# https://docs.rs/ed25519-dalek/2.2.0/ed25519_dalek/
+ed25519-dalek = "2.2.0"
+getrandom = "0.3.4"
+base64 = "0.22.1"
 
 
 [dev-dependencies]

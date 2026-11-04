@@ -27,7 +27,7 @@ import { approve, DESKTOP_PERSON } from "../lib/decisions";
 import { approveTaskList, proposeTasks } from "../lib/task-proposal";
 import { handOffTool, saveTeamSelection } from "../lib/team";
 import { loadProjectDetail } from "../lib/projects";
-import { fakeInvoke } from "../lib/testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "../lib/testing/fake-invoke";
 import type { Skill } from "../lib/types";
 
 const node = createNodeFs();
@@ -123,7 +123,7 @@ async function call(name: string, args: Record<string, unknown>) {
 }
 
 const openStore = async () => {
-  const opened = await MemoryStore.open(node, root);
+  const opened = await MemoryStore.open(node, root, appStoreOptions());
   if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
   return opened.store;
 };

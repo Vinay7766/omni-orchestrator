@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, OPTIONAL_PHASES, PhaseEngine } from "@omni/core";
-import { createNodeFs } from "@omni/core/node";
-import { approvePhase, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
+import { createKeyTrust, createNodeFs, generateSigningKey } from "@omni/core/node";
+import { approvePhase, DECIDE_IN_APP, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
 import { statusText } from "./status.js";
 
 const fs = createNodeFs();
@@ -50,6 +50,21 @@ function fakeUi(answers: { confirm?: boolean; notes?: string | undefined; choice
   return { ui, shown, asked };
 }
 const types = async () => (await store.readEvents()).events.map((e) => e.type);
+
+describe("as installed: decisions are verified with the app's key (C17)", () => {
+  it("sends the person to the desktop app for approve, request changes and skip, without asking or recording anything", async () => {
+    await submitted("idea-review");
+    const opened = await MemoryStore.open(fs, root, { trust: createKeyTrust({ app: generateSigningKey().publicKey }) });
+    if (!opened.ok) throw new Error("open");
+    const before = await types();
+    const { ui, shown, asked } = fakeUi({ confirm: true, notes: "tighten it" });
+    await approvePhase(opened.store, person, ui);
+    await requestChanges(opened.store, person, ui);
+    expect(shown).toEqual([DECIDE_IN_APP, DECIDE_IN_APP]);
+    expect(asked).toEqual([]);
+    expect(await types()).toEqual(before);
+  });
+});
 
 describe("approvePhase", () => {
   it("shows the gate review in the approve dialog: the hand-in and what changed since the last gate (C18)", async () => {

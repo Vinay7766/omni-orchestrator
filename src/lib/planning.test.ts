@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { MemoryStore } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { createProjectFromIdea, hasProvider, projectFolderName } from "./planning";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 // E5 slice 2: a project starts in the app from the person's idea (PLAN-1).
 
@@ -23,7 +23,7 @@ describe("createProjectFromIdea", () => {
     const r = await createProjectFromIdea(fakeInvoke(), { parent: base, name: "Plant Watering Helper", idea: "Remind me to water each plant." });
     expect(r).toEqual({ ok: true, root: `${base}/plant-watering-helper` });
 
-    const opened = await MemoryStore.open(node, `${base}/plant-watering-helper`);
+    const opened = await MemoryStore.open(node, `${base}/plant-watering-helper`, appStoreOptions());
     if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
     expect(opened.store.readProject()).toMatchObject({ name: "Plant Watering Helper", flow: "build", mode: "full" });
     const created = (await opened.store.readEvents()).events[0];
@@ -48,7 +48,7 @@ describe("createProjectFromIdea", () => {
   it("creates the project in simple mode for a person who asked for guidance (G, NTU-2)", async () => {
     const r = await createProjectFromIdea(fakeInvoke(), { parent: base, name: "Guided", idea: "x", mode: "simple" });
     expect(r.ok).toBe(true);
-    const opened = await MemoryStore.open(node, `${base}/guided`);
+    const opened = await MemoryStore.open(node, `${base}/guided`, appStoreOptions());
     expect(opened.ok && opened.store.readProject().mode).toBe("simple");
   });
 

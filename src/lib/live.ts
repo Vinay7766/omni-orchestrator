@@ -4,7 +4,7 @@
  * here within about a second. Uses C11's follower over the app's memfs commands, and asks
  * the backend for the log's size and time to notice a change. No sockets.
  */
-import { createInvokeChangeTrigger, createInvokeFs, joinPath, MEMORY_DIR, MemoryStore, normalizePath, TASK_UPDATES_FILE, watchEvents, type EventWatch, type Invoke } from "@omni/core";
+import { createInvokeChangeTrigger, createInvokeFs, joinPath, MEMORY_DIR, MemoryStore, normalizePath, TASK_UPDATES_FILE, watchEvents, type EventWatch, type Invoke, desktopStoreOptions } from "@omni/core";
 
 /**
  * Calls `onChange` each time new events arrive after the first read (which is what the page
@@ -18,7 +18,7 @@ export function watchProject(invoke: Invoke, root: string, onChange: () => void,
 
   void (async () => {
     try {
-      const opened = await MemoryStore.open(createInvokeFs(invoke), projectRoot);
+      const opened = await MemoryStore.open(createInvokeFs(invoke), projectRoot, desktopStoreOptions(invoke));
       if (stopped) return;
       if (!opened.ok) {
         onError?.(`Live updates are off: the project memory could not be opened (${opened.issues.map((i) => i.message).join("; ")}).`);

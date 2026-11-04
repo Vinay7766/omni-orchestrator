@@ -16,8 +16,7 @@ import {
   type Invoke,
   type Team,
   type TeamSelection,
-  startSteps,
-} from "@omni/core";
+  startSteps, desktopStoreOptions } from "@omni/core";
 import { DESKTOP_PERSON } from "./decisions";
 import type { DiscoveredTool, HandoffResult } from "./types";
 
@@ -37,7 +36,7 @@ export type HandOffOutcome =
 const reason = (error: unknown) => (error instanceof Error ? error.message : typeof error === "string" ? error : String(error));
 
 async function openStore(invoke: Invoke, root: string) {
-  const opened = await MemoryStore.open(createInvokeFs(invoke), root);
+  const opened = await MemoryStore.open(createInvokeFs(invoke), root, desktopStoreOptions(invoke));
   if (!opened.ok) throw new Error(opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; "));
   return opened.store;
 }

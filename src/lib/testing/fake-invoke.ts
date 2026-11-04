@@ -3,10 +3,22 @@
  * (C9's contract); find_projects returns what the Rust scan would for the given folders.
  */
 import type { Invoke } from "@omni/core";
-import { createNodeFs } from "@omni/core/node";
+import { createKeySigner, createKeyTrust, createNodeFs, generateSigningKey } from "@omni/core/node";
 import { statSync } from "node:fs";
 
 const node = createNodeFs();
+
+// Stands in for the app's signing key in the credential store (C17). The native dialog is
+// confirmed unless a test says otherwise with `confirmDecisions`.
+const appKey = generateSigningKey();
+const appTrust = createKeyTrust({ "omni-desktop-test": appKey.publicKey });
+let confirming = true;
+const appSigner = createKeySigner("omni-desktop-test", appKey.privateKey, async () => confirming);
+
+/** What the person answers in the native confirmation dialog (C17), until changed again. */
+export function confirmDecisions(answer: boolean): void {
+  confirming = answer;
+}
 
 export function fakeInvoke(roots: string[] = [], errors: string[] = []): Invoke {
   const a = (args: Record<string, unknown>, key: string) => args[key] as string;
@@ -31,10 +43,18 @@ export function fakeInvoke(roots: string[] = [], errors: string[] = []): Invoke 
       await node.mkdir(`${a(x, "root")}/docs/planning`);
       await node.writeText(`${a(x, "root")}/docs/planning/${a(x, "name")}`, a(x, "content"));
     },
+    // C17: Rust signs after the native dialog and verifies against the trust file.
+    sign_decision: (x) => appSigner.sign({ message: a(x, "message"), projectName: a(x, "projectName"), summary: "" }),
+    verify_decisions: (x) => appTrust.verify(x.items as { keyId: string; message: string; signature: string }[]),
     read_planning_document: (x) => node.readText(`${a(x, "root")}/docs/planning/${a(x, "name")}`),
   };
   return (command, args) => {
     const handler = handlers[command];
     return handler ? handler(args) : Promise.reject(`Unexpected command: ${command}`);
   };
+}
+
+/** Store options for test setup that writes as the app would: the same key fakeInvoke signs with. */
+export function appStoreOptions() {
+  return { trust: appTrust, signer: appSigner };
 }

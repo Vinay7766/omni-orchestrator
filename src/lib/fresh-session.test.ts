@@ -7,7 +7,7 @@ import { MemoryStore, phaseHistory, saveTeam, type Invoke } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { startFreshSession } from "./fresh-session";
 import { DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 // E11 / HND-7: the app sends the prompt built from memory to the Rust command and records the new
 // session in the session tree (HND-8) unless the tool records it itself over MCP.
@@ -25,7 +25,7 @@ let invoke: Invoke;
 beforeEach(async () => {
   base = mkdtempSync(join(tmpdir(), "omni-app-fresh-")).replace(/\\/g, "/");
   root = `${base}/orbit`;
-  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON });
+  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON }, appStoreOptions());
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   const saved = await saveTeam({ store: created.store, fs: node, root }, DESKTOP_PERSON, [cli, mcpTool]);
   if (!saved.ok) throw new Error(saved.message);
@@ -42,7 +42,7 @@ afterEach(() => rmSync(base, { recursive: true, force: true }));
 const started = (toolId: string, toolName: string, promptPassed: boolean) => ({ toolId, toolName, launched: true, promptPassed, message: `${toolName} was started.` });
 
 const sessions = async () => {
-  const opened = await MemoryStore.open(node, root);
+  const opened = await MemoryStore.open(node, root, appStoreOptions());
   if (!opened.ok) throw new Error("reopen");
   return (await phaseHistory(opened.store)).flatMap((h) => h.sessions.map((s) => ({ phase: h.phase, tool: s.by.tool })));
 };

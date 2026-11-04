@@ -12,6 +12,7 @@ export type { IntegrityFinding, IntegrityReport, SignatureCheck, Signer, SignReq
 export type { MemoryFs } from "./memory/fs.js";
 export { createInvokeFs, MEMORY_FS_COMMANDS } from "./memory/invoke-fs.js";
 export type { Invoke } from "./memory/invoke-fs.js";
+export { createInvokeSigner, createInvokeTrust, desktopStoreOptions } from "./memory/invoke-trust.js";
 export { initialState, applyEvent, rebuild } from "./memory/reduce.js";
 export { EventFollower, watchEvents } from "./memory/sync.js";
 export { createInvokeChangeTrigger, STAMP_COMMAND } from "./memory/invoke-watch.js";

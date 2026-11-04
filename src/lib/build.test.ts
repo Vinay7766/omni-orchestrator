@@ -7,7 +7,7 @@ import { MemoryStore, PhaseEngine, TaskEngine } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { handInBuild } from "./build";
 import { DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 // Issue C (2026-11-04): when every task is done but no tool handed in the build, the person can.
 
@@ -30,7 +30,7 @@ async function finish(taskId: string, file: string) {
 
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), "omni-app-build-")).replace(/\\/g, "/");
-  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON });
+  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON }, appStoreOptions());
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   store = created.store;
   const phases = new PhaseEngine(store);

@@ -319,6 +319,14 @@ export class MemoryStore {
     return rebuild(this.project.flow, uncounted.size === 0 ? events : events.filter((e) => !uncounted.has(e.id)));
   }
 
+  /**
+   * True when decisions on a phase are verified here but cannot be signed (C17): the person makes
+   * them in the desktop app. Lets a tool say so before asking the person anything.
+   */
+  get decisionsNeedApp(): boolean {
+    return Boolean(this.options.trust && !this.options.signer);
+  }
+
   /** The log's integrity: chain breaks, copies, and unsigned or wrongly signed decisions (C17). */
   async integrity(): Promise<IntegrityReport> {
     const { report } = await this.readChecked();

@@ -4,7 +4,7 @@
  * @omni/core (the same engine the MCP server uses); documents go to docs/planning/ through the
  * write_planning_document command, which allows nothing else.
  */
-import { createInvokeFs, isAbsolutePath, MemoryStore, normalizePath, type Invoke } from "@omni/core";
+import { createInvokeFs, isAbsolutePath, MemoryStore, normalizePath, type Invoke, desktopStoreOptions } from "@omni/core";
 import type { BYOKConfig } from "./types";
 import { DESKTOP_PERSON } from "./decisions";
 import { conversationMarkdown, type ChatMessage } from "./idea-chat";
@@ -54,7 +54,7 @@ export async function createProjectFromIdea(
 
   const root = normalizePath(`${input.parent}/${folder}`);
   try {
-    const created = await MemoryStore.create(createInvokeFs(invoke), root, { name, flow: "build", mode: input.mode ?? "full", actor: DESKTOP_PERSON });
+    const created = await MemoryStore.create(createInvokeFs(invoke), root, { name, flow: "build", mode: input.mode ?? "full", actor: DESKTOP_PERSON }, desktopStoreOptions(invoke));
     if (!created.ok) {
       const text = created.issues.map((i) => i.message).join("; ");
       return { ok: false, error: /already exists/.test(text) ? `A project already exists in ${root}.` : text };

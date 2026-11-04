@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { loadProjectDetail, loadProjects } from "./projects";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 const node = createNodeFs();
 const agent = { kind: "agent" as const, tool: "made-up-agent" };
@@ -20,7 +20,7 @@ afterEach(() => rmSync(base, { recursive: true, force: true }));
 async function project(name: string, phase?: string) {
   const root = join(base, name);
   mkdirSync(root);
-  const created = await MemoryStore.create(node, root, { name, flow: "build", mode: "full", actor: agent });
+  const created = await MemoryStore.create(node, root, { name, flow: "build", mode: "full", actor: agent }, appStoreOptions());
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   if (phase) await new PhaseEngine(created.store).start(agent, phase);
   return root;
@@ -66,7 +66,7 @@ describe("loadProjects", () => {
 describe("loadProjectDetail (E3)", () => {
   it("builds the gate review for the phase waiting for the person (C18)", async () => {
     const root = await project("orbit", "idea-review");
-    const opened = await MemoryStore.open(node, root);
+    const opened = await MemoryStore.open(node, root, appStoreOptions());
     if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
     const submitted = await opened.store.appendEvent({
       type: "phase_submitted",
@@ -88,7 +88,7 @@ describe("loadProjectDetail (E3)", () => {
 
   it("applies task updates from tools without MCP when the project is loaded, and says what happened (issue B)", async () => {
     const root = await project("nova", "idea-review");
-    const opened = await MemoryStore.open(node, root);
+    const opened = await MemoryStore.open(node, root, appStoreOptions());
     if (!opened.ok) throw new Error("no project");
     writeFileSync(`${root}/.agents/task-updates.jsonl`, "not json\n");
     const detail = await loadProjectDetail(fakeInvoke([]), root);
@@ -100,7 +100,7 @@ describe("loadProjectDetail (E3)", () => {
     const root = await project("comet", "idea-review");
     const before = await loadProjectDetail(fakeInvoke([]), root);
     expect(before.ok && before.teamSize).toBe(0);
-    const opened = await MemoryStore.open(node, root);
+    const opened = await MemoryStore.open(node, root, appStoreOptions());
     if (!opened.ok) throw new Error("no project");
     await saveTeam({ store: opened.store, fs: node, root }, { kind: "human", tool: "omni-desktop" }, [{ toolId: "made-up-editor", name: "Made-up Editor", capability: 3, confirmedByPerson: false }]);
     const after = await loadProjectDetail(fakeInvoke([]), root);

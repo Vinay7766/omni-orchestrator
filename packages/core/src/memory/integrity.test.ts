@@ -6,7 +6,7 @@ import { MemoryStore } from "./store.js";
 import { createNodeFs } from "./node-fs.js";
 import { PhaseEngine } from "../engine/phases.js";
 import { createKeySigner, createKeyTrust, generateSigningKey } from "./node-trust.js";
-import { describeFinding, sha256Hex } from "./integrity.js";
+import { decisionMessage, describeFinding, sha256Hex } from "./integrity.js";
 
 // C17: chained log, signed person decisions, and what each tool counts.
 const fs = createNodeFs();
@@ -133,5 +133,21 @@ describe("signed person decisions", () => {
     expect((await reopened.store.readState()).phases["idea-review"].status).toBe("approved");
     expect((await reopened.store.integrity()).findings).toEqual([expect.objectContaining({ kind: "unsigned_decision", counted: true })]);
     expect(store).toBeDefined();
+  });
+});
+
+describe("cross-language (src-tauri/tests/decisions_tests.rs)", () => {
+  it("builds the text Rust reads, and verifies the signature Rust makes for it", async () => {
+    const message = decisionMessage("proj-1", {
+      id: "evt-1",
+      time: "2026-11-04T10:00:00.000Z",
+      type: "phase_approved",
+      actor: { kind: "human", tool: "omni-desktop" },
+      payload: { phase: "prd" },
+    });
+    expect(message).toBe('omni-decision-v1\n{"project":"proj-1","id":"evt-1","time":"2026-11-04T10:00:00.000Z","type":"phase_approved","actor":{"kind":"human","tool":"omni-desktop"},"payload":{"phase":"prd"}}');
+    const rust = createKeyTrust({ "omni-desktop-ea4a6c63e29c": "6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=" });
+    const signature = "a9GX1P7cXu3lc0abHBy9JJVY5xLXka4xS0vl2tSHC7a1PWCYElUPppabt5B19hzvghcEiNTm3gg54o53h+lDCQ==";
+    expect(await rust.verify([{ keyId: "omni-desktop-ea4a6c63e29c", message, signature }, { keyId: "omni-desktop-ea4a6c63e29c", message: message.replace("prd", "build"), signature }])).toEqual([true, false]);
   });
 });

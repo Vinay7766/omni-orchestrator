@@ -19,6 +19,13 @@ export interface GateUi {
 
 const issuesText = (issues: { message: string }[]) => issues.map((i) => i.message).join("; ");
 
+/**
+ * Decisions on a phase are signed by the desktop app after a native confirmation (C17); the
+ * extension cannot sign, so it sends the person there before asking anything.
+ */
+export const DECIDE_IN_APP =
+  "Decisions on a phase are signed by the OmniOrchestrator desktop app, so they cannot be forged by other programs. Open the project in the app to make this decision.";
+
 /** The phase waiting for this person's review, with its review summary from memory (C18). */
 async function underReview(store: MemoryStore): Promise<{ phase: string; summary: string } | null> {
   const state = await store.readState();
@@ -62,6 +69,7 @@ async function askAboutOptional(store: MemoryStore, person: Actor, ui: GateUi, p
     return started.ok ? `"${phase}" has started.` : `"${phase}" could not start: ${issuesText(started.issues)}`;
   }
   if (choice === SKIP) {
+    if (store.decisionsNeedApp) return DECIDE_IN_APP;
     const skipped = await phases.skip(person, phase);
     if (!skipped.ok) return `"${phase}" could not be skipped: ${issuesText(skipped.issues)}`;
     return `"${phase}" skipped. ${await continueWith(store, person, ui)}`;
@@ -71,6 +79,7 @@ async function askAboutOptional(store: MemoryStore, person: Actor, ui: GateUi, p
 
 /** Approves the phase under review after the person confirms, then continues (see continueWith). */
 export async function approvePhase(store: MemoryStore, person: Actor, ui: GateUi): Promise<void> {
+  if (store.decisionsNeedApp) return ui.show(DECIDE_IN_APP);
   const review = await underReview(store);
   if (!review) {
     ui.show("Nothing is waiting for review.");
@@ -89,6 +98,7 @@ export async function approvePhase(store: MemoryStore, person: Actor, ui: GateUi
 
 /** Sends the phase under review back with the person's notes. */
 export async function requestChanges(store: MemoryStore, person: Actor, ui: GateUi): Promise<void> {
+  if (store.decisionsNeedApp) return ui.show(DECIDE_IN_APP);
   const review = await underReview(store);
   if (!review) {
     ui.show("Nothing is waiting for review.");

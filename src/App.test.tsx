@@ -5,7 +5,7 @@ import App from "./App";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fakeInvoke } from "./lib/testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./lib/testing/fake-invoke";
 import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { createProjectFromIdea } from "./lib/planning";
@@ -160,7 +160,7 @@ describe("OmniOrchestrator App", () => {
         get_byok_config: () => Promise.resolve({ config: { ollamaEndpoint: "http://localhost:11434" }, keyStorage: { available: true } }),
         save_app_settings: () => Promise.resolve(),
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();
@@ -194,7 +194,7 @@ describe("OmniOrchestrator App", () => {
           return Promise.resolve({ text: "A list the whole family shares.\nREADY: A shared family shopping list", provider: "ollama", model: "made-up-model" });
         },
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();
@@ -271,7 +271,7 @@ describe("OmniOrchestrator App", () => {
           return Promise.resolve();
         },
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();
@@ -323,7 +323,7 @@ describe("OmniOrchestrator App", () => {
           });
         },
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();
@@ -383,7 +383,7 @@ describe("OmniOrchestrator App", () => {
           return Promise.resolve({ text: doc(prompts.length === 1 ? "first draft." : "revised with pricing."), provider: "ollama", model: "made-up-model" });
         },
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();
@@ -441,7 +441,7 @@ describe("OmniOrchestrator App", () => {
           return Promise.resolve({ text, provider: "ollama", model: "made-up-model" });
         },
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();
@@ -483,7 +483,7 @@ describe("OmniOrchestrator App", () => {
       const files = fakeInvoke([`${base}/orbit`]);
       const created = await createProjectFromIdea(files, { parent: base, name: "Orbit", idea: "A shared shopping list" });
       if (!created.ok) throw new Error(created.error);
-      const opened = await MemoryStore.open(createNodeFs(), created.root);
+      const opened = await MemoryStore.open(createNodeFs(), created.root, appStoreOptions());
       if (!opened.ok) throw new Error("project did not open");
       const engine = new PhaseEngine(opened.store);
       const writer = { kind: "agent" as const, tool: "omni-desktop", model: "made-up-model" };
@@ -512,7 +512,7 @@ describe("OmniOrchestrator App", () => {
             model: "made-up-model",
           }),
         ...Object.fromEntries(
-          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document"].map((c) => [c, passThrough(c)]),
+          ["memfs_read_text", "memfs_write_text", "memfs_append_text", "memfs_create_exclusive", "memfs_exists", "memfs_mkdir", "memfs_rename", "memfs_remove", "memfs_list", "write_planning_document", "read_planning_document", "sign_decision", "verify_decisions"].map((c) => [c, passThrough(c)]),
         ),
       });
       await renderApp();

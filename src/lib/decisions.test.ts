@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { MemoryStore, OPTIONAL_PHASES, PhaseEngine, STACK_ADR_PHASES } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { approve, requestChanges, runOptional, skipOptional, withdrawApproval, DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions, confirmDecisions } from "./testing/fake-invoke";
 
 // E3 slice 3: the person's decisions in the desktop app, through the same engine and the same
 // "what comes next" rule as the extension (GATE-2, SEC-1).
@@ -21,7 +21,7 @@ beforeEach(async () => {
   base = mkdtempSync(join(tmpdir(), "omni-app-decisions-"));
   root = join(base, "orbit").replace(/\\/g, "/");
   mkdirSync(root);
-  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: agent });
+  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: agent }, appStoreOptions());
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   store = created.store;
 });
@@ -45,6 +45,21 @@ const lastEvent = async () => (await store.readEvents()).events.at(-1)!;
 const status = async (phase: string) => (await store.readState()).phases[phase]?.status;
 
 describe("desktop decisions", () => {
+  it("signs the approval after the native confirmation, and records nothing when the person cancels it (C17)", async () => {
+    await submitted("idea-review");
+    confirmDecisions(false);
+    try {
+      const cancelled = await approve(fakeInvoke(), root, "idea-review");
+      expect(cancelled).toEqual({ ok: false, message: "The decision was not confirmed, so nothing was recorded." });
+      expect(await status("idea-review")).toBe("awaiting_review");
+    } finally {
+      confirmDecisions(true);
+    }
+    expect((await approve(fakeInvoke(), root, "idea-review")).ok).toBe(true);
+    const approval = (await store.readEvents()).events.find((e) => e.type === "phase_approved")!;
+    expect(approval.signature).toEqual({ keyId: "omni-desktop-test", value: expect.any(String) });
+  });
+
   it("approves as the person and starts the next phase", async () => {
     await submitted("idea-review");
     const result = await approve(fakeInvoke(), root, "idea-review");

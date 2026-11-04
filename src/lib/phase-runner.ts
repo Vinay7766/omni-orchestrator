@@ -22,8 +22,7 @@ import {
   type CatalogEntry,
   type Event,
   type Invoke,
-  type MemoryStore as Store,
-} from "@omni/core";
+  type MemoryStore as Store, desktopStoreOptions } from "@omni/core";
 import type { BYOKConfig, Skill } from "./types";
 
 /** What each planning phase asks the model to write (the skills give the method). */
@@ -211,7 +210,7 @@ function lastNotes(events: Event[], phase: string): string | undefined {
 export async function runPhase(invoke: Invoke, rootIn: string, options: { byok: BYOKConfig; skills: Skill[] }): Promise<RunResult> {
   const root = normalizePath(rootIn);
   try {
-    const opened = await MemoryStore.open(createInvokeFs(invoke), root);
+    const opened = await MemoryStore.open(createInvokeFs(invoke), root, desktopStoreOptions(invoke));
     if (!opened.ok) return { ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
     const store = opened.store;
     const state = await store.readState();

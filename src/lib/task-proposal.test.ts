@@ -8,7 +8,7 @@ import { createNodeFs } from "@omni/core/node";
 import { approveTaskList, parseTaskProposal, proposeTasks, readTaskProposal } from "./task-proposal";
 import { createProjectFromIdea } from "./planning";
 import { DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 import type { Skill } from "./types";
 
 // E5 slice 5: after architecture is approved, the AI set up in the app writes the task list,
@@ -81,7 +81,7 @@ describe("proposing and approving the task list", () => {
   };
   const byok = { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" };
   const open = async () => {
-    const opened = await MemoryStore.open(node, root);
+    const opened = await MemoryStore.open(node, root, appStoreOptions());
     if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
     return opened.store;
   };

@@ -98,14 +98,14 @@ describe("bundled extension", () => {
       await new PhaseEngine(opened.store).submit(agent, { phase: "idea-review", documents: ["a.md"], skillsUsed: [{ skill: "x", evidence: "y" }], understandingCheck: "u.md" });
       await expect.poll(() => vscode.item.text, { timeout: 5000 }).toContain("review needed");
 
-      // The person approves in the editor: recorded as a person, named by the editor, and the
-      // next phase starts; the status bar follows.
+      // Decisions on a phase are signed by the desktop app (C17): the installed extension sends the
+      // person there and records nothing; the phase still waits for review.
+      const before = (await opened.store.readEvents()).events.length;
       vscode.answer("Approve");
       await vscode.commands.get("omni.approvePhase")!();
-      const events = (await opened.store.readEvents()).events.slice(-2);
-      expect(events.map((e) => e.type)).toEqual(["phase_approved", "phase_started"]);
-      for (const e of events) expect(e.actor).toEqual({ kind: "human", tool: "Made-up Editor" });
-      await expect.poll(() => vscode.item.text, { timeout: 5000 }).toContain("Omni: research · in progress");
+      expect(vscode.messages.at(-1)).toMatch(/signed by the OmniOrchestrator desktop app/);
+      expect((await opened.store.readEvents()).events.length).toBe(before);
+      expect(vscode.item.text).toContain("review needed");
     } finally {
       for (const d of context.subscriptions) d.dispose();
       ext.deactivate?.();

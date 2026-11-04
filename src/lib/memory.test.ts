@@ -7,7 +7,7 @@ import { MemoryStore, refreshMemoryDocs } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { addEntry, loadMemoryFiles, MEMORY_FILES, updateProjectDetails } from "./memory";
 import { DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 // E3 slice 4a: view project memory; add the person's own decisions, problems and lessons.
 
@@ -21,7 +21,7 @@ beforeEach(async () => {
   root = join(base, "orbit").replace(/\\/g, "/");
   mkdirSync(join(root, "docs"), { recursive: true });
   writeFileSync(join(root, "docs", "ARCHITECTURE.md"), "# Architecture\n");
-  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON });
+  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON }, appStoreOptions());
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   store = created.store;
   await refreshMemoryDocs(store);

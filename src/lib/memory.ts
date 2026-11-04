@@ -14,8 +14,7 @@ import {
   refreshMemoryDocs,
   type Invoke,
   type RecordResult,
-  type RecordTarget,
-} from "@omni/core";
+  type RecordTarget, desktopStoreOptions } from "@omni/core";
 import { DESKTOP_PERSON, type DecisionResult } from "./decisions";
 
 /** The memory files the dashboard shows, in this order. */
@@ -34,7 +33,7 @@ const reason = (error: unknown) => (error instanceof Error ? error.message : Str
 async function open(invoke: Invoke, root: string): Promise<RecordTarget> {
   const fs = createInvokeFs(invoke);
   const projectRoot = normalizePath(root);
-  const opened = await MemoryStore.open(fs, projectRoot);
+  const opened = await MemoryStore.open(fs, projectRoot, desktopStoreOptions(invoke));
   if (!opened.ok) throw new Error(opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; "));
   // No commit checker in the app: commits are recorded as unverified, with a warning.
   return { store: opened.store, fs, root: projectRoot };

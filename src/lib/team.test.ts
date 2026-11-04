@@ -7,7 +7,7 @@ import { MemoryStore, PhaseEngine, TaskEngine, type Invoke } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { discoverTools, forgetDiscovery, handOffTool, loadTeam, saveTeamSelection } from "./team";
 import { DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 // E6 slice 4: the person's tool selection is saved, and each selected tool is handed the build:
 // the AGENTS.md text goes to the Rust command, chat-only tools get the package in .agents/.
@@ -24,14 +24,14 @@ let calls: { command: string; args: Record<string, unknown> }[];
 let invoke: Invoke;
 
 const open = async () => {
-  const opened = await MemoryStore.open(node, root);
+  const opened = await MemoryStore.open(node, root, appStoreOptions());
   if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
   return opened.store;
 };
 
 /** A project with planning approved, one task, and the build phase started or not. */
 async function project(buildStarted: boolean) {
-  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON });
+  const created = await MemoryStore.create(node, root, { name: "Orbit", flow: "build", mode: "full", actor: DESKTOP_PERSON }, appStoreOptions());
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   const store = created.store;
   const engine = new PhaseEngine(store);

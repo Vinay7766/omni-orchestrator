@@ -8,7 +8,7 @@ import { createNodeFs } from "@omni/core/node";
 import { buildPhasePrompt, parsePhaseOutput, runPhase } from "./phase-runner";
 import { createProjectFromIdea } from "./planning";
 import { DESKTOP_PERSON } from "./decisions";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 import type { Skill } from "./types";
 
 // E5 slice 3: a planning phase runs with the person's own model, with that phase's skills, and
@@ -114,7 +114,7 @@ describe("runPhase", () => {
   };
   const byok = { ollamaEndpoint: "http://localhost:11434", preferredModel: "made-up-model" };
   const open = async () => {
-    const opened = await MemoryStore.open(node, root);
+    const opened = await MemoryStore.open(node, root, appStoreOptions());
     if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
     return opened.store;
   };

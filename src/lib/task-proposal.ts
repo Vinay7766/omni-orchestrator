@@ -7,7 +7,7 @@
  * and their approval is recorded as a decision) or asks for changes (the AI rewrites it). The
  * person never edits the list by hand, and the app never makes one up.
  */
-import { createInvokeFs, MemoryStore, normalizePath, readTeam, recordDecision, TaskEngine, type Invoke, type Team } from "@omni/core";
+import { createInvokeFs, MemoryStore, normalizePath, readTeam, recordDecision, TaskEngine, type Invoke, type Team, desktopStoreOptions } from "@omni/core";
 import type { BYOKConfig, Skill } from "./types";
 import { DESKTOP_PERSON } from "./decisions";
 import { phaseSkills, PLANNING_AGENT_TOOL, readDoc } from "./phase-runner";
@@ -138,7 +138,7 @@ export async function readTaskProposal(invoke: Invoke, root: string): Promise<({
 
 /** The tools the person chose (D); null when none are saved (the list is then not assigned). */
 async function teamMembers(invoke: Invoke, root: string): Promise<Members | null> {
-  const opened = await MemoryStore.open(createInvokeFs(invoke), root);
+  const opened = await MemoryStore.open(createInvokeFs(invoke), root, desktopStoreOptions(invoke));
   if (!opened.ok) return null;
   const team = await readTeam(opened.store);
   return team.ok && team.team && team.team.members.length > 0 ? team.team.members : null;
@@ -150,7 +150,7 @@ const describeTeam = (members: Members) =>
     .join("\n");
 
 async function openReady(invoke: Invoke, root: string) {
-  const opened = await MemoryStore.open(createInvokeFs(invoke), root);
+  const opened = await MemoryStore.open(createInvokeFs(invoke), root, desktopStoreOptions(invoke));
   if (!opened.ok) return fail(opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; "));
   const state = await opened.store.readState();
   if (state.phases.architecture?.status !== "approved") return fail("The architecture must be approved before the task list is written.");

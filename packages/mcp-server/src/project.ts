@@ -13,6 +13,7 @@ import {
   type ReferenceCheck,
   type ResolvedSkill,
   type SkillSource,
+  type Trust,
 } from "@omni/core";
 
 export interface ToolDeps {
@@ -27,6 +28,8 @@ export interface ToolDeps {
    * the project the server was started in, only these can be opened, by projectPath or a link.
    */
   registeredProjects?: () => Promise<string[]>;
+  /** Checks signed person decisions against the app's trusted keys (C17). */
+  trust?: Trust;
 }
 
 export type OpenResult =
@@ -67,7 +70,7 @@ export async function openProject(deps: ToolDeps, projectPath: string | undefine
   }
   const refused = await allowed(deps, found);
   if (refused) return { ok: false, message: refused };
-  const opened = await MemoryStore.open(deps.fs, found.root);
+  const opened = await MemoryStore.open(deps.fs, found.root, deps.trust ? { trust: deps.trust } : {});
   if (!opened.ok) return { ok: false, message: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
   return { ok: true, store: opened.store, root: found.root, ...(found.linkedFrom ? { linkedFrom: found.linkedFrom } : {}) };
 }

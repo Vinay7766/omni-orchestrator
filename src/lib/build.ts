@@ -4,12 +4,12 @@
  * recorded as the person, with the files and the skill evidence the finished tasks recorded (no
  * new claims). The gate rules (memory update, evidence) are core's, unchanged.
  */
-import { createInvokeFs, MemoryStore, normalizePath, PhaseEngine, type Invoke } from "@omni/core";
+import { createInvokeFs, MemoryStore, normalizePath, PhaseEngine, type Invoke, desktopStoreOptions } from "@omni/core";
 import { DESKTOP_PERSON } from "./decisions";
 
 export async function handInBuild(invoke: Invoke, rootIn: string): Promise<{ ok: boolean; message: string }> {
   try {
-    const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(rootIn));
+    const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(rootIn), desktopStoreOptions(invoke));
     if (!opened.ok) return { ok: false, message: opened.issues.map((i) => i.message).join("; ") };
     const store = opened.store;
     const state = await store.readState();

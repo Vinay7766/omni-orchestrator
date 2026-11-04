@@ -4,7 +4,7 @@
  * commands, and what follows uses the same rule as the extension (continueAfterDecision), so the
  * app never starts an optional phase for the person.
  */
-import { continueAfterDecision, createInvokeFs, MemoryStore, normalizePath, PhaseEngine, type Invoke, type MemoryStore as Store } from "@omni/core";
+import { continueAfterDecision, createInvokeFs, MemoryStore, normalizePath, PhaseEngine, type Invoke, type MemoryStore as Store, desktopStoreOptions } from "@omni/core";
 
 /** The person at the desktop app. */
 export const DESKTOP_PERSON = { kind: "human" as const, tool: "omni-desktop" };
@@ -14,7 +14,7 @@ export type DecisionResult = { ok: boolean; message: string };
 const issuesText = (issues: { message: string }[]) => issues.map((i) => i.message).join("; ");
 
 async function openStore(invoke: Invoke, root: string): Promise<Store> {
-  const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root));
+  const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root), desktopStoreOptions(invoke));
   if (!opened.ok) throw new Error(opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; "));
   return opened.store;
 }

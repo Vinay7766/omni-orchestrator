@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { MemoryStore, PhaseEngine } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { watchProject } from "./live";
-import { fakeInvoke } from "./testing/fake-invoke";
+import { fakeInvoke, appStoreOptions } from "./testing/fake-invoke";
 
 const node = createNodeFs();
 const human = { kind: "human" as const, tool: "omni-desktop" };
@@ -20,7 +20,7 @@ beforeEach(() => {
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 async function created() {
-  const result = await MemoryStore.create(node, root, { name: "Live", flow: "build", mode: "full", actor: human });
+  const result = await MemoryStore.create(node, root, { name: "Live", flow: "build", mode: "full", actor: human }, appStoreOptions());
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   return result.store;
 }

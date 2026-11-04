@@ -4,7 +4,7 @@
  */
 import * as vscode from "vscode";
 import { endSession, findProject, joinPath, MEMORY_DIR, MemoryStore, normalizePath, startSession, watchEvents, type EventWatch } from "@omni/core";
-import { createNodeChangeTrigger, createNodeFs } from "@omni/core/node";
+import { createFileTrust, createNodeChangeTrigger, createNodeFs } from "@omni/core/node";
 import { approvePhase, decideOptionalPhase, requestChanges, type GateUi } from "./gate.js";
 import { idleStatusText, statusText } from "./status.js";
 import { startNextPhaseInChat, type ChatHost } from "./chat.js";
@@ -124,7 +124,8 @@ async function openProject(item: vscode.StatusBarItem): Promise<void> {
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     const found = await findProject(fs, normalizePath(folder.uri.fsPath));
     if (!found.ok) continue;
-    const opened = await MemoryStore.open(fs, found.root);
+    // A person's decision counts only when signed by the desktop app (C17).
+    const opened = await MemoryStore.open(fs, found.root, { trust: createFileTrust() });
     if (!opened.ok) continue;
     store = opened.store;
     const project = store.readProject();
