@@ -399,3 +399,34 @@ fn two_projects_in_a_shared_user_config_each_keep_their_own_entry() {
         let _ = fs::remove_dir_all(d);
     }
 }
+
+// --- Retest bug 2 (2026-11-04): the installed app pointed tools at the build machine's server ---
+
+#[test]
+fn the_embedded_server_and_skills_are_installed_in_the_apps_folder() {
+    use tauri_app_lib::commands::mcp_setup::install_bundled_server;
+    use tauri_app_lib::commands::skill_manager::SkillManager;
+    let dir = temp("installed");
+    let skills = SkillManager::new(dir.join("unused")).get_default_skills();
+    let (server, skills_dir) = install_bundled_server(&dir, "console.log('made-up server')", &skills).unwrap().expect("installed");
+    assert_eq!(fs::read_to_string(&server).unwrap(), "console.log('made-up server')");
+    assert!(server.starts_with(&dir), "inside the app's own folder: {}", server.display());
+    let catalog: Value = serde_json::from_str(&fs::read_to_string(skills_dir.join("catalog.json")).unwrap()).unwrap();
+    assert_eq!(catalog.as_array().unwrap().len(), skills.len());
+    assert!(catalog[0].get("content").is_none(), "the text is in SKILL.md, not the catalog");
+    let first = skills[0].id.clone();
+    assert_eq!(fs::read_to_string(skills_dir.join(&first).join("SKILL.md")).unwrap(), skills[0].content);
+    // Installing again (every handoff) keeps the same paths.
+    let again = install_bundled_server(&dir, "console.log('made-up server')", &skills).unwrap().unwrap();
+    assert_eq!(again, (server, skills_dir));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn nothing_is_installed_when_no_server_was_embedded() {
+    use tauri_app_lib::commands::mcp_setup::install_bundled_server;
+    let dir = temp("not-embedded");
+    assert_eq!(install_bundled_server(&dir, "", &[]).unwrap(), None);
+    assert!(!dir.join("mcp-server").exists());
+    let _ = fs::remove_dir_all(dir);
+}

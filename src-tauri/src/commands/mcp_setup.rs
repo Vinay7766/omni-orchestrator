@@ -323,6 +323,77 @@ pub fn resolve_server_command(server_override: Option<String>, built_main: &Path
     })
 }
 
+/// The one-file MCP server embedded at build time (empty when it was not built; see build.rs).
+const BUNDLED_SERVER: &str = include_str!(concat!(env!("OUT_DIR"), "/omni-mcp-server.cjs"));
+
+fn write_if_changed(path: &Path, text: &str) -> Result<(), String> {
+    if fs::read_to_string(path).ok().as_deref() == Some(text) {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Could not create {}: {}", parent.display(), e))?;
+    }
+    let temp = path.with_extension("omni-tmp");
+    fs::write(&temp, text).map_err(|e| format!("Could not write {}: {}", path.display(), e))?;
+    fs::rename(&temp, path).map_err(|e| format!("Could not write {}: {}", path.display(), e))
+}
+
+/// Installs the embedded MCP server and the bundled skills in the app's own folder (retest bug 2:
+/// the installed app pointed tools at the build machine's path). Returns the server file and the
+/// skills folder, or None when no server was embedded. Files are rewritten only when they changed.
+pub fn install_bundled_server(app_dir: &Path, bundle: &str, skills: &[crate::models::Skill]) -> Result<Option<(PathBuf, PathBuf)>, String> {
+    if bundle.is_empty() {
+        return Ok(None);
+    }
+    let dir = app_dir.join("mcp-server");
+    let server = dir.join("omni-mcp-server.cjs");
+    write_if_changed(&server, bundle)?;
+    let skills_dir = dir.join("skills");
+    let catalog: Vec<serde_json::Value> = skills
+        .iter()
+        .map(|s| {
+            let mut attribution = serde_json::to_value(&s.attribution).unwrap_or_default();
+            if let Some(a) = attribution.as_object_mut() {
+                a.remove("avatarUrl");
+            }
+            serde_json::json!({
+                "id": s.id, "name": s.name, "description": s.description, "category": s.category,
+                "attribution": attribution, "enabled": s.enabled, "isCustom": false,
+                "license": s.license.clone().unwrap_or_else(|| "unverified".into()),
+                "phases": if s.phases.is_empty() { vec!["all".to_string()] } else { s.phases.clone() },
+                "domains": if s.domains.is_empty() { vec!["general".to_string()] } else { s.domains.clone() },
+            })
+        })
+        .collect();
+    write_if_changed(&skills_dir.join("catalog.json"), &(serde_json::to_string_pretty(&catalog).map_err(|e| e.to_string())? + "\n"))?;
+    for s in skills {
+        write_if_changed(&skills_dir.join(&s.id).join("SKILL.md"), &s.content)?;
+    }
+    Ok(Some((server, skills_dir)))
+}
+
+/// The command each AI tool starts the MCP server with: OMNI_MCP_SERVER if set; else the server
+/// installed from this app (with its skills); else, when running from source, the repository's
+/// built server. Then the person's own skills folder (SKL-5).
+pub fn tool_server_command(path_dirs: &[PathBuf]) -> Result<ServerCommand, String> {
+    let skills = crate::commands::skill_manager::SkillManager::default_system();
+    let app_dir = crate::storage::store::StorageManager::default_system().get_settings_path().parent().map(Path::to_path_buf).unwrap_or_default();
+    let server = match (std::env::var("OMNI_MCP_SERVER").ok(), install_bundled_server(&app_dir, BUNDLED_SERVER, &skills.get_default_skills())?) {
+        (Some(path), _) => resolve_server_command(Some(path), Path::new(""), path_dirs)?,
+        (None, Some((main, skills_dir))) => {
+            let mut cmd = resolve_server_command(None, &main, path_dirs)?;
+            cmd.args.push("--skills".into());
+            cmd.args.push(skills_dir.to_string_lossy().into_owned());
+            cmd
+        }
+        (None, None) => {
+            let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("main.js");
+            resolve_server_command(None, &repo, path_dirs)?
+        }
+    };
+    Ok(with_user_skills(server, &skills.user_skills_dir()))
+}
+
 /// Adds the person's own skills folder, so the tool is served the skills they added, edited or
 /// switched off in the app (SKL-5).
 pub fn with_user_skills(mut server: ServerCommand, folder: &Path) -> ServerCommand {
@@ -356,9 +427,7 @@ pub async fn setup_mcp(tool_id: String, project_path: Option<String>) -> Result<
             .or_else(|| std::env::var_os("HOME"))
             .map(PathBuf::from)
             .ok_or_else(|| "The home folder could not be found.".to_string())?;
-        let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("main.js");
-        let server = resolve_server_command(std::env::var("OMNI_MCP_SERVER").ok(), &built, &view.path_dirs)?;
-        let server = with_user_skills(server, &crate::commands::skill_manager::SkillManager::default_system().user_skills_dir());
+        let server = tool_server_command(&view.path_dirs)?;
         let (adapters, _) = bundled_adapters();
         setup_tool(tool, adapter_for(&tool.id, &adapters), &home, project.as_deref(), &server)
     })

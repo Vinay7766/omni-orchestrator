@@ -5,7 +5,20 @@ use std::path::Path;
 fn main() {
     bundle_skill_catalog();
     bundle_adapters();
+    bundle_mcp_server();
     tauri_build::build()
+}
+
+/// Embeds the one-file MCP server (packages/mcp-server/dist/omni-mcp-server.cjs, made by
+/// `npm run build`, which `tauri build` runs first) so the installed app can give it to AI tools
+/// (retest bug 2). When it has not been built (for example `cargo test` alone), an empty file is
+/// embedded and the app falls back to the repository's server.
+fn bundle_mcp_server() {
+    let bundle = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("omni-mcp-server.cjs");
+    println!("cargo:rerun-if-changed={}", bundle.display());
+    let text = fs::read_to_string(&bundle).unwrap_or_default();
+    let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("omni-mcp-server.cjs");
+    fs::write(&out, text).expect("cannot write the embedded MCP server");
 }
 
 /// Copies `packages/core/adapters/*.json` as raw `{ name, text }` entries into OUT_DIR for the

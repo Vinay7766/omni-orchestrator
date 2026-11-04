@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -150,4 +150,26 @@ describe("stdio server", () => {
       await client.close();
     }
   }, 60_000);
+
+  // Retest bug 2 (2026-11-04): the installed app had no MCP server to give the tools. It now ships
+  // one file, omni-mcp-server.cjs, built by build.mjs; it must run with nothing else around it.
+  it("runs as one file copied away from the repository, with the skills folder it is given", async () => {
+    execFileSync(process.execPath, [join(pkgDir, "build.mjs")], { stdio: "pipe" });
+    const away = mkdtempSync(join(tmpdir(), "omni-mcp-installed-"));
+    const server = join(away, "omni-mcp-server.cjs");
+    copyFileSync(join(pkgDir, "dist", "omni-mcp-server.cjs"), server);
+    const skills = fileURLToPath(new URL("../../../skills", import.meta.url));
+    const client = new Client({ name: "made-up-client", version: "0.0.1" });
+    try {
+      await client.connect(new StdioClientTransport({ command: process.execPath, args: [server, "--project", root, "--skills", skills], cwd: away, stderr: "pipe" }));
+      const result = await client.callTool({ name: "get_context", arguments: {} });
+      expect(result.isError).toBeFalsy();
+      const ctx = result.structuredContent as { phase: { id: string }; skills: { reason: string }[] };
+      expect(ctx.phase.id).toBe("build");
+      expect(ctx.skills.some((sk) => sk.reason === "phase")).toBe(true);
+    } finally {
+      await client.close();
+      rmSync(away, { recursive: true, force: true });
+    }
+  }, 120_000);
 });

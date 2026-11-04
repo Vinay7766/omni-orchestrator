@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::commands::adapters::{adapter_for, apply_block, bundled_adapters, Adapter, ManagedBlockStatus, MANAGED_BEGIN, MANAGED_END};
-use crate::commands::mcp_setup::{resolve_server_command, setup_tool, ServerCommand, SetupResult};
+use crate::commands::mcp_setup::{setup_tool, ServerCommand, SetupResult};
 use crate::commands::tool_discovery::{discover, DiscoveredTool, LaunchCommand, SystemView};
 
 /// The AGENTS.md block is a summary and a next task, not a document.
@@ -322,10 +322,7 @@ pub async fn hand_off_tool(request: HandoffRequest) -> Result<HandoffResult, Str
             .or_else(|| std::env::var_os("HOME"))
             .map(PathBuf::from)
             .ok_or_else(|| "The home folder could not be found.".to_string())?;
-        let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("packages").join("mcp-server").join("dist").join("main.js");
-        let user_skills = crate::commands::skill_manager::SkillManager::default_system().user_skills_dir();
-        let server = resolve_server_command(std::env::var("OMNI_MCP_SERVER").ok(), &built, &view.path_dirs)
-            .map(|server| crate::commands::mcp_setup::with_user_skills(server, &user_skills));
+        let server = crate::commands::mcp_setup::tool_server_command(&view.path_dirs);
         let context = HandoffContext { tools: &tools, adapters: &adapters, home: &home, server };
         // The program comes from the tool's own install folder (discovery), never from the web view.
         // One process per tool and project: a click while it is still running opens nothing new.

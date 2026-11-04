@@ -9,14 +9,17 @@ import { createGitCommitChecker, createNodeFs, createSkillDirectorySource } from
 import { parseArgs } from "./args.js";
 import { closeServer, createServer } from "./server.js";
 
-/** The skill catalog: OMNI_SKILLS_DIR, else the repository's /skills folder (dist/../../../skills). */
-const skillsDir = process.env.OMNI_SKILLS_DIR || fileURLToPath(new URL("../../../skills", import.meta.url));
-
 const args = parseArgs(process.argv.slice(2), process.cwd());
 if (!args.ok) {
   console.error(`omni-orchestrator MCP server: ${args.message}`);
   process.exit(2);
 }
+
+/**
+ * The skill catalog: --skills (the installed app's copy), else OMNI_SKILLS_DIR, else the
+ * repository's /skills folder (dist/../../../skills) when run from source.
+ */
+const skillsDir = args.skillsDir || process.env.OMNI_SKILLS_DIR || fileURLToPath(new URL("../../../skills", import.meta.url));
 
 const server = createServer({
   fs: createNodeFs(),
