@@ -33,7 +33,7 @@ export async function loadProjects(invoke: Invoke, folders: string[]): Promise<P
 
 /** One project's phase history for the detail screen (E3, GATE-5). */
 export type ProjectDetailResult =
-  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow; /** The phase waiting for the person, summarised for review (C18). */ review?: GateReview; /** How many tools the person selected (D). */ teamSize?: number; /** Updates applied from tools without MCP on this load (issue B). */ updates?: ImportResult }
+  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow; /** The phase waiting for the person, summarised for review (C18). */ review?: GateReview; /** How many tools the person selected (D). */ teamSize?: number; /** Updates applied from tools without MCP on this load (issue B). */ updates?: ImportResult; /** Tasks marked done (issue C). */ tasksDone?: number }
   | { ok: false; error: string };
 
 export async function loadProjectDetail(invoke: Invoke, root: string): Promise<ProjectDetailResult> {
@@ -56,6 +56,7 @@ export async function loadProjectDetail(invoke: Invoke, root: string): Promise<P
       mode: project.mode,
       history: buildPhaseHistory(project.flow, state, events),
       taskCount: state.tasks.length,
+      tasksDone: state.tasks.filter((t) => t.status === "done").length,
       workflow: buildWorkflow(project.flow, state, events),
       ...(review ? { review } : {}),
       teamSize: team.ok ? (team.team?.members.length ?? 0) : 0,

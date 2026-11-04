@@ -82,7 +82,7 @@ export function startSteps(level: 1 | 2 | 3, toolName: string, model?: string): 
       `Open ${tool}'s AI chat or agent panel.`,
       pick,
       `Type: "Read AGENTS.md and start the next task given to ${tool}." The AI reads the project memory from the files.`,
-      "When it is done, ask it to record the result in the project memory as AGENTS.md says, then check it here.",
+      `When it finishes a task, make sure it adds the "complete" line to ${MEMORY_DIR}/task-updates.jsonl as AGENTS.md says; this page then shows the task as done (or why not).`,
     ];
   }
   return [
@@ -114,6 +114,15 @@ export function buildHandoff({ projectName, state, summary, team = [], toolId }:
     `- ${NO_AI_ATTRIBUTION_RULE}`,
   ];
 
+  // Owner's v0.1 issue C: tools finished tasks without marking them done. How to record progress,
+  // for tools with the MCP server and without it (the file the app applies, issue B).
+  const progressRules = [
+    "Recording progress (required):",
+    "- With the OmniOrchestrator MCP server: when a task is done, call `complete_task` (the test command you ran and its real output, the skills used with evidence, the memory files you updated) before starting the next. When every task is done, call `submit_phase` for \"build\".",
+    `- Without it: add one JSON line per step to \`${MEMORY_DIR}/task-updates.jsonl\` (create it if missing), with "tool" (your name) and "task". Steps: {"action": "trivial", "reason": "..."} or {"action": "design", "note": {...}}, then {"action": "start"}, then {"action": "complete", "summary": "...", "tests": {"command": "...", "exitCode": 0, "outputTail": "..."}, "skillsUsed": [{"skill": "...", "evidence": "..."}], "refs": {"files": ["..."]}, "memoryUpdate": {"files": ["${MEMORY_DIR}/summary.md"]}}. When every task is done: {"action": "submit_phase", "phase": "build", "documents": ["..."], "skillsUsed": [...], "memoryUpdate": {"files": ["..."]}}. The app applies the lines and shows any it refused, with the reason.`,
+    `- Never edit \`${MEMORY_DIR}/state.json\` or \`${MEMORY_DIR}/events.jsonl\` by hand.`,
+  ];
+
   const agentsBlock = [
     `## OmniOrchestrator project: ${name}`,
     "",
@@ -131,6 +140,8 @@ export function buildHandoff({ projectName, state, summary, team = [], toolId }:
     "",
     "Rules:",
     ...rules,
+    "",
+    ...progressRules,
   ].join("\n");
 
   const pkg = [

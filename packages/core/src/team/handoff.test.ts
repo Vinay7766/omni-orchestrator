@@ -111,4 +111,18 @@ describe("buildHandoff (core)", () => {
     expect(startSteps(1, "Made-up Chat").join(" ")).toMatch(/paste/i);
     for (const level of [1, 2, 3] as const) expect(startSteps(level, "X").length).toBeGreaterThanOrEqual(3);
   });
+
+  // Owner's v0.1 issue C (2026-11-04): a tool in VS Code finished tasks without marking them done.
+  it("tells every tool how to mark each task done and to hand in the build when all are done (issue C)", () => {
+    const { agentsBlock } = buildHandoff({ projectName: "Notes", state: state(tasks), summary: null });
+    expect(agentsBlock).toMatch(/complete_task/);
+    expect(agentsBlock).toMatch(/submit_phase.*build/i);
+    expect(agentsBlock).toContain(".agents/task-updates.jsonl");
+    expect(agentsBlock).toMatch(/"action":\s*"complete"/);
+    expect(agentsBlock).toMatch(/never edit .*state\.json/i);
+  });
+
+  it("the steps for a tool without MCP say where to record that a task is done (issue C)", () => {
+    expect(startSteps(2, "Made-up CLI").join(" ")).toContain(".agents/task-updates.jsonl");
+  });
 });

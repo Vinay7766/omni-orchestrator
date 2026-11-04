@@ -11,6 +11,32 @@ const detail: ProjectDetailResult = {
   history: [{ phase: "idea-review", status: "in_progress", isNext: true, submissions: [], changeRequests: [], sessions: [] }],
 };
 
+describe("ProjectDetail: handing in the build when every task is done (issue C)", () => {
+  const building = (done: number): ProjectDetailResult => ({
+    ...detail,
+    taskCount: 2,
+    tasksDone: done,
+    history: [{ phase: "build", status: "in_progress", isNext: true, submissions: [], changeRequests: [], sessions: [] }],
+  });
+
+  it("offers to hand in the build once every task is done, and does it as the person", async () => {
+    const handInBuild = vi.fn().mockResolvedValue({ ok: true, message: "The build is handed in for your review." });
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(building(2))} onBack={vi.fn()} decide={{ handInBuild }} />);
+    const button = await screen.findByRole("button", { name: /hand in the build for review/i });
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(handInBuild).toHaveBeenCalledWith("C:/work/orbit");
+    expect(await screen.findByText(/handed in for your review/)).toBeDefined();
+  });
+
+  it("does not offer it while a task is still open", async () => {
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(building(1))} onBack={vi.fn()} decide={{ handInBuild: vi.fn() }} />);
+    await screen.findByRole("heading", { name: "Orbit" });
+    expect(screen.queryByRole("button", { name: /hand in the build for review/i })).toBeNull();
+  });
+});
+
 describe("ProjectDetail: updates from tools without MCP (issue B)", () => {
   it("says which updates were applied and which were not, and where to read why", async () => {
     const withUpdates: ProjectDetailResult = { ...detail, updates: { applied: ["Made-up Editor: complete T-1"], refused: [{ line: "x", reason: "tests failed" }] } };

@@ -13,6 +13,7 @@ import type { FreshSessionFns } from "../team/FreshSessionPanel";
 import { startFreshSession } from "../../lib/fresh-session";
 import { watchProject } from "../../lib/live";
 import { showRefInFolder } from "../../lib/refs";
+import { handInBuild } from "../../lib/build";
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
 const tauri: Invoke = (command, args) => invoke(command, args);
@@ -22,6 +23,7 @@ const decide: DecideFns = {
   requestChanges: (root, phase, notes) => requestChanges(tauri, root, phase, notes),
   run: (root, phase) => runOptional(tauri, root, phase),
   skip: (root, phase, reason) => skipOptional(tauri, root, phase, reason),
+  handInBuild: (root) => handInBuild(tauri, root),
 };
 
 /** Files and commits in the workflow details (P-E8-02): a file's folder opens; a commit is copied. */

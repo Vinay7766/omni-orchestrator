@@ -51,6 +51,12 @@ function readyToHandOff(detail: Extract<ProjectDetailResult, { ok: true }>): boo
   return architectureApproved(detail) && (detail.taskCount ?? 0) > 0;
 }
 
+/** The build is under way, it has tasks, and every one is done (issue C). */
+function buildReadyToHandIn(detail: Extract<ProjectDetailResult, { ok: true }>): boolean {
+  const build = detail.history.find((e) => e.phase === "build");
+  return build?.status === "in_progress" && (detail.taskCount ?? 0) > 0 && detail.tasksDone === detail.taskCount;
+}
+
 /** The phase to start fresh: the next one, once an earlier phase is approved (HND-7). */
 function freshPhase(detail: Extract<ProjectDetailResult, { ok: true }>): string | null {
   const next = detail.history.find((e) => e.isNext);
@@ -63,6 +69,8 @@ export interface DecideFns {
   requestChanges?: (root: string, phase: string, notes: string) => Promise<DecisionResult>;
   run?: (root: string, phase: string) => Promise<DecisionResult>;
   skip?: (root: string, phase: string, reason: string) => Promise<DecisionResult>;
+  /** Every task is done but no tool handed in the build: the person hands it in (issue C). */
+  handInBuild?: (root: string) => Promise<DecisionResult>;
 }
 
 interface ProjectDetailProps {
@@ -248,6 +256,21 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           )}
 
           {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
+          {decide?.handInBuild && buildReadyToHandIn(detail) && (
+            <section aria-label="Every task is done" className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 p-3 space-y-2">
+              <p className="text-sm text-emerald-200">Every task is done, but no tool has handed in the build yet.</p>
+              <p className="text-xs text-zinc-400">
+                Hand it in for your review with the files and test evidence the tasks recorded. Once you approve it, the review phase comes next.
+              </p>
+              <button
+                type="button"
+                onClick={() => void record(decide.handInBuild?.(root))}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              >
+                Hand in the build for review
+              </button>
+            </section>
+          )}
           {detail.updates && (
             <div role="status" aria-label="Updates from your tools" className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-300 space-y-1">
               {detail.updates.applied.length > 0 && (
