@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0002",
+  "time": "2026-11-04T10:00:00Z",
+  "type": "phase_approved",
+  "actor": {
+    "kind": "human",
+    "tool": "omni-desktop"
+  },
+  "payload": {
+    "phase": "prd"
+  },
+  "prev": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "signature": {
+    "keyId": "omni-desktop-1a2b3c4d",
+    "value": "c2lnbmF0dXJlLWJ5dGVzLWZvci1hLXRlc3Q="
+  }
+}

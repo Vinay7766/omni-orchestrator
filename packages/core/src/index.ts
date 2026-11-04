@@ -7,6 +7,8 @@ export type { TextFinding, JsonFinding } from "./redact.js";
 
 export { MemoryStore } from "./memory/store.js";
 export type { StoreOptions, StoreResult, EventInput, AppendResult, LineIssue } from "./memory/store.js";
+export { checkIntegrity, decisionMessage, describeFinding, PERSON_DECISIONS, prevFor, sha256Hex } from "./memory/integrity.js";
+export type { IntegrityFinding, IntegrityReport, SignatureCheck, Signer, SignRequest, Trust } from "./memory/integrity.js";
 export type { MemoryFs } from "./memory/fs.js";
 export { createInvokeFs, MEMORY_FS_COMMANDS } from "./memory/invoke-fs.js";
 export type { Invoke } from "./memory/invoke-fs.js";

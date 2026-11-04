@@ -6,6 +6,7 @@ import type { MemoryFs } from "./fs.js";
 import { applyEvent, initialState, rebuild } from "./reduce.js";
 import { parentDir } from "./paths.js";
 import { EventFollower, parseEventLine, type LineIssue } from "./sync.js";
+import { checkIntegrity, decisionMessage, PERSON_DECISIONS, prevFor, type IntegrityReport, type Signer, type Trust } from "./integrity.js";
 import * as generated from "../generated/validators.js";
 
 // The schema's own rule for a relative path that cannot escape its base folder.
@@ -16,7 +17,16 @@ export interface StoreOptions {
   lockTimeoutMs?: number;
   /** A lock older than this is treated as left by a crashed writer (default 30 s). */
   staleLockMs?: number;
+  /**
+   * Verifies signed person decisions (C17). With it, a decision counts only when its signature
+   * verifies (or it predates the chained log). The app, the MCP server and the extension pass one.
+   */
+  trust?: Trust;
+  /** Signs a person's decision after they confirm it (the desktop app, through Rust). */
+  signer?: Signer;
 }
+
+type Settings = { lockTimeoutMs: number; staleLockMs: number; trust?: Trust; signer?: Signer };
 
 export type StoreResult = { ok: true; store: MemoryStore } | { ok: false; issues: ValidationIssue[] };
 
@@ -58,7 +68,7 @@ export class MemoryStore {
     private readonly fs: MemoryFs,
     readonly dir: string,
     private project: Project,
-    private readonly options: Required<StoreOptions>,
+    private readonly options: Settings,
   ) {}
 
   private path(name: string): string {
@@ -161,6 +171,22 @@ export class MemoryStore {
     const valid = validateMemoryFile("event", event);
     if (!valid.ok) return valid;
 
+    // A person's decision is signed after they confirm it (C17). Where decisions are verified but
+    // cannot be signed, it is refused rather than written as a decision that would not count.
+    if (PERSON_DECISIONS.has(event.type) && event.actor.kind === "human") {
+      if (this.options.signer) {
+        const signature = await this.options.signer.sign({
+          message: decisionMessage(this.project.id, event),
+          projectName: this.project.name,
+          summary: decisionSummary(event),
+        });
+        if (!signature) return { ok: false, issues: [issue("The decision was not confirmed, so nothing was recorded.")] };
+        event.signature = signature;
+      } else if (this.options.trust) {
+        return { ok: false, issues: [issue("Decisions on a phase are signed by the OmniOrchestrator app. Make this decision in the app.")] };
+      }
+    }
+
     try {
       return await this.withLock(async () => {
         // Rules are checked against the log, never the snapshot (RT-3, T2.5).
@@ -180,6 +206,8 @@ export class MemoryStore {
             return { ok: false as const, issues: [issue(`could not complete the change, nothing was recorded: ${reason}`)] };
           }
         }
+        // Chain the line to the one before it (C17, T2.2).
+        event.prev = await prevFor((await this.fs.readText(this.path("events.jsonl"))) ?? "");
         await this.fs.appendText(this.path("events.jsonl"), JSON.stringify(event) + "\n");
         await this.writeState(next);
         return { ok: true as const, event, redactions: findings.length };
@@ -282,9 +310,37 @@ export class MemoryStore {
     return this.rebuildState();
   }
 
-  /** Recomputes the state from the event log (does not write it). */
+  /**
+   * Recomputes the state from the event log (does not write it). Events the integrity check does
+   * not count (unverified decisions, copies) change nothing (C17).
+   */
   async rebuildState(): Promise<State> {
-    return rebuild(this.project.flow, (await this.readEvents()).events);
+    const { events, uncounted } = await this.checkedEvents();
+    return rebuild(this.project.flow, uncounted.size === 0 ? events : events.filter((e) => !uncounted.has(e.id)));
+  }
+
+  /** The log's integrity: chain breaks, copies, and unsigned or wrongly signed decisions (C17). */
+  async integrity(): Promise<IntegrityReport> {
+    const { report } = await this.readChecked();
+    return report;
+  }
+
+  private async checkedEvents(): Promise<{ events: Event[]; uncounted: Set<string> }> {
+    const { events, report } = await this.readChecked();
+    return { events, uncounted: report.uncounted };
+  }
+
+  private async readChecked(): Promise<{ events: Event[]; report: IntegrityReport }> {
+    const text = (await this.fs.readText(this.path("events.jsonl"))) ?? "";
+    const lines = text.split("\n");
+    const numbered: { event: Event; line: number }[] = [];
+    lines.forEach((raw, index) => {
+      const one: Event[] = [];
+      parseEventLine(raw, index + 1, one, []);
+      if (one.length === 1) numbered.push({ event: one[0], line: index + 1 });
+    });
+    const report = await checkIntegrity(this.project.id, lines, numbered, this.options.trust);
+    return { events: numbered.map((n) => n.event), report };
   }
 
   private async readStoredState(): Promise<State | null> {
@@ -352,8 +408,30 @@ export class MemoryStore {
   }
 }
 
-function withDefaults(options: StoreOptions): Required<StoreOptions> {
-  return { lockTimeoutMs: options.lockTimeoutMs ?? 10_000, staleLockMs: options.staleLockMs ?? 30_000 };
+function withDefaults(options: StoreOptions): Settings {
+  return {
+    lockTimeoutMs: options.lockTimeoutMs ?? 10_000,
+    staleLockMs: options.staleLockMs ?? 30_000,
+    ...(options.trust ? { trust: options.trust } : {}),
+    ...(options.signer ? { signer: options.signer } : {}),
+  };
+}
+
+/** What the person is asked to confirm before a decision is signed. */
+function decisionSummary(event: Event): string {
+  const phase = String((event.payload as { phase?: unknown }).phase ?? "");
+  switch (event.type) {
+    case "phase_approved":
+      return `Approve the phase "${phase}".`;
+    case "changes_requested":
+      return `Request changes to the phase "${phase}".`;
+    case "phase_skipped":
+      return `Skip the phase "${phase}".`;
+    case "approval_withdrawn":
+      return `Withdraw your approval of the phase "${phase}".`;
+    default:
+      return `Record "${event.type}".`;
+  }
 }
 
 export { initialState };

@@ -192,4 +192,18 @@ pub struct Event {
     pub payload: Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refs: Option<Refs>,
+    /// SHA-256 (hex) of the previous log line: chains the log (C17).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prev: Option<String>,
+    /// A person's decision, signed by the app after a native confirmation (C17).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<EventSignature>,
+}
+
+/// Signature of a person's decision (C17): the signing key's id and the Ed25519 signature, base64.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EventSignature {
+    pub key_id: String,
+    pub value: String,
 }

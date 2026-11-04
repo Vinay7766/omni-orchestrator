@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "evt-0002",
+  "time": "2026-11-04T10:00:00Z",
+  "type": "phase_approved",
+  "actor": {
+    "kind": "human",
+    "tool": "omni-desktop"
+  },
+  "payload": {
+    "phase": "prd"
+  },
+  "prev": "not-a-hash"
+}

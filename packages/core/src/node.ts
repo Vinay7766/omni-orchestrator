@@ -5,3 +5,4 @@ export { loadAdapterDirectory, bundledAdaptersDir } from "./adapters/node-source
 export type { NodeTriggerOptions } from "./memory/node-watch.js";
 export { createGitCommitChecker, interpretGitResult } from "./memory/node-git.js";
 export { createSkillDirectorySource } from "./skills/node-source.js";
+export { appDataDir, createFileTrust, createKeySigner, createKeyTrust, generateSigningKey, readTrustedKeys, TRUST_FILE } from "./memory/node-trust.js";

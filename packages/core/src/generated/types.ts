@@ -344,6 +344,17 @@ export interface Event1 {
     files?: CommonRelPath[];
     commits?: CommonCommitSha[];
   };
+  /**
+   * SHA-256 (hex) of the previous line of events.jsonl, exactly as written; of the empty string for the first line. Chains the log so an edited or removed earlier line is detected (C17, T2.2).
+   */
+  prev?: string;
+  /**
+   * A person's decision, signed by the app after the person confirmed it in a native dialog (C17, T2.1). Verified against the public keys in the app's trust file, outside the project.
+   */
+  signature?: {
+    keyId: string;
+    value: string;
+  };
 }
 /**
  * Who caused an event. Tool and model are free text: no fixed tool or model list.

@@ -11,11 +11,18 @@ import { join } from "node:path";
 import { MemoryStore } from "./store.js";
 import { createNodeFs } from "./node-fs.js";
 import { PhaseEngine } from "../engine/phases.js";
+import { createKeySigner, createKeyTrust, generateSigningKey } from "./node-trust.js";
 
 const fs = createNodeFs();
 const person = { kind: "human" as const, tool: "omni-desktop" };
 const agent = { kind: "agent" as const, tool: "any-ai-tool", model: "any-model" };
 const skillsUsed = [{ skill: "spec-driven-development", evidence: "PRD follows the skill's sections" }];
+
+// Since C17 every tool opens a project with the app's trusted keys; the app also signs the
+// person's decisions after a native confirmation. Here a test key stands in for the app's key.
+const appKey = generateSigningKey();
+const trust = createKeyTrust({ "omni-desktop-test": appKey.publicKey });
+const signer = createKeySigner("omni-desktop-test", appKey.privateKey);
 
 let root: string;
 let store: MemoryStore;
@@ -27,7 +34,7 @@ const lines = () => readFileSync(events(), "utf8").split("\n").filter((l) => l.t
 
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), "omni-red-team-"));
-  const created = await MemoryStore.create(fs, root, { name: "p", flow: "build", mode: "full", actor: person });
+  const created = await MemoryStore.create(fs, root, { name: "p", flow: "build", mode: "full", actor: person }, { trust, signer });
   if (!created.ok) throw new Error(JSON.stringify(created.issues));
   store = created.store;
   engine = new PhaseEngine(store);
@@ -47,7 +54,7 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 /** Reopens the project the way any tool does on its next start. */
 async function reopen(): Promise<{ store: MemoryStore; engine: PhaseEngine }> {
-  const opened = await MemoryStore.open(fs, root);
+  const opened = await MemoryStore.open(fs, root, { trust });
   if (!opened.ok) throw new Error(JSON.stringify(opened.issues));
   return { store: opened.store, engine: new PhaseEngine(opened.store) };
 }
@@ -68,7 +75,7 @@ function forgedApproval(): string {
 describe("red team: forged human approvals (T2)", () => {
   // RT-1 (T2.1): an agent, or any program running as the user, appends a hand-written human
   // approval to events.jsonl, bypassing the app and the MCP server. Planned fix: C17.
-  it.fails("RT-1 (T2.1): a hand-written human approval appended to events.jsonl is not accepted", async () => {
+  it("RT-1 (T2.1): a hand-written human approval appended to events.jsonl is not accepted", async () => {
     appendFileSync(events(), forgedApproval() + "\n");
     unlinkSync(statePath()); // makes every tool rebuild from the log on its next open
     const next = await reopen();
@@ -81,7 +88,7 @@ describe("red team: forged human approvals (T2)", () => {
 
   // RT-2 (T2.2): instead of adding a line, an earlier event is rewritten in place. A person's
   // "changes requested" decision is turned into an approval; the line count does not change.
-  it.fails("RT-2 (T2.2): an earlier event edited from changes_requested into phase_approved is detected", async () => {
+  it("RT-2 (T2.2): an earlier event edited from changes_requested into phase_approved is detected", async () => {
     expect((await engine.requestChanges(person, "idea-review", "tighten the scope")).ok).toBe(true);
     await store.appendEvent({ type: "memory_updated", actor: agent, payload: { files: [".agents/summary.md"] } });
     expect(

@@ -72,6 +72,32 @@
           }
         }
       }
+    },
+    "prev": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 (hex) of the previous line of events.jsonl, exactly as written; of the empty string for the first line. Chains the log so an edited or removed earlier line is detected (C17, T2.2)."
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keyId",
+        "value"
+      ],
+      "description": "A person's decision, signed by the app after the person confirmed it in a native dialog (C17, T2.1). Verified against the public keys in the app's trust file, outside the project.",
+      "properties": {
+        "keyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$",
+          "maxLength": 200
+        }
+      }
     }
   },
   "allOf": [
@@ -199,7 +225,10 @@
       "if": {
         "properties": {
           "type": {
-            "enum": ["phase_approved", "approval_withdrawn"]
+            "enum": [
+              "phase_approved",
+              "approval_withdrawn"
+            ]
           }
         },
         "type": "object"
