@@ -8,6 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createGitCommitChecker, createNodeFs, createSkillDirectorySource } from "@omni/core/node";
 import { parseArgs } from "./args.js";
 import { closeServer, createServer } from "./server.js";
+import { registeredProjectsFrom } from "./project.js";
 
 const args = parseArgs(process.argv.slice(2), process.cwd());
 if (!args.ok) {
@@ -27,6 +28,8 @@ const server = createServer({
   skills: createSkillDirectorySource(skillsDir, args.userSkillsDir ? { userDir: args.userSkillsDir } : {}),
   startDir: args.startDir,
   commits: createGitCommitChecker(),
+  // Projects the person registered in the app; besides its own project, the only ones it opens (RT-14).
+  ...(args.projectsFile ? { registeredProjects: registeredProjectsFrom(createNodeFs(), args.projectsFile) } : {}),
 });
 
 server.connect(new StdioServerTransport()).catch((error: unknown) => {

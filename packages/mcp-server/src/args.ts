@@ -1,8 +1,8 @@
 import { isAbsolutePath, joinPath, normalizePath } from "@omni/core";
 
-const USAGE = "usage: omni-orchestrator-mcp [--project <folder>] [--user-skills <folder>] [--skills <folder>]";
+const USAGE = "usage: omni-orchestrator-mcp [--project <folder>] [--user-skills <folder>] [--skills <folder>] [--projects-file <file>]";
 
-export type Args = { ok: true; startDir: string; userSkillsDir?: string; skillsDir?: string } | { ok: false; message: string };
+export type Args = { ok: true; startDir: string; userSkillsDir?: string; skillsDir?: string; projectsFile?: string } | { ok: false; message: string };
 
 /**
  * Command-line arguments. --project <folder> names the project (absolute, or relative to the
@@ -14,6 +14,7 @@ export function parseArgs(argv: string[], cwd: string): Args {
   let project: string | undefined;
   let userSkills: string | undefined;
   let skills: string | undefined;
+  let projectsFile: string | undefined;
   for (let i = 0; i < argv.length; i += 2) {
     const [flag, value] = [argv[i], argv[i + 1]];
     if (value === undefined || value.trim() === "") return refuse();
@@ -21,6 +22,8 @@ export function parseArgs(argv: string[], cwd: string): Args {
     else if (flag === "--user-skills" && userSkills === undefined && isAbsolutePath(value)) userSkills = normalizePath(value);
     // The bundled skills, next to the installed server (retest bug 2); absolute, written by the app.
     else if (flag === "--skills" && skills === undefined && isAbsolutePath(value)) skills = normalizePath(value);
+    // The projects the person registered in the app (RT-14); absolute, written by the app.
+    else if (flag === "--projects-file" && projectsFile === undefined && isAbsolutePath(value)) projectsFile = normalizePath(value);
     else return refuse();
   }
   const base = normalizePath(cwd);
@@ -29,5 +32,6 @@ export function parseArgs(argv: string[], cwd: string): Args {
     startDir: project === undefined ? base : joinPath(base, project),
     ...(userSkills !== undefined ? { userSkillsDir: userSkills } : {}),
     ...(skills !== undefined ? { skillsDir: skills } : {}),
+    ...(projectsFile !== undefined ? { projectsFile } : {}),
   };
 }

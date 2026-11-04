@@ -43,8 +43,11 @@ const event = async (type: Parameters<MemoryStore["appendEvent"]>[0]["type"], pa
   const result = await store.appendEvent({ type, actor: agent, payload });
   if (!result.ok) throw new Error(JSON.stringify(result));
 };
-const context = async (startDir = root, projectPath?: string, source = catalog) => {
-  const result = await buildContext({ fs, skills: source, startDir }, projectPath === undefined ? {} : { projectPath });
+const context = async (startDir = root, projectPath?: string, source = catalog, registered: string[] = []) => {
+  const result = await buildContext(
+    { fs, skills: source, startDir, registeredProjects: async () => registered },
+    projectPath === undefined ? {} : { projectPath },
+  );
   if (!result.ok) throw new Error(result.message);
   return result.context;
 };
@@ -147,25 +150,29 @@ describe("buildContext", () => {
     expect((await context()).summary).toBe("# Saved summary\n");
   });
 
-  it("finds the project from a nested folder and from a relative projectPath", async () => {
+  it("finds the project from a nested folder and from a relative projectPath to a registered project", async () => {
     mkdirSync(join(root, "src", "deep"), { recursive: true });
     expect((await context(`${root}/src/deep`)).project.root).toBe(root);
     const outside = mkdtempSync(join(tmpdir(), "omni-mcp-out-")).replace(/\\/g, "/");
     try {
       const relative = join("..", root.split("/").pop()!);
-      expect((await context(outside, relative)).project.root).toBe(root);
+      expect((await context(outside, relative, catalog, [root])).project.root).toBe(root);
+      // Not registered: refused (RT-14).
+      await expect(context(outside, relative)).rejects.toThrow(/not a project this server may use/);
     } finally {
       rmSync(outside, { recursive: true, force: true });
     }
   });
 
-  it("follows a .agents-link from another checkout and says so", async () => {
+  it("follows a .agents-link from another checkout to a registered project and says so", async () => {
     const worktree = mkdtempSync(join(tmpdir(), "omni-mcp-wt-")).replace(/\\/g, "/");
     try {
       writeFileSync(join(worktree, ".agents-link"), JSON.stringify({ formatVersion: 1, projectRoot: root }));
-      const ctx = await context(worktree);
+      const ctx = await context(worktree, undefined, catalog, [root]);
       expect(ctx.project.root).toBe(root);
       expect(ctx.project.linkedFrom).toBe(worktree);
+      // A link to a project the person did not register is not followed (RT-15).
+      await expect(context(worktree)).rejects.toThrow(/not a project this server may use/);
     } finally {
       rmSync(worktree, { recursive: true, force: true });
     }

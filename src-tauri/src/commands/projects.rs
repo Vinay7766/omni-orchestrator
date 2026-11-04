@@ -72,7 +72,29 @@ pub fn find_projects_in(folders: &[String]) -> FoundProjects {
     FoundProjects { roots: found.into_iter().collect(), errors }
 }
 
+/// The app's list of the person's projects, in its data folder, read by the MCP server: besides
+/// the project it was started in, the only projects it may open (RT-14, RT-15).
+pub const REGISTRY_FILE: &str = "projects.json";
+
+/// Writes the registered projects for the MCP server (`{"formatVersion":1,"roots":[...]}`).
+pub fn write_registry(app_dir: &Path, roots: &[String]) -> Result<(), String> {
+    fs::create_dir_all(app_dir).map_err(|e| e.to_string())?;
+    let body = serde_json::json!({ "formatVersion": 1, "roots": roots });
+    let path = app_dir.join(REGISTRY_FILE);
+    let tmp = app_dir.join(format!("{}.tmp", REGISTRY_FILE));
+    fs::write(&tmp, serde_json::to_string_pretty(&body).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn find_projects(folders: Vec<String>) -> Result<FoundProjects, String> {
-    tauri::async_runtime::spawn_blocking(move || find_projects_in(&folders)).await.map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(move || {
+        let found = find_projects_in(&folders);
+        // The list the person sees is the list the MCP server may serve. A failed write leaves the
+        // previous list, which can only be narrower than or equal to what the person registered.
+        let _ = write_registry(&crate::commands::mcp_setup::app_data_dir(), &found.roots);
+        found
+    })
+    .await
+    .map_err(|e| e.to_string())
 }

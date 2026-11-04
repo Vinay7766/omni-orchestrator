@@ -430,3 +430,13 @@ fn nothing_is_installed_when_no_server_was_embedded() {
     assert!(!dir.join("mcp-server").exists());
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn the_server_command_names_the_registered_projects_file() {
+    // RT-14: the server opens only its own project and the projects the person registered.
+    use tauri_app_lib::commands::mcp_setup::with_projects_file;
+    let server = ServerCommand { command: "/usr/bin/node".into(), args: vec!["/app/main.js".into()] };
+    let with = with_projects_file(server, Path::new("/data/omni"));
+    let file = Path::new("/data/omni").join("projects.json").to_string_lossy().into_owned();
+    assert_eq!(with.args, vec!["/app/main.js".to_string(), "--projects-file".into(), file]);
+}

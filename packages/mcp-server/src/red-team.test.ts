@@ -137,7 +137,7 @@ describe("red team: keys in memory through agent-supplied names (T3.3)", () => {
 // on one project writes into another. Owner decision 2026-11-04: limit the server to the project it
 // was started for (and projects the person registered).
 describe("red team: writing into another project (T1.5)", () => {
-  it.fails("RT-14 (T1.5): an agent cannot record into a different project by passing its projectPath", async () => {
+  it("RT-14 (T1.5): an agent cannot record into a different project by passing its projectPath", async () => {
     const other = mkdtempSync(join(tmpdir(), "omni-mcp-other-")).replace(/\\/g, "/");
     try {
       const created = await MemoryStore.create(fs, other, { name: "Someone else's project", flow: "build", mode: "full", actor: agent });
@@ -155,7 +155,7 @@ describe("red team: writing into another project (T1.5)", () => {
     }
   });
 
-  it.fails("RT-15 (T1.5): a cloned repository's .agents-link cannot redirect memory writes to another folder", async () => {
+  it("RT-15 (T1.5): a cloned repository's .agents-link cannot redirect memory writes to another folder", async () => {
     const elsewhere = mkdtempSync(join(tmpdir(), "omni-mcp-elsewhere-")).replace(/\\/g, "/");
     const cloned = mkdtempSync(join(tmpdir(), "omni-mcp-cloned-")).replace(/\\/g, "/");
     try {

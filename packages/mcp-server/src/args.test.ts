@@ -23,6 +23,11 @@ describe("server arguments", () => {
     expect(parseArgs(["--skills", "relative"], "/w").ok).toBe(false);
   });
 
+  it("takes the app's list of registered projects with --projects-file (RT-14)", () => {
+    expect(parseArgs(["--projects-file", "/data/omni/projects.json", "--project", "/repos/orbit"], "/w")).toEqual({ ok: true, startDir: "/repos/orbit", projectsFile: "/data/omni/projects.json" });
+    expect(parseArgs(["--projects-file", "relative.json"], "/w").ok).toBe(false);
+  });
+
   it("refuses anything it does not understand, with usage", () => {
     for (const argv of [["--project"], ["--project", ""], ["--verbose"], ["extra"], ["--user-skills"], ["--user-skills", "relative/skills"], ["--project", "/a", "--project", "/b"]]) {
       const result = parseArgs(argv, "/w");

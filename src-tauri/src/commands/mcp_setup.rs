@@ -377,7 +377,7 @@ pub fn install_bundled_server(app_dir: &Path, bundle: &str, skills: &[crate::mod
 /// built server. Then the person's own skills folder (SKL-5).
 pub fn tool_server_command(path_dirs: &[PathBuf]) -> Result<ServerCommand, String> {
     let skills = crate::commands::skill_manager::SkillManager::default_system();
-    let app_dir = crate::storage::store::StorageManager::default_system().get_settings_path().parent().map(Path::to_path_buf).unwrap_or_default();
+    let app_dir = app_data_dir();
     let server = match (std::env::var("OMNI_MCP_SERVER").ok(), install_bundled_server(&app_dir, BUNDLED_SERVER, &skills.get_default_skills())?) {
         (Some(path), _) => resolve_server_command(Some(path), Path::new(""), path_dirs)?,
         (None, Some((main, skills_dir))) => {
@@ -391,7 +391,20 @@ pub fn tool_server_command(path_dirs: &[PathBuf]) -> Result<ServerCommand, Strin
             resolve_server_command(None, &repo, path_dirs)?
         }
     };
-    Ok(with_user_skills(server, &skills.user_skills_dir()))
+    Ok(with_projects_file(with_user_skills(server, &skills.user_skills_dir()), &app_dir))
+}
+
+/// The app's data folder (next to its settings).
+pub fn app_data_dir() -> PathBuf {
+    crate::storage::store::StorageManager::default_system().get_settings_path().parent().map(Path::to_path_buf).unwrap_or_default()
+}
+
+/// Names the app's list of registered projects, so the server opens only its own project and
+/// those (RT-14, RT-15).
+pub fn with_projects_file(mut server: ServerCommand, app_dir: &Path) -> ServerCommand {
+    server.args.push("--projects-file".into());
+    server.args.push(app_dir.join(crate::commands::projects::REGISTRY_FILE).to_string_lossy().into_owned());
+    server
 }
 
 /// Adds the person's own skills folder, so the tool is served the skills they added, edited or

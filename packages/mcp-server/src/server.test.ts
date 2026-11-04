@@ -37,9 +37,9 @@ let root: string;
 let client: Client;
 const servers: McpServer[] = [];
 
-async function connect(startDir: string) {
+async function connect(startDir: string, registered: string[] = []) {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  const server = createServer({ fs, skills, startDir });
+  const server = createServer({ fs, skills, startDir, registeredProjects: async () => registered });
   servers.push(server);
   await server.connect(serverSide);
   client = new Client({ name: "made-up-client", version: "0.0.1" });
@@ -229,10 +229,10 @@ describe("MCP server", () => {
     expect(JSON.parse(text.text)).toEqual(ctx);
   });
 
-  it("accepts a projectPath when the server started elsewhere", async () => {
+  it("accepts a projectPath to a registered project when the server started elsewhere", async () => {
     const elsewhere = mkdtempSync(join(tmpdir(), "omni-mcp-else-")).replace(/\\/g, "/");
     try {
-      await connect(elsewhere);
+      await connect(elsewhere, [root]);
       const result = await client.callTool({ name: "get_context", arguments: { projectPath: root } });
       expect((result.structuredContent as { project: { root: string } }).project.root).toBe(root);
     } finally {

@@ -87,3 +87,14 @@ fn settings_written_before_project_folders_existed_still_load() {
     let settings: AppSettings = serde_json::from_str(old).unwrap();
     assert!(settings.project_folders.is_empty());
 }
+
+#[test]
+fn the_registered_projects_are_written_for_the_mcp_server() {
+    // RT-14: the MCP server opens only its own project and the ones listed here.
+    use tauri_app_lib::commands::projects::{write_registry, REGISTRY_FILE};
+    let app_dir = temp("registry");
+    let roots = vec!["/repos/orbit".to_string(), "/repos/atlas".to_string()];
+    write_registry(&app_dir, &roots).unwrap();
+    let written: serde_json::Value = serde_json::from_str(&fs::read_to_string(app_dir.join(REGISTRY_FILE)).unwrap()).unwrap();
+    assert_eq!(written, serde_json::json!({ "formatVersion": 1, "roots": ["/repos/orbit", "/repos/atlas"] }));
+}
