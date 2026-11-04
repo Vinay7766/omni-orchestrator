@@ -132,12 +132,12 @@ fn sh_quote(value: &str) -> String {
 
 /// Starts a command-line agent in its own terminal window, in the project folder. The program
 /// comes from discovery and the arguments from adapter data plus LAUNCH_TEXT, never from the web view.
-fn run_in_new_terminal(cmd: &TerminalCommand) -> std::io::Result<()> {
+fn run_in_new_terminal(cmd: &TerminalCommand) -> std::io::Result<std::process::Child> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
-        Command::new(&cmd.program).args(&cmd.args).current_dir(&cmd.cwd).creation_flags(CREATE_NEW_CONSOLE).spawn().map(|_| ())
+        Command::new(&cmd.program).args(&cmd.args).current_dir(&cmd.cwd).creation_flags(CREATE_NEW_CONSOLE).spawn()
     }
     #[cfg(not(windows))]
     {
@@ -152,9 +152,9 @@ fn run_in_new_terminal(cmd: &TerminalCommand) -> std::io::Result<()> {
         }
         if cfg!(target_os = "macos") {
             // Finder opens .command files in Terminal.
-            Command::new("open").arg(&path).spawn().map(|_| ())
+            Command::new("open").arg(&path).spawn()
         } else {
-            Command::new("x-terminal-emulator").arg("-e").arg(&path).spawn().map(|_| ())
+            Command::new("x-terminal-emulator").arg("-e").arg(&path).spawn()
         }
     }
 }
@@ -166,8 +166,13 @@ pub async fn start_fresh_session_cmd(request: FreshSessionRequest) -> Result<Fre
         let view = SystemView::from_environment();
         let tools = discover(&view);
         let (adapters, _) = bundled_adapters();
-        start_fresh_session(&request, &tools, &adapters, run_in_new_terminal, |cmd, project| {
-            Command::new(&cmd.program).args(&cmd.args).arg(project).spawn().map(|_| ())
+        // A command-line agent needs its terminal, but only one while it is still running; an
+        // editor or app opens without a console window (retest bug 1).
+        let terminal = |cmd: &TerminalCommand| {
+            crate::commands::handoff::launch_once(&format!("terminal|{}|{}", cmd.program, cmd.cwd.display()), || run_in_new_terminal(cmd))
+        };
+        start_fresh_session(&request, &tools, &adapters, terminal, |cmd, project| {
+            crate::commands::tool_discovery::window_launch(cmd, project).spawn().map(|_| ())
         })
     })
     .await

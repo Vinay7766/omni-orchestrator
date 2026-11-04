@@ -574,3 +574,28 @@ mod shared_vendor_folders {
         assert!(!quill.needs_confirmation);
     }
 }
+
+// --- Retest bug 1 (2026-11-04): "Set up and open" opened a console window on Windows ---
+// Editors are started through their bin\<name>.cmd launcher; a .cmd runs in a console unless it
+// is started with CREATE_NO_WINDOW. Every launch of an editor or desktop app goes through
+// window_launch, which sets that flag on Windows (the flag itself can only be seen there).
+
+#[test]
+fn an_editor_is_launched_with_its_arguments_and_the_project_last() {
+    use tauri_app_lib::commands::tool_discovery::{window_launch, LaunchCommand};
+    let launch = LaunchCommand { program: "C:/Apps/Made-up Editor/bin/made-up.cmd".into(), args: vec!["--new-window".into()] };
+    let cmd = window_launch(&launch, "D:/Projects/orbit");
+    assert_eq!(cmd.get_program(), "C:/Apps/Made-up Editor/bin/made-up.cmd");
+    let args: Vec<_> = cmd.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+    assert_eq!(args, ["--new-window", "D:/Projects/orbit"]);
+}
+
+#[test]
+fn no_editor_or_app_launch_bypasses_window_launch() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join("commands");
+    for file in ["handoff.rs", "fresh_session.rs"] {
+        let text = std::fs::read_to_string(dir.join(file)).unwrap();
+        assert!(!text.contains("Command::new(&cmd.program).args(&cmd.args).arg(project)"), "{file} still starts a tool without window_launch");
+        assert!(text.contains("window_launch("), "{file} does not use window_launch");
+    }
+}

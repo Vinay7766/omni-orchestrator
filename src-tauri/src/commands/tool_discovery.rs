@@ -809,6 +809,15 @@ pub fn background_command(program: &str) -> std::process::Command {
     cmd
 }
 
+/// How an editor or desktop app is started with a project (retest bug 1): its launcher, its
+/// arguments, then the project. Started without a console window: on Windows an editor's launcher
+/// is a `bin\<name>.cmd` script, which otherwise opens a terminal; the editor opens its own window.
+pub fn window_launch(launch: &LaunchCommand, project: &str) -> std::process::Command {
+    let mut cmd = background_command(&launch.program);
+    cmd.args(&launch.args).arg(project);
+    cmd
+}
+
 /// Every AI coding tool found in `view`, merged and sorted by name.
 pub fn discover(view: &SystemView) -> Vec<DiscoveredTool> {
     discover_with(view, &bundled_adapters().0)

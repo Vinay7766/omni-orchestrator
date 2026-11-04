@@ -14,7 +14,6 @@
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use serde::{Deserialize, Serialize};
 
@@ -323,7 +322,7 @@ pub async fn hand_off_tool(request: HandoffRequest) -> Result<HandoffResult, Str
         // The program comes from the tool's own install folder (discovery), never from the web view.
         // One process per tool and project: a click while it is still running opens nothing new.
         hand_off(&request, &context, |cmd, project| {
-            launch_once(&format!("{}|{}", cmd.program, project), || Command::new(&cmd.program).args(&cmd.args).arg(project).spawn())
+            launch_once(&format!("{}|{}", cmd.program, project), || crate::commands::tool_discovery::window_launch(cmd, project).spawn())
         })
     })
     .await
