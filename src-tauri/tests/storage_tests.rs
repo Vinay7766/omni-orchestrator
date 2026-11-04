@@ -55,3 +55,34 @@ fn test_custom_skill_storage_operations() {
     // Clean up
     let _ = std::fs::remove_dir_all(temp_dir);
 }
+
+// Owner's v0.1 issue B (2026-11-04): what the person has typed but not saved into a project yet
+// (the idea conversation, conversations on documents) is kept on disk and read back on start.
+
+fn ui_dir(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("omni_ui_state_{}_{}", name, std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    dir
+}
+
+#[test]
+fn ui_state_is_saved_to_disk_and_read_back() {
+    let dir = ui_dir("roundtrip");
+    let storage = StorageManager::new(dir.clone());
+    assert_eq!(storage.load_ui_state().unwrap(), None, "nothing before the first save");
+    storage.save_ui_state(r#"{"ideaDraft":{"idea":"a made-up idea","name":""}}"#).unwrap();
+    let again = StorageManager::new(dir.clone());
+    assert_eq!(again.load_ui_state().unwrap().as_deref(), Some(r#"{"ideaDraft":{"idea":"a made-up idea","name":""}}"#));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn ui_state_refuses_text_that_is_not_json_or_too_large_and_keeps_the_last_good_one() {
+    let dir = ui_dir("refuse");
+    let storage = StorageManager::new(dir.clone());
+    storage.save_ui_state(r#"{"ok":true}"#).unwrap();
+    assert!(storage.save_ui_state("not json").is_err());
+    assert!(storage.save_ui_state(&format!(r#"{{"x":"{}"}}"#, "a".repeat(3 * 1024 * 1024))).is_err());
+    assert_eq!(storage.load_ui_state().unwrap().as_deref(), Some(r#"{"ok":true}"#));
+    let _ = std::fs::remove_dir_all(dir);
+}

@@ -2,6 +2,7 @@ import React, { useEffect, useId, useState } from "react";
 import { ArrowUp, FileText, Play, Wand2 } from "lucide-react";
 import { discussionNotes, type ChatMessage, type ChatTurn } from "../../lib/idea-chat";
 import { ChatLog } from "./ChatLog";
+import { usePersistedState } from "../../lib/ui-state";
 import { PLANNING_PHASES, STACK_ADR_PHASES, type PhaseHistoryEntry } from "@omni/core";
 
 const RUNNABLE = ["not_started", "in_progress", "changes_requested"];
@@ -28,9 +29,11 @@ const DocumentDiscussion: React.FC<{
   providerReady: boolean;
   discuss: (document: string, messages: ChatMessage[]) => Promise<ChatTurn>;
   revise: (notes: string, messages: ChatMessage[]) => Promise<void>;
-}> = ({ phase, document, providerReady, discuss, revise }) => {
+  /** Where the conversation is kept on disk until the document is generated (issue B). */
+  persistKey?: string;
+}> = ({ phase, document, providerReady, discuss, revise, persistKey }) => {
   const id = useId();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = usePersistedState<ChatMessage[]>(persistKey ?? null, []);
   const [text, setText] = useState("");
   const [thinking, setThinking] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -59,6 +62,8 @@ const DocumentDiscussion: React.FC<{
     setError(null);
     try {
       await revise(discussionNotes(messages), messages);
+      // The conversation is now in the project (docs/planning/<phase>-discussion.md); a new one starts.
+      setMessages([]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -137,7 +142,9 @@ export const PlanningPanel: React.FC<{
   revise?: (notes: string, messages: ChatMessage[]) => Promise<void>;
   /** Simple mode: explain each step in plain words (G, NTU-2). */
   explain?: boolean;
-}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun, discuss, revise, explain = false }) => {
+  /** Keeps document conversations on disk under this key (the project) until generated (issue B). */
+  persistKey?: string;
+}> = ({ entry, providerReady, run, readDocument, autoRun = false, onAutoRun, discuss, revise, explain = false, persistKey }) => {
   const [running, setRunning] = useState(false);
   const [revising, setRevising] = useState(false);
   const [documents, setDocuments] = useState<{ name: string; text: string | null }[] | null>(null);
@@ -201,7 +208,14 @@ export const PlanningPanel: React.FC<{
           ),
         )}
         {discuss && revise && documents && documents[0]?.text && (
-          <DocumentDiscussion phase={phase} document={documents.map((d) => d.text ?? "").join("\n\n")} providerReady={providerReady} discuss={discuss} revise={revise} />
+          <DocumentDiscussion
+            phase={phase}
+            document={documents.map((d) => d.text ?? "").join("\n\n")}
+            providerReady={providerReady}
+            discuss={discuss}
+            revise={revise}
+            persistKey={persistKey ? `${persistKey}:${phase}` : undefined}
+          />
         )}
       </section>
     );

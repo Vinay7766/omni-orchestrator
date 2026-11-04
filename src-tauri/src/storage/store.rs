@@ -45,6 +45,29 @@ impl StorageManager {
         self.base_dir.join("custom_skills.json")
     }
 
+    /// What the person typed but has not saved into a project yet (issue B): one JSON document,
+    /// written through a temporary file and a rename, so a crash never leaves half of it.
+    pub fn load_ui_state(&self) -> Result<Option<String>, String> {
+        match fs::read_to_string(self.base_dir.join("ui-state.json")) {
+            Ok(text) => Ok(Some(text)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(format!("Could not read the saved drafts: {}", e)),
+        }
+    }
+
+    pub fn save_ui_state(&self, text: &str) -> Result<(), String> {
+        const MAX: usize = 2 * 1024 * 1024;
+        if text.len() > MAX {
+            return Err(format!("The drafts are over {} MB and were not saved.", MAX / (1024 * 1024)));
+        }
+        serde_json::from_str::<serde_json::Value>(text).map_err(|e| format!("The drafts are not valid JSON: {}", e))?;
+        fs::create_dir_all(&self.base_dir).map_err(|e| format!("Could not create {}: {}", self.base_dir.display(), e))?;
+        let path = self.base_dir.join("ui-state.json");
+        let temp = self.base_dir.join("ui-state.json.tmp");
+        fs::write(&temp, text).map_err(|e| format!("Could not save the drafts: {}", e))?;
+        fs::rename(&temp, &path).map_err(|e| format!("Could not save the drafts: {}", e))
+    }
+
     pub fn get_session_state_path(&self) -> PathBuf {
         self.base_dir.join("session_state.json")
     }

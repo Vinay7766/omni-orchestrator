@@ -51,6 +51,8 @@ export { buildFreshSession, FRESH_SESSION_FILE, FRESH_SESSION_LAUNCH_TEXT } from
 export type { FreshSession, FreshSessionInput } from "./team/fresh-session.js";
 export type { Team, TeamMember, TeamSelection, ReadTeamResult, SaveTeamResult } from "./team/team.js";
 export { buildHandoff, HANDOFF_FILE, startSteps } from "./team/handoff.js";
+export { importTaskUpdates, TASK_UPDATES_FILE } from "./team/task-updates.js";
+export type { ImportResult } from "./team/task-updates.js";
 export type { Handoff, HandoffInput, HandoffTask } from "./team/handoff.js";
 
 export { SCHEMA_NAMES, FLOWS, PHASE_IDS, PLANNING_PHASES, STACK_ADR_PHASES, OPTIONAL_PHASES } from "./generated/contract.js";

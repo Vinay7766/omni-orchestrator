@@ -10,6 +10,7 @@ import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { createProjectFromIdea } from "./lib/planning";
 import { forgetDiscovery } from "./lib/team";
+import { forgetUiState } from "./lib/ui-state";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -55,6 +56,7 @@ describe("OmniOrchestrator App", () => {
     mockedInvoke.mockReset();
     mockBackend();
     forgetDiscovery();
+    forgetUiState();
   });
 
   it("opens on the projects list, marked as the current area", async () => {
@@ -118,6 +120,17 @@ describe("OmniOrchestrator App", () => {
       fireEvent.click(screen.getByRole("button", { name: /open settings/i }));
     });
     expect(nav().getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("brings back the idea and conversation the person had not finished, after the app was closed (issue B)", async () => {
+    mockBackend({
+      load_ui_state: () =>
+        Promise.resolve(JSON.stringify({ ideaDraft: { idea: "", name: "Half done", messages: [{ role: "person", text: "An unfinished made-up idea" }, { role: "assistant", text: "Who is it for?" }] } })),
+    });
+    await renderApp();
+    await openArea("Start from an idea");
+    expect(await screen.findByText("Who is it for?")).toBeDefined();
+    expect((screen.getByLabelText(/project name/i) as HTMLInputElement).value).toBe("Half done");
   });
 
   it("keeps what the person typed in the idea form when they switch areas and come back (tester feedback)", async () => {

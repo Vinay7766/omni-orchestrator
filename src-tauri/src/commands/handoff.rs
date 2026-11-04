@@ -43,11 +43,13 @@ const OUR_MEMORY_FILES: &[&str] = &[
     ".agents/triage/",
     ".agents/citations/",
     ".agents/handoff/",
+    ".agents/task-updates.jsonl",
     ".agents/skills.json",
     ".agents/team.json",
     ".agents/outcomes.jsonl",
     ".agents/.lock",
     ".agents/.write.*",
+    ".agents/.taken.*",
 ];
 
 /// What the pointer in a tool's own instruction file says.

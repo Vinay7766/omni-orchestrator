@@ -220,6 +220,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               autoRun={reviseNow !== null && reviseNow === detail.history.find((e) => e.isNext)?.phase}
               onAutoRun={() => setReviseNow(null)}
               explain={detail.mode === "simple"}
+              persistKey={`discussion:${root}`}
               discuss={
                 planning.discuss &&
                 ((document, messages) => planning.discuss!(root, detail.history.find((e) => e.isNext)?.phase ?? "", document, messages))
@@ -247,6 +248,28 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
           )}
 
           {fresh && freshPhase(detail) && <FreshSessionPanel root={root} phase={freshPhase(detail)!} fns={fresh} />}
+          {detail.updates && (
+            <div role="status" aria-label="Updates from your tools" className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-300 space-y-1">
+              {detail.updates.applied.length > 0 && (
+                <>
+                  <p className="text-emerald-300">Applied from your tools:</p>
+                  <ul className="ml-4 list-disc">
+                    {detail.updates.applied.map((a, i) => (
+                      <li key={a + i} className="break-words">
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {detail.updates.refused.length > 0 && (
+                <p className="text-amber-300">
+                  {detail.updates.refused.length === 1 ? "1 update was not applied" : `${detail.updates.refused.length} updates were not applied`}; each is recorded
+                  with the reason under Problems in the project memory below.
+                </p>
+              )}
+            </div>
+          )}
           {detail.workflow && (
             <RefActionsContext.Provider value={refs ? { showInFolder: (path) => refs.showInFolder(root, path), copy: refs.copy } : {}}>
               <WorkflowChart workflow={detail.workflow} />

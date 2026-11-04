@@ -189,6 +189,21 @@ export class MemoryStore {
     }
   }
 
+  /**
+   * Takes a file in .agents/ out of the way and returns its text (null when it does not exist).
+   * The file is renamed first, so a tool appending to it at the same moment starts a new file and
+   * nothing is lost (task updates from tools without MCP, issue B).
+   */
+  async takeFile(name: string): Promise<string | null> {
+    const from = this.path(name);
+    if (!(await this.fs.exists(from))) return null;
+    const taken = this.path(`.taken.${newId("tmp")}.${name}`);
+    await this.fs.rename(from, taken);
+    const text = await this.fs.readText(taken);
+    await this.fs.remove(taken);
+    return text;
+  }
+
   /** The project's identity and settings (project.json). */
   readProject(): Project {
     return this.project;
@@ -270,12 +285,20 @@ export class MemoryStore {
   private async readStoredState(): Promise<State | null> {
     const text = await this.fs.readText(this.path("state.json"));
     if (text === null) return null;
+    let state: State;
     try {
       const result = validateMemoryFile("state", JSON.parse(text));
-      return result.ok ? result.value : null;
+      if (!result.ok) return null;
+      state = result.value;
     } catch {
       return null;
     }
+    // The event log is the source of truth (owner's v0.1 issue B): a snapshot that does not end
+    // at the log's last event is out of date (another tool appended, or a crash came between the
+    // append and the snapshot), so it is rebuilt instead of trusted and later overwritten.
+    const { events } = await this.readEvents();
+    const last = events.length > 0 ? events[events.length - 1].id : null;
+    return state.lastEventId === last ? state : null;
   }
 
   /** Writes to a temporary file, then renames: readers never see a half-written state. */

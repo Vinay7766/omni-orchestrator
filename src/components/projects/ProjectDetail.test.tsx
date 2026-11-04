@@ -11,6 +11,16 @@ const detail: ProjectDetailResult = {
   history: [{ phase: "idea-review", status: "in_progress", isNext: true, submissions: [], changeRequests: [], sessions: [] }],
 };
 
+describe("ProjectDetail: updates from tools without MCP (issue B)", () => {
+  it("says which updates were applied and which were not, and where to read why", async () => {
+    const withUpdates: ProjectDetailResult = { ...detail, updates: { applied: ["Made-up Editor: complete T-1"], refused: [{ line: "x", reason: "tests failed" }] } };
+    render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(withUpdates)} onBack={vi.fn()} />);
+    const note = await screen.findByRole("status", { name: "Updates from your tools" });
+    expect(note.textContent).toContain("Made-up Editor: complete T-1");
+    expect(note.textContent).toMatch(/1 update was not applied/);
+  });
+});
+
 describe("ProjectDetail", () => {
   it("shows loading, then the project's name and phase history", async () => {
     let resolve!: (r: ProjectDetailResult) => void;

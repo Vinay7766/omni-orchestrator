@@ -28,6 +28,8 @@ pub fn run() {
             save_custom_skill,
             delete_custom_skill,
             get_session_state,
+            load_ui_state,
+            save_ui_state,
             save_session_state,
             get_default_project_path,
             get_skills,

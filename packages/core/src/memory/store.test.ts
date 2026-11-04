@@ -252,6 +252,23 @@ describe("state follows the event log", () => {
   });
 });
 
+describe("the event log is the source of truth (issue B)", () => {
+  it("rebuilds an out-of-date state.json, so an event written by another tool is never lost", async () => {
+    const store = await created();
+    await store.appendEvent({ type: "phase_started", actor: agent, payload: { phase: "idea-review" } });
+    // Another tool appends a line without updating the snapshot (or a crash came in between).
+    const extra = {
+      formatVersion: 1, id: "evt_from_another_tool", time: new Date().toISOString(), type: "task_created",
+      actor: { kind: "agent", tool: "made-up-tool" }, payload: { taskId: "T-9", title: "Written by another tool" },
+    };
+    appendFileSync(agentsFile("events.jsonl"), JSON.stringify(extra) + "\n");
+    expect((await store.readState()).tasks.map((t) => t.id)).toEqual(["T-9"]);
+    // The app's next write keeps it.
+    await store.appendEvent({ type: "lesson_recorded", actor: human, payload: { lesson: "keep it" } });
+    expect(JSON.parse(readFileSync(agentsFile("state.json"), "utf8")).tasks.map((t: { id: string }) => t.id)).toEqual(["T-9"]);
+  });
+});
+
 describe("readEvents", () => {
   it("reports a broken line with its number and still reads the others", async () => {
     const store = await created();

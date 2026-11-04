@@ -3,7 +3,7 @@
  * project's memory is read through @omni/core over the memfs commands, the same code the MCP
  * server and the extension use, so the app shows real project data only.
  */
-import { buildGateReview, buildPhaseHistory, buildWorkflow, readTeam, createInvokeFs, MemoryStore, normalizePath, projectOverview, type GateReview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow } from "@omni/core";
+import { buildGateReview, buildPhaseHistory, buildWorkflow, importTaskUpdates, readTeam, type ImportResult, createInvokeFs, MemoryStore, normalizePath, projectOverview, type GateReview, type Invoke, type PhaseHistoryEntry, type ProjectOverview, type Workflow } from "@omni/core";
 
 export type ProjectRow = { root: string; ok: true; overview: ProjectOverview } | { root: string; ok: false; error: string };
 
@@ -33,13 +33,16 @@ export async function loadProjects(invoke: Invoke, folders: string[]): Promise<P
 
 /** One project's phase history for the detail screen (E3, GATE-5). */
 export type ProjectDetailResult =
-  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow; /** The phase waiting for the person, summarised for review (C18). */ review?: GateReview; /** How many tools the person selected (D). */ teamSize?: number }
+  | { ok: true; name: string; flow: string; mode: "full" | "simple"; history: PhaseHistoryEntry[]; taskCount?: number; workflow?: Workflow; /** The phase waiting for the person, summarised for review (C18). */ review?: GateReview; /** How many tools the person selected (D). */ teamSize?: number; /** Updates applied from tools without MCP on this load (issue B). */ updates?: ImportResult }
   | { ok: false; error: string };
 
 export async function loadProjectDetail(invoke: Invoke, root: string): Promise<ProjectDetailResult> {
   try {
     const opened = await MemoryStore.open(createInvokeFs(invoke), normalizePath(root));
     if (!opened.ok) return { ok: false, error: opened.issues.map((i) => `${i.path} ${i.message}`.trim()).join("; ") };
+    // Tools without MCP report progress in .agents/task-updates.jsonl; it is applied before reading,
+    // so a refresh shows their work and never an older status (owner's v0.1 issue B).
+    const updates = await importTaskUpdates(opened.store);
     const project = opened.store.readProject();
     const state = await opened.store.readState();
     const { events } = await opened.store.readEvents();
@@ -56,6 +59,7 @@ export async function loadProjectDetail(invoke: Invoke, root: string): Promise<P
       workflow: buildWorkflow(project.flow, state, events),
       ...(review ? { review } : {}),
       teamSize: team.ok ? (team.team?.members.length ?? 0) : 0,
+      ...(updates.applied.length || updates.refused.length ? { updates } : {}),
     };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };

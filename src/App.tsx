@@ -23,6 +23,7 @@ import { SetupGuide, type SetupChecks } from "./components/setup/SetupGuide";
 import { discoverTools } from "./lib/team";
 import { StartFromIdea, type IdeaDraft } from "./components/planning/StartFromIdea";
 import { chatTurn, discussionMarkdown } from "./lib/idea-chat";
+import { usePersistedState } from "./lib/ui-state";
 import { checkComputer, type ComputerCheck } from "./lib/computer-check";
 import { ComputerCheckNotice } from "./components/setup/ComputerCheckNotice";
 import { createProjectFromIdea, hasProvider } from "./lib/planning";
@@ -63,7 +64,8 @@ export function App() {
   const [area, setArea] = useState<Area>("projects");
   // A project to open when the Projects area shows (one just created from an idea).
   const [openRoot, setOpenRoot] = useState<string | undefined>(undefined);
-  const [ideaDraft, setIdeaDraft] = useState<IdeaDraft>(EMPTY_IDEA_DRAFT);
+  // Kept on disk, so a half-written idea or conversation survives closing the app (issue B).
+  const [ideaDraft, setIdeaDraft] = usePersistedState<IdeaDraft>("ideaDraft", EMPTY_IDEA_DRAFT);
   const [computer, setComputer] = useState<ComputerCheck | null>(null);
   const [guidance, setGuidance] = useState<"guided" | "dismissed" | null>(() => readGuidance());
   // Pitch mode's conversation (the idea area is a form, not a chat, since E5).

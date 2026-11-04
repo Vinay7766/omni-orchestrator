@@ -86,6 +86,16 @@ describe("loadProjectDetail (E3)", () => {
     expect(detail.review).toBeUndefined();
   });
 
+  it("applies task updates from tools without MCP when the project is loaded, and says what happened (issue B)", async () => {
+    const root = await project("nova", "idea-review");
+    const opened = await MemoryStore.open(node, root);
+    if (!opened.ok) throw new Error("no project");
+    writeFileSync(`${root}/.agents/task-updates.jsonl`, "not json\n");
+    const detail = await loadProjectDetail(fakeInvoke([]), root);
+    if (!detail.ok) throw new Error(detail.error);
+    expect(detail.updates).toMatchObject({ applied: [], refused: [{ line: "not json" }] });
+  });
+
   it("says how many tools the person selected, so the task list can wait for them (D)", async () => {
     const root = await project("comet", "idea-review");
     const before = await loadProjectDetail(fakeInvoke([]), root);

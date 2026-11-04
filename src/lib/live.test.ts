@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, PhaseEngine } from "@omni/core";
@@ -39,6 +39,19 @@ describe("watchProject", () => {
     stop();
     expect(changes).toBeGreaterThan(0);
     expect(Date.now() - startedAt).toBeLessThan(2000);
+  });
+
+  it("calls back within 2 seconds when a tool without MCP writes a task update (issue B)", async () => {
+    await created();
+    let changes = 0;
+    const stop = watchProject(fakeInvoke(), root, () => changes++);
+    await sleep(700);
+    expect(changes).toBe(0);
+    const startedAt = Date.now();
+    writeFileSync(join(root, ".agents", "task-updates.jsonl"), '{"tool":"Made-up Editor","task":"T-1","action":"start"}\n');
+    while (changes === 0 && Date.now() - startedAt < 2000) await sleep(10);
+    stop();
+    expect(changes).toBeGreaterThan(0);
   });
 
   it("stops calling back once stopped", async () => {

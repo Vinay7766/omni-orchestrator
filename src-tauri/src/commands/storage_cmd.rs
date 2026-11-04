@@ -58,6 +58,17 @@ pub fn save_session_state(session: ProjectSession) -> Result<(), String> {
     storage.save_session_state(&session)
 }
 
+/// The person's unsaved drafts (issue B), read on start and saved as they type.
+#[tauri::command]
+pub async fn load_ui_state() -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(|| StorageManager::default_system().load_ui_state()).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn save_ui_state(text: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || StorageManager::default_system().save_ui_state(&text)).await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn get_default_project_path() -> String {
     let home = std::env::var("USERPROFILE")
