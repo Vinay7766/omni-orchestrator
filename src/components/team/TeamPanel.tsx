@@ -9,7 +9,8 @@ type Failure = { ok: false; error: string };
 type Level = 1 | 2 | 3;
 
 export interface TeamFns {
-  discover: () => Promise<{ ok: true; tools: DiscoveredTool[] } | Failure>;
+  /** `fresh` looks again; otherwise the app may reuse what it found earlier in this run. */
+  discover: (fresh?: boolean) => Promise<{ ok: true; tools: DiscoveredTool[] } | Failure>;
   load: (root: string) => Promise<{ ok: true; team: Team | null } | Failure>;
   save: (root: string, selection: TeamSelection[]) => Promise<{ ok: boolean; message: string }>;
   handOff: (root: string, toolId: string) => Promise<HandOffOutcome>;
@@ -74,6 +75,14 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns; handOffReady?: bo
     return [...found, ...gone];
   }, [tools, team]);
 
+  const lookAgain = async () => {
+    setBusy(true);
+    const again = await fns.discover(true);
+    setProblem(again.ok ? null : `Tools could not be looked for: ${again.error}`);
+    setTools(again.ok ? again.tools : []);
+    setBusy(false);
+  };
+
   if (!tools) return <p role="status" className="text-sm text-zinc-400">Looking for AI tools on this computer...</p>;
 
   const selected = rows.filter((r) => r.id in chosen);
@@ -121,10 +130,20 @@ export const TeamPanel: React.FC<{ root: string; fns: TeamFns; handOffReady?: bo
 
   return (
     <section aria-labelledby="team-title" className="border border-zinc-800 rounded-lg p-4 space-y-4 bg-zinc-900">
-      <h3 id="team-title" className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-        <Wrench className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-        Tools for the build
-      </h3>
+      <div className="flex items-center gap-2">
+        <h3 id="team-title" className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+          <Wrench className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+          Tools for the build
+        </h3>
+        <button
+          type="button"
+          onClick={() => void lookAgain()}
+          disabled={busy}
+          className="ml-auto text-xs text-zinc-400 hover:text-zinc-100 disabled:opacity-50"
+        >
+          Look for tools again
+        </button>
+      </div>
       {problem && <p role="alert" className="text-sm text-red-400 break-words">{problem}</p>}
       {rows.length === 0 && !problem && <p className="text-sm text-zinc-400">No AI tools were found on this computer.</p>}
       <ul className="space-y-2">

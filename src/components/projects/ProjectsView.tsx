@@ -41,7 +41,7 @@ const memory = {
 
 /** Tools for the build (E6): discovery, the person's selection, and the handoff to each tool. */
 const team: TeamFns = {
-  discover: () => discoverTools(tauri),
+  discover: (fresh) => discoverTools(tauri, { fresh }),
   load: (root) => loadTeam(tauri, root),
   save: (root, selection) => saveTeamSelection(tauri, root, selection),
   handOff: (root, toolId) => handOffTool(tauri, root, toolId),

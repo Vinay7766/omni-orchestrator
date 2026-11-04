@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, PhaseEngine, TaskEngine, type Invoke } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { handOffTool, loadTeam, saveTeamSelection } from "./team";
+import { discoverTools, forgetDiscovery, handOffTool, loadTeam, saveTeamSelection } from "./team";
 import { DESKTOP_PERSON } from "./decisions";
 import { fakeInvoke } from "./testing/fake-invoke";
 
@@ -138,5 +138,24 @@ describe("team (app)", () => {
     const r = await handOffTool(refusing, root, "example-editor");
     expect(r).toEqual({ ok: false, error: "AGENTS.md is a link to another file, so it was not changed." });
     expect((await (await open()).readState()).phases.build?.status ?? "not_started").toBe("not_started");
+  });
+
+  // Owner's v0.1 issue A (2026-11-04): looking for tools is slow, so it happens once per app run,
+  // not on every page load; the person can ask for a fresh look.
+  it("looks for tools once and reuses the result until asked to look again", async () => {
+    forgetDiscovery();
+    let scans = 0;
+    const counting: Invoke = (command, args) => {
+      if (command === "discover_tools") {
+        scans += 1;
+        return Promise.resolve([]);
+      }
+      return invoke(command, args);
+    };
+    await discoverTools(counting);
+    await discoverTools(counting);
+    expect(scans).toBe(1);
+    await discoverTools(counting, { fresh: true });
+    expect(scans).toBe(2);
   });
 });

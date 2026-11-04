@@ -42,13 +42,36 @@ async function openStore(invoke: Invoke, root: string) {
   return opened.store;
 }
 
-/** Every AI tool found on this computer (Rust discovery). */
-export async function discoverTools(invoke: Invoke): Promise<{ ok: true; tools: DiscoveredTool[] } | Failure> {
-  try {
-    return { ok: true, tools: (await invoke("discover_tools", {})) as DiscoveredTool[] };
-  } catch (error) {
-    return { ok: false, error: reason(error) };
+type Discovery = { ok: true; tools: DiscoveredTool[] } | Failure;
+
+/** The last successful look for tools in this app run (owner's v0.1 issue A: looking is slow). */
+let found: Promise<Discovery> | null = null;
+
+/** Forgets the remembered result (tests, and "look again"). */
+export function forgetDiscovery(): void {
+  found = null;
+}
+
+/**
+ * Every AI tool found on this computer (Rust discovery). Looked for once per app run and reused,
+ * so opening or refreshing a page does not scan again; `fresh` looks again on the person's request.
+ */
+export function discoverTools(invoke: Invoke, options: { fresh?: boolean } = {}): Promise<Discovery> {
+  if (options.fresh || !found) {
+    const look: Promise<Discovery> = (async () => {
+      try {
+        return { ok: true as const, tools: (await invoke("discover_tools", {})) as DiscoveredTool[] };
+      } catch (error) {
+        return { ok: false as const, error: reason(error) };
+      }
+    })();
+    found = look;
+    // A failed look is not remembered, so the next one tries again.
+    void look.then((r) => {
+      if (!r.ok && found === look) found = null;
+    });
   }
+  return found;
 }
 
 export async function loadTeam(invoke: Invoke, rootIn: string): Promise<{ ok: true; team: Team | null } | Failure> {

@@ -150,4 +150,13 @@ describe("TeamPanel", () => {
     expect(fns.handOff.mock.calls.map((c: unknown[]) => c[1])).toEqual(["example-editor", "zeta"]);
     expect(screen.getByRole("region", { name: "Handoff to Zeta" })).toBeDefined();
   });
+
+  it("looks for tools again only when the person asks (issue A)", async () => {
+    const fns = await setup();
+    expect(fns.discover).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /look for tools again/i }));
+    });
+    expect(fns.discover).toHaveBeenLastCalledWith(true);
+  });
 });

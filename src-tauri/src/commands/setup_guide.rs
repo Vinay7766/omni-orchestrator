@@ -4,7 +4,6 @@
 
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 
 /// The version from `git --version` output; None when the output is not Git's.
 pub fn parse_git_version(output: &str) -> Option<String> {
@@ -31,7 +30,7 @@ pub fn folder_to_open(path: &str) -> Result<PathBuf, String> {
 /// Git's version, or None when Git is not installed (or not on PATH).
 #[tauri::command]
 pub async fn git_version() -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(|| match Command::new("git").arg("--version").output() {
+    tauri::async_runtime::spawn_blocking(|| match crate::commands::tool_discovery::background_command("git").arg("--version").output() {
         Ok(out) if out.status.success() => parse_git_version(&String::from_utf8_lossy(&out.stdout)),
         _ => None,
     })

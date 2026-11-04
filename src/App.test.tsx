@@ -9,6 +9,7 @@ import { fakeInvoke } from "./lib/testing/fake-invoke";
 import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
 import { createProjectFromIdea } from "./lib/planning";
+import { forgetDiscovery } from "./lib/team";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -53,6 +54,7 @@ describe("OmniOrchestrator App", () => {
   beforeEach(() => {
     mockedInvoke.mockReset();
     mockBackend();
+    forgetDiscovery();
   });
 
   it("opens on the projects list, marked as the current area", async () => {
@@ -172,6 +174,21 @@ describe("OmniOrchestrator App", () => {
       rmSync(base, { recursive: true, force: true });
     }
   }, 30_000);
+
+  it("does not look at the computer when the app opens, only once when Start from an idea is first opened (issue A)", async () => {
+    const asked: string[] = [];
+    mockBackend({
+      git_version: () => (asked.push("git_version"), Promise.resolve("git version 2.47.0")),
+      discover_tools: () => (asked.push("discover_tools"), Promise.resolve([])),
+    });
+    await renderApp();
+    await openArea("Skills");
+    expect(asked).toEqual([]);
+    await openArea("Start from an idea");
+    await openArea("Projects");
+    await openArea("Start from an idea");
+    expect(asked.filter((c) => c === "git_version")).toHaveLength(1);
+  });
 
   it("offers guided help when the computer has none of the tools needed, and opens the setup guide (G)", async () => {
     mockBackend({ git_version: () => Promise.resolve(null), discover_tools: () => Promise.resolve([]) });

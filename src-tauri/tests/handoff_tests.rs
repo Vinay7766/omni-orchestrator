@@ -305,3 +305,55 @@ fn an_unfinished_block_is_left_alone_and_reported() {
     assert!(result.files.iter().any(|f| f.contains("left unchanged")), "{:?}", result.files);
     let _ = fs::remove_dir_all(dir);
 }
+
+// --- Group A (owner's v0.1 issues, 2026-11-04): one terminal per tool and project ---
+
+use tauri_app_lib::commands::handoff::launch_once;
+
+/// A process that keeps running for a few seconds, on any CI platform.
+fn long_running() -> std::process::Command {
+    if cfg!(windows) {
+        let mut c = std::process::Command::new("ping");
+        c.args(["-n", "30", "127.0.0.1"]);
+        c
+    } else {
+        let mut c = std::process::Command::new("sleep");
+        c.arg("30");
+        c
+    }
+}
+
+#[test]
+fn a_tool_still_running_is_not_started_again() {
+    let key = format!("test-tool|{}", std::process::id());
+    let started = std::cell::Cell::new(0);
+    let start = || {
+        started.set(started.get() + 1);
+        long_running().spawn()
+    };
+    launch_once(&key, start).expect("first launch starts it");
+    let again = launch_once(&key, start).unwrap_err();
+    assert_eq!(again.kind(), std::io::ErrorKind::AlreadyExists, "{again}");
+    assert_eq!(started.get(), 1, "the second click must not start another process");
+    tauri_app_lib::commands::handoff::stop_launched(&key);
+}
+
+#[test]
+fn a_tool_that_was_closed_is_started_again() {
+    let key = format!("test-closed|{}", std::process::id());
+    launch_once(&key, || long_running().spawn()).unwrap();
+    tauri_app_lib::commands::handoff::stop_launched(&key);
+    launch_once(&key, || long_running().spawn()).expect("closed, so it starts again");
+    tauri_app_lib::commands::handoff::stop_launched(&key);
+}
+
+#[test]
+fn the_handoff_says_a_running_tool_is_already_open_instead_of_opening_another() {
+    let dir = project("already-open", &[("orbit", 2, false)]);
+    let tools = [tool("orbit", Some(3), true)];
+    let busy = |_: &LaunchCommand, _: &str| -> std::io::Result<()> { Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "running")) };
+    let result = hand_off(&request(&dir, "orbit"), &context(&tools, &[], &dir), busy).unwrap();
+    assert!(result.launched, "it is open");
+    assert!(result.message.contains("already open"), "{}", result.message);
+    let _ = fs::remove_dir_all(dir);
+}

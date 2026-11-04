@@ -79,14 +79,14 @@ export function App() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [defaultProjectPath, setDefaultProjectPath] = useState<string>("");
 
-  // G: look at the computer once, so a person without the tools is offered guidance.
+  // G: look at the computer once, the first time "Start from an idea" is opened, never when the
+  // app opens or a page refreshes (owner's v0.1 issue A: no setup work on open).
+  const [checked, setChecked] = useState(false);
   useEffect(() => {
-    let current = true;
-    void checkComputer(setupChecks).then((check) => current && setComputer(check));
-    return () => {
-      current = false;
-    };
-  }, []);
+    if (area !== "idea" || checked) return;
+    setChecked(true);
+    void checkComputer(setupChecks).then(setComputer);
+  }, [area, checked]);
 
   useEffect(() => {
     loadInitialData();

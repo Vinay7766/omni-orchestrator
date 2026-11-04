@@ -771,7 +771,7 @@ fn installed_apps_from_system() -> Vec<InstalledApp> {
             .map(|key| {
                 let key = key.to_string();
                 std::thread::spawn(move || {
-                    std::process::Command::new("reg")
+                    background_command("reg")
                         .args(["query", &key, "/s"])
                         .output()
                         .map(|out| parse_registry_output(&String::from_utf8_lossy(&out.stdout)))
@@ -793,6 +793,20 @@ fn installed_apps_from_system() -> Vec<InstalledApp> {
         }
     }
     apps
+}
+
+/// A background helper the app runs and reads (the registry reader, `git --version`): on Windows it
+/// gets no console window, so nothing flashes on screen (owner's v0.1 issue A, 2026-11-04).
+pub fn background_command(program: &str) -> std::process::Command {
+    #[allow(unused_mut)]
+    let mut cmd = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
 }
 
 /// Every AI coding tool found in `view`, merged and sorted by name.
@@ -847,6 +861,7 @@ fn join_install_folders(view: &SystemView, tools: &mut [DiscoveredTool]) {
 }
 
 #[tauri::command]
-pub fn discover_tools() -> Result<Vec<DiscoveredTool>, String> {
-    Ok(discover(&SystemView::from_environment()))
+pub async fn discover_tools() -> Result<Vec<DiscoveredTool>, String> {
+    // Off the main thread: the scan reads the disk and the registry, and the window must not freeze.
+    tauri::async_runtime::spawn_blocking(|| discover(&SystemView::from_environment())).await.map_err(|e| e.to_string())
 }

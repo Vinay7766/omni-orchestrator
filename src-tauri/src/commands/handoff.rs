@@ -177,10 +177,43 @@ fn write_block(project: &Path, rel: &str, body: &str, begin: &str, end: &str) ->
     Ok(Some(line))
 }
 
+/// Processes this app started for a tool and project, so a second click does not open another
+/// window or terminal while the first is still running (owner's v0.1 issue A, 2026-11-04).
+static LAUNCHED: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, std::process::Child>>> = std::sync::OnceLock::new();
+
+fn launched() -> std::sync::MutexGuard<'static, std::collections::HashMap<String, std::process::Child>> {
+    LAUNCHED.get_or_init(Default::default).lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Starts the process for `key` unless the one started before is still running; then it returns
+/// an `AlreadyExists` error and starts nothing.
+pub fn launch_once(key: &str, start: impl FnOnce() -> std::io::Result<std::process::Child>) -> std::io::Result<()> {
+    let mut running = launched();
+    if let Some(child) = running.get_mut(key) {
+        if matches!(child.try_wait(), Ok(None)) {
+            return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "it is still running"));
+        }
+    }
+    let child = start()?;
+    running.insert(key.to_string(), child);
+    Ok(())
+}
+
+/// Ends and forgets a process started with `launch_once` (tests; nothing in the app closes tools).
+pub fn stop_launched(key: &str) {
+    if let Some(mut child) = launched().remove(key) {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
 fn start(tool: &DiscoveredTool, project: &str, spawn: impl Fn(&LaunchCommand, &str) -> std::io::Result<()>) -> (bool, String) {
     match &tool.launch {
         Some(cmd) => match spawn(cmd, project) {
             Ok(()) => (true, format!("{} was opened with the project.", tool.name)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                (true, format!("{} is already open with the project, so it was not opened again.", tool.name))
+            }
             Err(e) => (false, format!("{} could not be started ({}). Open {} in it yourself.", tool.name, e, project)),
         },
         None => {
@@ -286,7 +319,10 @@ pub async fn hand_off_tool(request: HandoffRequest) -> Result<HandoffResult, Str
             .map(|server| crate::commands::mcp_setup::with_user_skills(server, &user_skills));
         let context = HandoffContext { tools: &tools, adapters: &adapters, home: &home, server };
         // The program comes from the tool's own install folder (discovery), never from the web view.
-        hand_off(&request, &context, |cmd, project| Command::new(&cmd.program).args(&cmd.args).arg(project).spawn().map(|_| ()))
+        // One process per tool and project: a click while it is still running opens nothing new.
+        hand_off(&request, &context, |cmd, project| {
+            launch_once(&format!("{}|{}", cmd.program, project), || Command::new(&cmd.program).args(&cmd.args).arg(project).spawn())
+        })
     })
     .await
     .map_err(|e| e.to_string())?
