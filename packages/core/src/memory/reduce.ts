@@ -44,6 +44,15 @@ export function applyEvent(state: State, event: Event): State {
     case "phase_skipped":
       setPhase("skipped", { decidedAt: event.time });
       break;
+    case "approval_withdrawn": {
+      // The next phase was only started (the engine refuses otherwise): it goes back to not started.
+      const started = next.currentPhase;
+      if (started && started !== payload.phase && next.phases[started]?.status === "in_progress") delete next.phases[started];
+      const { decidedAt: _decided, ...rest } = next.phases[payload.phase] ?? { status: "awaiting_review" };
+      next.phases[payload.phase] = { ...rest, status: "awaiting_review" };
+      next.currentPhase = payload.phase;
+      break;
+    }
     case "task_created":
       if (!next.tasks.some((t) => t.id === payload.taskId)) {
         const { kinds, assignedTool, assignedModel } = event.payload as Pick<State["tasks"][number], "kinds" | "assignedTool" | "assignedModel">;

@@ -101,7 +101,7 @@ export function buildWorkflow(
   for (const event of events) {
     const p = event.payload as Record<string, unknown>;
     let target: string | undefined;
-    if (event.type === "phase_approved" || event.type === "phase_skipped") target = `gate:${str(p.phase)}`;
+    if (event.type === "phase_approved" || event.type === "phase_skipped" || event.type === "approval_withdrawn") target = `gate:${str(p.phase)}`;
     else if (event.type === "phase_started" || event.type === "phase_submitted" || event.type === "changes_requested") target = `phase:${str(p.phase)}`;
     else if (event.type.startsWith("task_") || event.type === "design_note_submitted") target = `task:${str(p.taskId)}`;
     if (target) byId.get(target)?.events.push(detail(event));

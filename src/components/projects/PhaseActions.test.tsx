@@ -18,6 +18,7 @@ function decisions() {
     requestChanges: vi.fn<PhaseDecisions["requestChanges"]>(() => Promise.resolve()),
     run: vi.fn<PhaseDecisions["run"]>(() => Promise.resolve()),
     skip: vi.fn<PhaseDecisions["skip"]>(() => Promise.resolve()),
+    withdraw: vi.fn<NonNullable<PhaseDecisions["withdraw"]>>(() => Promise.resolve()),
   };
 }
 
@@ -25,8 +26,32 @@ describe("PhaseActions (E3 slice 3)", () => {
   it("offers Approve and Request changes for a phase awaiting review", async () => {
     const d = decisions();
     render(<PhaseActions entry={entry({ phase: "prd", status: "awaiting_review" })} decisions={d} />);
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: 'Approve "prd"' })));
+    fireEvent.click(screen.getByRole("button", { name: 'Approve "prd"' }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Yes, approve" })));
     expect(d.approve).toHaveBeenCalledWith("prd");
+  });
+
+  // Owner's v0.1 issue D (2026-11-04): approving asks once more, and can be undone.
+  it("asks to confirm before approving, and cancelling approves nothing", () => {
+    const d = decisions();
+    render(<PhaseActions entry={entry({ phase: "prd", status: "awaiting_review" })} decisions={d} />);
+    fireEvent.click(screen.getByRole("button", { name: 'Approve "prd"' }));
+    expect(screen.getByRole("alertdialog", { name: /approve "prd"\?/i }).textContent).toMatch(/next phase/i);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(d.approve).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("offers to undo the latest approval", async () => {
+    const d = decisions();
+    render(<PhaseActions entry={entry({ phase: "prd", status: "approved" })} decisions={d} latestApproval />);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: 'Undo approval of "prd"' })));
+    expect(d.withdraw).toHaveBeenCalledWith("prd");
+  });
+
+  it("does not offer undo on an older approval", () => {
+    render(<PhaseActions entry={entry({ phase: "prd", status: "approved" })} decisions={decisions()} />);
+    expect(screen.queryByRole("button", { name: /undo approval/i })).toBeNull();
   });
 
   it("sends change notes only when there are some", async () => {
@@ -67,6 +92,7 @@ describe("PhaseActions (E3 slice 3)", () => {
     d.approve.mockImplementation(() => new Promise<void>((r) => (finish = r)));
     render(<PhaseActions entry={entry({ phase: "prd", status: "awaiting_review" })} decisions={d} />);
     fireEvent.click(screen.getByRole("button", { name: 'Approve "prd"' }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, approve" }));
     expect((screen.getByRole("button", { name: 'Approve "prd"' }) as HTMLButtonElement).disabled).toBe(true);
     await act(async () => finish());
   });

@@ -96,6 +96,10 @@ export function buildPhaseHistory(
       case "phase_approved":
         entry.decision = { kind: "approved", ...at };
         break;
+      case "approval_withdrawn":
+        // The person took the approval back (issue D): the phase waits for their review again.
+        delete entry.decision;
+        break;
       case "session_started": {
         const session = { id: event.id, by: event.actor, started: event.time, ...(typeof payload.transcript === "string" ? { transcript: payload.transcript } : {}) };
         sessions.set(event.id, session);

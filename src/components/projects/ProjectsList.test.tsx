@@ -121,4 +121,33 @@ describe("ProjectsList: opening a project (E3)", () => {
     setup(["C:/work"], { projects: [{ root: "C:/work/orbit", ok: true, overview: overview({ phase: { id: "security-pass", status: "skipped" } }) }], errors: [] });
     expect(await screen.findByText("security-pass · skipped")).toBeDefined();
   });
+
+  // Issue D (2026-11-04): "Add folder" opens the system's folder picker.
+  it("opens the folder picker when the box is empty, and adds the folder chosen", async () => {
+    const onFoldersChange = vi.fn();
+    const pickFolder = vi.fn().mockResolvedValue("C:/Users/me/Projects");
+    render(<ProjectsList folders={[]} onFoldersChange={onFoldersChange} load={vi.fn()} pickFolder={pickFolder} now={() => NOW} />);
+    fireEvent.click(screen.getByRole("button", { name: /add folder/i }));
+    await waitFor(() => expect(onFoldersChange).toHaveBeenCalledWith(["C:/Users/me/Projects"]));
+    expect(pickFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds nothing when the picker is cancelled", async () => {
+    const onFoldersChange = vi.fn();
+    const pickFolder = vi.fn().mockResolvedValue(null);
+    render(<ProjectsList folders={[]} onFoldersChange={onFoldersChange} load={vi.fn()} pickFolder={pickFolder} now={() => NOW} />);
+    fireEvent.click(screen.getByRole("button", { name: /add folder/i }));
+    await waitFor(() => expect(pickFolder).toHaveBeenCalled());
+    expect(onFoldersChange).not.toHaveBeenCalled();
+  });
+
+  it("still adds a typed path without opening the picker", () => {
+    const onFoldersChange = vi.fn();
+    const pickFolder = vi.fn();
+    render(<ProjectsList folders={[]} onFoldersChange={onFoldersChange} load={vi.fn()} pickFolder={pickFolder} now={() => NOW} />);
+    fireEvent.change(screen.getByLabelText(/folder to add/i), { target: { value: "D:/typed" } });
+    fireEvent.click(screen.getByRole("button", { name: /add folder/i }));
+    expect(onFoldersChange).toHaveBeenCalledWith(["D:/typed"]);
+    expect(pickFolder).not.toHaveBeenCalled();
+  });
 });

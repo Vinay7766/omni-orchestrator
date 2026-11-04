@@ -43,4 +43,18 @@ describe("TeardownViewer Component", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockTeardown.coldOutreachSequence);
     expect(await screen.findByText(/Copied to Clipboard/i)).toBeDefined();
   });
+
+  it("says the Markdown file was saved, and keeps the file's link until the save has started (issue D)", () => {
+    vi.useFakeTimers();
+    const revoke = vi.fn();
+    URL.createObjectURL = vi.fn(() => "blob:made-up");
+    URL.revokeObjectURL = revoke;
+    render(<TeardownViewer teardown={mockTeardown} />);
+    fireEvent.click(screen.getByRole("button", { name: "Download Markdown" }));
+    expect(screen.getByRole("status").textContent).toMatch(/strategic-teardown\.md/);
+    expect(revoke).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    expect(revoke).toHaveBeenCalledWith("blob:made-up");
+    vi.useRealTimers();
+  });
 });

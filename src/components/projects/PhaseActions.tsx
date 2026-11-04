@@ -1,5 +1,5 @@
 import React, { useId, useState } from "react";
-import { Check, MessageSquareWarning, Play, Send, SkipForward } from "lucide-react";
+import { Check, MessageSquareWarning, Play, Send, SkipForward, Undo2 } from "lucide-react";
 import type { PhaseHistoryEntry } from "@omni/core";
 
 /** The person's decisions on one phase. Each resolves when the decision has been handled. */
@@ -8,6 +8,8 @@ export interface PhaseDecisions {
   requestChanges: (phase: string, notes: string) => Promise<void>;
   run: (phase: string) => Promise<void>;
   skip: (phase: string, reason: string) => Promise<void>;
+  /** Takes back an approval while nothing has happened since it (issue D). */
+  withdraw?: (phase: string) => Promise<void>;
 }
 
 const button =
@@ -21,10 +23,11 @@ const field =
  * Only the decisions that apply to this phase (GATE-2, SEC-1): approve or request changes when it
  * awaits review; run or skip when it is an optional phase waiting for the person. Nothing else.
  */
-export const PhaseActions: React.FC<{ entry: PhaseHistoryEntry; decisions: PhaseDecisions }> = ({ entry, decisions }) => {
+export const PhaseActions: React.FC<{ entry: PhaseHistoryEntry; decisions: PhaseDecisions; latestApproval?: boolean }> = ({ entry, decisions, latestApproval = false }) => {
   const id = useId();
   const [busy, setBusy] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
   const { phase } = entry;
@@ -42,7 +45,7 @@ export const PhaseActions: React.FC<{ entry: PhaseHistoryEntry; decisions: Phase
     return (
       <div className="mt-3 space-y-2">
         <div className="flex flex-wrap gap-2">
-          <button className={primary} disabled={busy} onClick={() => void run(() => decisions.approve(phase))} aria-label={`Approve "${phase}"`}>
+          <button className={primary} disabled={busy} onClick={() => setConfirming(true)} aria-label={`Approve "${phase}"`}>
             <Check className="w-3.5 h-3.5" aria-hidden="true" />
             Approve
           </button>
@@ -51,6 +54,29 @@ export const PhaseActions: React.FC<{ entry: PhaseHistoryEntry; decisions: Phase
             Request changes
           </button>
         </div>
+        {confirming && (
+          <div role="alertdialog" aria-labelledby={`${id}-confirm`} className="rounded-lg border border-indigo-900/60 bg-indigo-950/20 p-3 space-y-2">
+            <p id={`${id}-confirm`} className="text-xs text-zinc-200">
+              Approve "{phase}"? The next phase can start after this. You can undo it until work starts in the next phase.
+            </p>
+            <div className="flex gap-2">
+              <button
+                className={primary}
+                disabled={busy}
+                onClick={() => {
+                  setConfirming(false);
+                  void run(() => decisions.approve(phase));
+                }}
+              >
+                <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                Yes, approve
+              </button>
+              <button className={secondary} disabled={busy} onClick={() => setConfirming(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {notesOpen && (
           <div className="space-y-2">
             <label htmlFor={`${id}-notes`} className="block text-xs text-zinc-400">
@@ -68,6 +94,18 @@ export const PhaseActions: React.FC<{ entry: PhaseHistoryEntry; decisions: Phase
             </button>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (entry.status === "approved" && latestApproval && decisions.withdraw) {
+    const withdraw = decisions.withdraw;
+    return (
+      <div className="mt-2">
+        <button className={secondary} disabled={busy} onClick={() => void run(() => withdraw(phase))} aria-label={`Undo approval of "${phase}"`}>
+          <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />
+          Undo approval
+        </button>
       </div>
     );
   }

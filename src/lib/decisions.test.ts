@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, OPTIONAL_PHASES, PhaseEngine, STACK_ADR_PHASES } from "@omni/core";
 import { createNodeFs } from "@omni/core/node";
-import { approve, requestChanges, runOptional, skipOptional, DESKTOP_PERSON } from "./decisions";
+import { approve, requestChanges, runOptional, skipOptional, withdrawApproval, DESKTOP_PERSON } from "./decisions";
 import { fakeInvoke } from "./testing/fake-invoke";
 
 // E3 slice 3: the person's decisions in the desktop app, through the same engine and the same
@@ -51,6 +51,15 @@ describe("desktop decisions", () => {
     expect(result).toEqual({ ok: true, message: '"idea-review" approved. "research" has started.' });
     expect(await status("idea-review")).toBe("approved");
     expect(await lastEvent()).toEqual(expect.objectContaining({ type: "phase_started", actor: DESKTOP_PERSON }));
+  });
+
+  it("undoes an approval as the person while the next phase has no work (issue D)", async () => {
+    await submitted("idea-review");
+    expect((await approve(fakeInvoke(), root, "idea-review")).ok).toBe(true);
+    const r = await withdrawApproval(fakeInvoke(), root, "idea-review");
+    expect(r).toMatchObject({ ok: true, message: expect.stringMatching(/withdrawn/) });
+    expect(await status("idea-review")).toBe("awaiting_review");
+    expect((await lastEvent()).actor).toEqual(DESKTOP_PERSON);
   });
 
   it("never starts the security pass after approving review: it asks instead", async () => {

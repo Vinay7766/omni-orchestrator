@@ -4,7 +4,7 @@ import type { AppSettings } from "../../lib/types";
 import { loadProjectDetail, loadProjects } from "../../lib/projects";
 import { ProjectsList } from "./ProjectsList";
 import { ProjectDetail, type DecideFns, type PlanningFns } from "./ProjectDetail";
-import { approve, requestChanges, runOptional, skipOptional } from "../../lib/decisions";
+import { approve, requestChanges, runOptional, skipOptional, withdrawApproval } from "../../lib/decisions";
 import { addEntry, loadMemoryFiles, updateProjectDetails } from "../../lib/memory";
 import type { Invoke } from "@omni/core";
 import { discoverTools, handOffTool, loadTeam, saveTeamSelection } from "../../lib/team";
@@ -14,6 +14,13 @@ import { startFreshSession } from "../../lib/fresh-session";
 import { watchProject } from "../../lib/live";
 import { showRefInFolder } from "../../lib/refs";
 import { handInBuild } from "../../lib/build";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+
+/** The system's folder picker (issue D); null when cancelled. */
+const pickFolder = async (): Promise<string | null> => {
+  const chosen = await openDialog({ directory: true, multiple: false, title: "Choose a folder that holds your projects" });
+  return typeof chosen === "string" ? chosen : null;
+};
 
 /** The projects list wired to the app: folders come from and are saved to the app settings. */
 const tauri: Invoke = (command, args) => invoke(command, args);
@@ -24,6 +31,7 @@ const decide: DecideFns = {
   run: (root, phase) => runOptional(tauri, root, phase),
   skip: (root, phase, reason) => skipOptional(tauri, root, phase, reason),
   handInBuild: (root) => handInBuild(tauri, root),
+  withdraw: (root, phase) => withdrawApproval(tauri, root, phase),
 };
 
 /** Files and commits in the workflow details (P-E8-02): a file's folder opens; a commit is copied. */
@@ -99,5 +107,5 @@ export const ProjectsView: React.FC<{ openRoot?: string; planning?: PlanningFns 
     );
   }
   if (opened) return <ProjectDetail root={opened} load={loadDetail} onBack={() => setOpened(null)} decide={decide} details={details} memory={memory} planning={planning} team={team} fresh={fresh} watch={watch} refs={refs} />;
-  return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} />;
+  return <ProjectsList folders={settings.projectFolders ?? []} onFoldersChange={(f) => void saveFolders(f)} load={load} onOpen={setOpened} pickFolder={pickFolder} />;
 };

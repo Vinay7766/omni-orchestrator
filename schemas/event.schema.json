@@ -31,6 +31,7 @@
         "phase_started",
         "phase_submitted",
         "phase_approved",
+        "approval_withdrawn",
         "phase_skipped",
         "changes_requested",
         "task_created",
@@ -170,6 +171,7 @@
           "type": {
             "enum": [
               "phase_approved",
+              "approval_withdrawn",
               "changes_requested",
               "phase_skipped",
               "project_updated"
@@ -197,7 +199,7 @@
       "if": {
         "properties": {
           "type": {
-            "const": "phase_approved"
+            "enum": ["phase_approved", "approval_withdrawn"]
           }
         },
         "type": "object"

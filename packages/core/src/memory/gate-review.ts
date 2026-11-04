@@ -42,7 +42,7 @@ export interface GateReview {
   };
 }
 
-const GATE_DECISIONS: ReadonlySet<Event["type"]> = new Set(["phase_approved", "phase_skipped", "changes_requested"]);
+const GATE_DECISIONS: ReadonlySet<Event["type"]> = new Set(["phase_approved", "phase_skipped", "changes_requested", "approval_withdrawn"]);
 
 /** One line per kind of entry; null for events that are part of the gate itself or routine. */
 function describe(event: Event): string | null {

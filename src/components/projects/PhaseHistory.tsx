@@ -148,7 +148,12 @@ function ReviewSummary({ review }: { review: GateReview }) {
 
 /** Every phase of a project with what it produced and what was decided (GATE-5); with
  * `decisions`, also the person's decisions that apply (E3 slice 3). */
-export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: PhaseDecisions; review?: GateReview }> = ({ entries, decisions, review }) => (
+export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: PhaseDecisions; review?: GateReview }> = ({ entries, decisions, review }) => {
+  // Only the most recent approval can be undone (issue D); the rule itself is core's.
+  const latest = entries
+    .filter((e) => e.decision?.kind === "approved")
+    .reduce<PhaseHistoryEntry | null>((a, e) => (!a || e.decision!.time > a.decision!.time ? e : a), null);
+  return (
   <ol aria-label="Phases" className="rounded-xl border border-zinc-800 bg-zinc-900/40">
     {entries.map((entry) => {
       const { icon: Icon, tone } = STATUS_STYLE[entry.status] ?? STATUS_STYLE.not_started;
@@ -172,9 +177,10 @@ export const PhaseHistory: React.FC<{ entries: PhaseHistoryEntry[]; decisions?: 
           ))}
           <Decision entry={entry} />
           {review && review.phase === entry.phase && entry.status === "awaiting_review" && <ReviewSummary review={review} />}
-          {decisions && <PhaseActions entry={entry} decisions={decisions} />}
+          {decisions && <PhaseActions entry={entry} decisions={decisions} latestApproval={latest?.phase === entry.phase} />}
         </li>
       );
     })}
   </ol>
 );
+};

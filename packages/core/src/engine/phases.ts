@@ -16,7 +16,11 @@ export type PhaseAction =
   | { kind: "submit"; phase: string; documents: string[]; skillsUsed: SkillUse[]; understandingCheck?: string; stackAdr?: string }
   | { kind: "approve"; phase: string }
   | { kind: "skip"; phase: string; reason?: string }
-  | { kind: "request_changes"; phase: string; notes: string };
+  | { kind: "request_changes"; phase: string; notes: string }
+  | { kind: "withdraw"; phase: string };
+
+/** Events that are not work: a tool opening or closing a session, or the next phase starting. */
+const NOT_WORK: ReadonlySet<string> = new Set(["phase_started", "session_started", "session_ended"]);
 
 export interface PhaseContext {
   state: State;
@@ -102,6 +106,15 @@ export function checkPhaseAction(ctx: PhaseContext, action: PhaseAction, actor: 
       }
       return { ok: true };
     }
+    case "withdraw": {
+      // Owner's v0.1 issue D: take back an approval, only while nothing has happened since it.
+      if (actor.kind !== "human") return problem("Only a person can withdraw an approval.");
+      if (status !== "approved") return problem(`"${phase}" is not approved (it is ${status})`);
+      const approvedAt = findLastIndex(ctx.events, (e) => e.type === "phase_approved" && (e.payload as { phase?: string }).phase === phase);
+      const work = ctx.events.slice(approvedAt + 1).find((e) => !NOT_WORK.has(e.type));
+      if (work) return problem(`work has already been recorded since "${phase}" was approved (${work.type.replace(/_/g, " ")}), so the approval can no longer be withdrawn`);
+      return { ok: true };
+    }
     case "approve":
     case "request_changes": {
       if (actor.kind !== "human") {
@@ -141,6 +154,8 @@ function toEventInput(action: PhaseAction, actor: Actor): EventInput {
       return { type: "phase_skipped", actor, payload: { phase: action.phase, ...(action.reason ? { reason: action.reason } : {}) } };
     case "request_changes":
       return { type: "changes_requested", actor, payload: { phase: action.phase, notes: action.notes } };
+    case "withdraw":
+      return { type: "approval_withdrawn", actor, payload: { phase: action.phase } };
   }
 }
 
@@ -207,6 +222,11 @@ export class PhaseEngine {
 
   requestChanges(actor: Actor, phase: string, notes: string): Promise<PhaseResult> {
     return this.act(actor, { kind: "request_changes", phase, notes });
+  }
+
+  /** A person takes back an approval while nothing has happened since it (issue D). */
+  withdrawApproval(actor: Actor, phase: string): Promise<PhaseResult> {
+    return this.act(actor, { kind: "withdraw", phase });
   }
 
   /** A person declines an optional phase (SEC-1); recorded with time and actor. */

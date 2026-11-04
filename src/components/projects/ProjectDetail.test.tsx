@@ -92,6 +92,7 @@ describe("ProjectDetail: decisions (E3 slice 3)", () => {
     const decide = { approve: vi.fn(() => Promise.resolve({ ok: true, message: '"prd" approved. "architecture" has started.' })) };
     render(<ProjectDetail root="C:/work/orbit" load={load} onBack={vi.fn()} decide={decide} />);
     fireEvent.click(await screen.findByRole("button", { name: 'Approve "prd"' }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, approve" }));
     expect((await screen.findByRole("status")).textContent).toMatch(/"architecture" has started/);
     expect(decide.approve).toHaveBeenCalledWith("C:/work/orbit", "prd");
     expect(load).toHaveBeenCalledTimes(2);
@@ -102,6 +103,7 @@ describe("ProjectDetail: decisions (E3 slice 3)", () => {
     const decide = { approve: vi.fn(() => Promise.resolve({ ok: false, message: '"prd" is not awaiting review (it is approved)' })) };
     render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(awaiting)} onBack={vi.fn()} decide={decide} />);
     fireEvent.click(await screen.findByRole("button", { name: 'Approve "prd"' }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, approve" }));
     expect((await screen.findByRole("alert")).textContent).toMatch(/not awaiting review/);
   });
 });

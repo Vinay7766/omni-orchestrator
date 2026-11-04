@@ -112,3 +112,12 @@ describe("findBatchApprovals (GATE-6 safeguard)", () => {
     expect(history.map((h) => h.decision?.batch)).toEqual([["made-up-a", "made-up-b"], ["made-up-a", "made-up-b"]]);
   });
 });
+
+describe("after an approval is withdrawn (issue D)", () => {
+  it("the phase history no longer says the phase is approved", () => {
+    const flows = { made: ["made-up-a", "made-up-b"] };
+    const events = [approved("made-up-a", 10), ev("approval_withdrawn", 11, { phase: "made-up-a" }, { actor: person })];
+    const state = { formatVersion: 1 as const, flow: "made", currentPhase: "made-up-a", phases: { "made-up-a": { status: "awaiting_review" as const } }, tasks: [], lastEventId: null };
+    expect(buildPhaseHistory("made", state, events, { flows, optional: {} })[0].decision).toBeUndefined();
+  });
+});

@@ -8,6 +8,8 @@ interface ProjectsListProps {
   /** Folders to look in (AppSettings.projectFolders). */
   folders: string[];
   onFoldersChange: (folders: string[]) => void;
+  /** Opens the system's folder picker; the chosen folder, or null when cancelled (issue D). */
+  pickFolder?: () => Promise<string | null>;
   load: (folders: string[]) => Promise<ProjectsResult>;
   /** Opens a project's phase history (E3). */
   onOpen?: (root: string) => void;
@@ -86,7 +88,7 @@ function Row({ row, now, onOpen }: { row: ProjectRow; now: number; onOpen?: (roo
   );
 }
 
-export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersChange, load, onOpen, now = Date.now }) => {
+export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersChange, load, onOpen, now = Date.now, pickFolder }) => {
   const inputId = useId();
   const [result, setResult] = useState<ProjectsResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -114,8 +116,9 @@ export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersCh
     void refresh();
   }, [refresh]);
 
-  const addFolder = () => {
-    const folder = draft.trim();
+  const addFolder = async () => {
+    // With the box empty, the system's folder picker chooses it (issue D); a typed path still works.
+    const folder = draft.trim() || (pickFolder ? ((await pickFolder()) ?? "").trim() : "");
     if (!folder || folders.includes(folder)) return;
     onFoldersChange([...folders, folder]);
     setDraft("");
@@ -146,12 +149,12 @@ export const ProjectsList: React.FC<ProjectsListProps> = ({ folders, onFoldersCh
             id={inputId}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addFolder()}
+            onKeyDown={(e) => e.key === "Enter" && void addFolder()}
             placeholder="C:\Users\you\Projects"
             className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 font-mono placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
           />
           <button
-            onClick={addFolder}
+            onClick={() => void addFolder()}
             className="px-3 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-1.5 shrink-0"
           >
             <Plus className="w-3.5 h-3.5" aria-hidden="true" />

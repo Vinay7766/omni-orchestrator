@@ -76,6 +76,8 @@ export function App() {
   const [byokLoadError, setByokLoadError] = useState<string | undefined>(undefined);
 
   const [currentTeardown, setCurrentTeardown] = useState<TeardownResponse | null>(null);
+  // The report is kept when its viewer closes, so "Open Teardown Report" can show it again (issue D).
+  const [teardownOpen, setTeardownOpen] = useState(false);
 
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -192,6 +194,7 @@ export function App() {
         },
       });
       setCurrentTeardown(teardown);
+      setTeardownOpen(true);
 
       const assistantMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -322,7 +325,7 @@ export function App() {
               messages={messages}
               loading={loadingTrack}
               onSubmit={handleSubmitPrompt}
-              onOpenTeardown={() => currentTeardown && setCurrentTeardown({ ...currentTeardown })}
+              onOpenTeardown={() => currentTeardown && setTeardownOpen(true)}
               aside={
                 <ErrorBoundary panelName="BYOK Settings">
                   <BYOKSettings config={byokConfig} onChange={saveByok} keyStorage={keyStorage} loadError={byokLoadError} />
@@ -362,13 +365,13 @@ export function App() {
       </div>
 
       {/* Track B Strategic Teardown Viewer */}
-      {currentTeardown && (
+      {currentTeardown && teardownOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <ErrorBoundary panelName="Teardown Viewer" onClose={() => setCurrentTeardown(null)}>
+            <ErrorBoundary panelName="Teardown Viewer" onClose={() => setTeardownOpen(false)}>
               <TeardownViewer
                 teardown={currentTeardown}
-                onClose={() => setCurrentTeardown(null)}
+                onClose={() => setTeardownOpen(false)}
               />
             </ErrorBoundary>
           </div>

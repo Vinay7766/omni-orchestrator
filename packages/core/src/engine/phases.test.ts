@@ -335,3 +335,48 @@ describe("optional phases (security pass)", () => {
     expect(summary).toContain(OPTIONAL_PHASES["security-pass"]);
   });
 });
+
+// Owner's v0.1 issue D (2026-11-04): a person can take back an approval, while nothing has
+// happened in the next phase yet. The log keeps both the approval and the withdrawal.
+describe("withdrawing an approval (issue D)", () => {
+  async function approvedIdeaReview(startNext: boolean) {
+    expect((await engine.start(agent, "idea-review")).ok).toBe(true);
+    await memoryUpdate();
+    expect((await submitIdeaReview()).ok).toBe(true);
+    expect((await engine.approve(person, "idea-review")).ok).toBe(true);
+    if (startNext) expect((await engine.start(person, "research")).ok).toBe(true);
+  }
+
+  it("puts the phase back to review and the next phase back to not started", async () => {
+    await approvedIdeaReview(true);
+    const r = await engine.withdrawApproval(person, "idea-review");
+    expect(messages(r)).toBe("");
+    const state = await store.readState();
+    expect(state.phases["idea-review"]?.status).toBe("awaiting_review");
+    expect(state.phases.research).toBeUndefined();
+    expect(state.currentPhase).toBe("idea-review");
+    expect(await store.rebuildState()).toEqual(state);
+  });
+
+  it("refuses once work was recorded after the approval, and says what", async () => {
+    await approvedIdeaReview(true);
+    await memoryUpdate();
+    const r = await engine.withdrawApproval(person, "idea-review");
+    expect(r.ok).toBe(false);
+    expect(messages(r)).toMatch(/already been recorded/);
+    expect((await store.readState()).phases["idea-review"]?.status).toBe("approved");
+  });
+
+  it("only a person can withdraw an approval", async () => {
+    await approvedIdeaReview(false);
+    const r = await engine.withdrawApproval(agent, "idea-review");
+    expect(r.ok).toBe(false);
+    expect(messages(r)).toMatch(/only a person/i);
+  });
+
+  it("refuses a phase that is not approved", async () => {
+    expect((await engine.start(agent, "idea-review")).ok).toBe(true);
+    const r = await engine.withdrawApproval(person, "idea-review");
+    expect(messages(r)).toMatch(/not approved/);
+  });
+});

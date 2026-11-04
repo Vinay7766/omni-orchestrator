@@ -40,6 +40,7 @@ const EVENT_WORDS: Record<string, string> = {
   phase_submitted: "Handed in",
   changes_requested: "Changes requested",
   phase_approved: "Approved",
+  approval_withdrawn: "Approval withdrawn",
   phase_skipped: "Skipped",
   task_created: "Created",
   design_note_submitted: "Design note handed in",

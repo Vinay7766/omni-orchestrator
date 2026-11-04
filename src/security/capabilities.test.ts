@@ -13,4 +13,9 @@ describe("the main window's capability", () => {
     const opener = capability.permissions.filter((p) => (typeof p === "string" ? p : p.identifier).startsWith("opener:"));
     expect(opener).toEqual([{ identifier: "opener:allow-open-url", allow: [{ url: "https://*" }] }]);
   });
+
+  it("allows only the folder picker from the dialog plugin (issue D)", () => {
+    const dialog = capability.permissions.filter((p) => (typeof p === "string" ? p : p.identifier).startsWith("dialog:"));
+    expect(dialog).toEqual(["dialog:allow-open"]);
+  });
 });

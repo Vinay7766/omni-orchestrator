@@ -320,6 +320,7 @@ export interface Event1 {
     | "phase_started"
     | "phase_submitted"
     | "phase_approved"
+    | "approval_withdrawn"
     | "phase_skipped"
     | "changes_requested"
     | "task_created"

@@ -312,7 +312,11 @@ describe("OmniOrchestrator App", () => {
       expect(prompts[0]).toContain("A shared shopping list");
 
       await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: /approve/i }));
+        fireEvent.click(screen.getByRole("button", { name: /approve "/i }));
+      });
+      // Issue D: approving asks once more.
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Yes, approve" }));
       });
       expect(await screen.findByText(/"idea-review" approved/, {}, { timeout: 10_000 })).toBeDefined();
       expect(await screen.findByRole("button", { name: /run research/i }, { timeout: 10_000 })).toBeDefined();
@@ -500,6 +504,28 @@ describe("OmniOrchestrator App", () => {
     }
     // Real files: four locked writes on approval; about 2.5 s alone, much slower under the parallel full run.
   }, 30_000);
+
+  it("opens the teardown report again after it was closed (issue D)", async () => {
+    mockBackend({
+      execute_strategic_teardown: () =>
+        Promise.resolve({
+          targetName: "Made-up Co", markdownReport: "# Report\n\nMade-up findings", coldOutreachSequence: "Hello",
+          strategicGrowthLevers: [], authorAttributions: [], source: "offline",
+        }),
+    });
+    await renderApp();
+    await openArea("Pitch mode");
+    fireEvent.change(screen.getByLabelText("Prompt Input"), { target: { value: "Made-up Co" } });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Submit Prompt"));
+    });
+    expect(await screen.findByText(/Executive Teardown: Made-up Co/)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(screen.queryByText(/Executive Teardown: Made-up Co/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Open Teardown Report/i }));
+    expect(screen.getByText(/Executive Teardown: Made-up Co/)).toBeDefined();
+  });
 
   it("shows the provider error instead of a fabricated report when a pitch teardown fails", async () => {
     mockBackend({

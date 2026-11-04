@@ -123,6 +123,8 @@ pub enum EventType {
     PhaseStarted,
     PhaseSubmitted,
     PhaseApproved,
+    /// A person took back an approval before the next phase had any work (issue D).
+    ApprovalWithdrawn,
     PhaseSkipped,
     ChangesRequested,
     TaskCreated,
@@ -142,13 +144,14 @@ pub enum EventType {
 
 impl EventType {
     /// Every variant, so tests can compare this enum with the schema's list.
-    pub const ALL: [EventType; 20] = [
+    pub const ALL: [EventType; 21] = [
         EventType::ProjectCreated,
         EventType::ProjectUpdated,
         EventType::ToolsSelected,
         EventType::PhaseStarted,
         EventType::PhaseSubmitted,
         EventType::PhaseApproved,
+        EventType::ApprovalWithdrawn,
         EventType::PhaseSkipped,
         EventType::ChangesRequested,
         EventType::TaskCreated,

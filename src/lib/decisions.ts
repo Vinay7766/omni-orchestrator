@@ -51,6 +51,13 @@ export const approve = (invoke: Invoke, root: string, phase: string) =>
     return r.ok ? { ok: true, message: `"${phase}" approved. ${await whatNext(store)}` } : { ok: false, message: issuesText(r.issues) };
   });
 
+/** The person takes back an approval while nothing has happened in the next phase (issue D). */
+export const withdrawApproval = (invoke: Invoke, root: string, phase: string) =>
+  decide(invoke, root, async (_store, engine) => {
+    const r = await engine.withdrawApproval(DESKTOP_PERSON, phase);
+    return r.ok ? { ok: true, message: `The approval of "${phase}" was withdrawn; it waits for your review again.` } : { ok: false, message: issuesText(r.issues) };
+  });
+
 export const requestChanges = (invoke: Invoke, root: string, phase: string, notes: string) =>
   decide(invoke, root, async (_store, engine) => {
     const r = await engine.requestChanges(DESKTOP_PERSON, phase, notes);

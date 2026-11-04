@@ -27,6 +27,8 @@ export const TeardownViewer: React.FC<TeardownViewerProps> = ({
     }
   };
 
+  const [exported, setExported] = useState<string | null>(null);
+
   const handleDownloadMarkdown = () => {
     const blob = new Blob(
       [
@@ -37,11 +39,14 @@ export const TeardownViewer: React.FC<TeardownViewerProps> = ({
       { type: "text/markdown;charset=utf-8;" }
     );
     const url = URL.createObjectURL(blob);
+    const name = `${teardown.targetName.toLowerCase()}-strategic-teardown.md`;
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${teardown.targetName.toLowerCase()}-strategic-teardown.md`;
+    link.download = name;
     link.click();
-    URL.revokeObjectURL(url);
+    // Freed a moment later: freeing it at once can cancel the save in some web views (issue D).
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setExported(`Download started: ${name} (look in your downloads folder).`);
   };
 
   return (
@@ -79,6 +84,11 @@ export const TeardownViewer: React.FC<TeardownViewerProps> = ({
             <Download className="w-3.5 h-3.5" />
             <span>Export Markdown</span>
           </button>
+          {exported && (
+            <span role="status" className="text-xs text-emerald-400">
+              {exported}
+            </span>
+          )}
 
           {onClose && (
             <button

@@ -71,6 +71,8 @@ export interface DecideFns {
   skip?: (root: string, phase: string, reason: string) => Promise<DecisionResult>;
   /** Every task is done but no tool handed in the build: the person hands it in (issue C). */
   handInBuild?: (root: string) => Promise<DecisionResult>;
+  /** The person takes back an approval while nothing has happened since it (issue D). */
+  withdraw?: (root: string, phase: string) => Promise<DecisionResult>;
 }
 
 interface ProjectDetailProps {
@@ -169,6 +171,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
         },
         run: (phase) => record(decide.run?.(root, phase)),
         skip: (phase, reason) => record(decide.skip?.(root, phase, reason)),
+        withdraw: (phase) => record(decide.withdraw?.(root, phase)),
       },
     [decide, record, root],
   );
