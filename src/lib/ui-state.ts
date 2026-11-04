@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { redactJson } from "@omni/core";
 
 type Values = Record<string, unknown>;
 
@@ -33,7 +34,9 @@ function saveSoon(): void {
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => {
     timer = null;
-    void invoke("save_ui_state", { text: JSON.stringify(values) }).catch(() => undefined);
+    // Keys and tokens are removed before the drafts reach the disk (RT-20), with the same rules as
+    // project memory. What the person sees in the app this session is unchanged.
+    void invoke("save_ui_state", { text: JSON.stringify(redactJson(values).value) }).catch(() => undefined);
   }, 400);
 }
 
