@@ -274,6 +274,36 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ root, load, onBack
               </button>
             </section>
           )}
+          {detail.integrity && (
+            <div
+              role={detail.integrity.alerts.length ? "alert" : "status"}
+              aria-label="Project history check"
+              className={`rounded-lg border p-3 text-xs space-y-1 ${detail.integrity.alerts.length ? "border-red-700 bg-red-950/40 text-red-200" : "border-zinc-800 bg-zinc-900/60 text-zinc-300"}`}
+            >
+              {detail.integrity.alerts.length > 0 && (
+                <>
+                  <p className="font-medium text-red-300">
+                    This project's history was changed outside OmniOrchestrator. What does not count is not shown as done. See
+                    docs/security/incident-response.md before you continue.
+                  </p>
+                  <ul className="ml-4 list-disc">
+                    {detail.integrity.alerts.slice(0, 5).map((a, i) => (
+                      <li key={a + i} className="break-words">
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                  {detail.integrity.alerts.length > 5 && <p>And {detail.integrity.alerts.length - 5} more.</p>}
+                </>
+              )}
+              {detail.integrity.notes.length > 0 && (
+                <p>
+                  {detail.integrity.notes.length === 1 ? "1 earlier decision is" : `${detail.integrity.notes.length} earlier decisions are`} not signed: they were
+                  recorded before decisions were signed, and still count.
+                </p>
+              )}
+            </div>
+          )}
           {detail.updates && (
             <div role="status" aria-label="Updates from your tools" className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-300 space-y-1">
               {detail.updates.applied.length > 0 && (

@@ -282,4 +282,30 @@ describe("ProjectDetail: live updates (E7)", () => {
     render(<ProjectDetail root="C:/work/orbit" load={() => Promise.resolve(detail)} onBack={vi.fn()} watch={watch} />);
     expect((await screen.findByText(/live updates are off/i)).textContent).toMatch(/disk unavailable/);
   });
+
+  it("warns in red when the history was changed outside the app, and notes unsigned earlier decisions quietly (C17)", async () => {
+    render(
+      <ProjectDetail
+        root="/r"
+        load={async () => ({
+          ...detail,
+          integrity: {
+            alerts: ["Line 7: a phase_approved that is not signed by the app; it does not count."],
+            notes: ["Line 3: a phase_approved that is not signed (recorded before signing existed, or by a tool that cannot sign)."],
+          },
+        })}
+        onBack={() => undefined}
+      />,
+    );
+    const alert = await screen.findByRole("alert", { name: "Project history check" });
+    expect(alert.textContent).toMatch(/changed outside OmniOrchestrator/);
+    expect(alert.textContent).toMatch(/Line 7: a phase_approved that is not signed by the app/);
+    expect(alert.textContent).toMatch(/1 earlier decision is not signed/);
+  });
+
+  it("shows no history warning when nothing was found", async () => {
+    render(<ProjectDetail root="/r" load={async () => detail} onBack={() => undefined} />);
+    await screen.findByText("Orbit");
+    expect(screen.queryByRole("alert", { name: "Project history check" })).toBeNull();
+  });
 });

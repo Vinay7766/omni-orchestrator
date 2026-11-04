@@ -60,6 +60,13 @@ const setupChecks: SetupChecks = {
   openFolder: (path) => invoke<void>("open_folder", { path }),
 };
 
+/** Result of the trust_status command (src-tauri/src/commands/decisions.rs). */
+interface TrustStatus {
+  keyId: string | null;
+  trustFile: "unchanged" | "created" | "restored" | null;
+  problem: string | null;
+}
+
 export function App() {
   const [area, setArea] = useState<Area>("projects");
   // A project to open when the Projects area shows (one just created from an idea).
@@ -82,6 +89,8 @@ export function App() {
 
   // System State
   const [skills, setSkills] = useState<Skill[]>([]);
+  // C17: the key that signs the person's decisions, checked in the background after start.
+  const [signing, setSigning] = useState<TrustStatus | null>(null);
 
   // G: look at the computer once, the first time "Start from an idea" is opened, never when the
   // app opens or a page refreshes (owner's v0.1 issue A: no setup work on open).
@@ -94,6 +103,8 @@ export function App() {
 
   useEffect(() => {
     loadInitialData();
+    // In the background: it restores the trust file if something else changed it (C17).
+    invoke<TrustStatus>("trust_status").then(setSigning, () => undefined);
   }, []);
 
   // Saves BYOK settings: keys go to the OS credential store, the rest to settings.json.
@@ -266,6 +277,13 @@ export function App() {
         />
 
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {signing && (signing.problem || signing.trustFile === "restored") && (
+            <div role="alert" aria-label="Decision signing" className="m-3 rounded-lg border border-red-700 bg-red-950/40 p-3 text-xs text-red-200">
+              {signing.problem
+                ? `Your decisions on phases cannot be signed on this computer (${signing.problem}). Approvals will not be recorded until this is fixed.`
+                : "The list of keys trusted to sign your decisions was changed by another program. OmniOrchestrator put it back. See docs/security/incident-response.md."}
+            </div>
+          )}
           {area === "projects" && (
             <div className="flex-1 overflow-y-auto">
               <ErrorBoundary panelName="Projects">

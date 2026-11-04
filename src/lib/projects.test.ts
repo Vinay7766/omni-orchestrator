@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryStore, PhaseEngine, saveTeam } from "@omni/core";
@@ -78,6 +78,32 @@ describe("loadProjectDetail (E3)", () => {
     if (!detail.ok) throw new Error(detail.error);
     expect(detail.review?.phase).toBe("idea-review");
     expect(detail.review?.submission.documents).toEqual(["docs/planning/idea-review.md"]);
+  });
+
+  it("warns the person about a hand-written approval, and does not show it as an approval (C17 monitoring)", async () => {
+    const root = await project("vega", "idea-review");
+    const opened = await MemoryStore.open(node, root, appStoreOptions());
+    if (!opened.ok) throw new Error("no project");
+    await opened.store.appendEvent({
+      type: "phase_submitted",
+      actor: agent,
+      payload: { phase: "idea-review", documents: ["docs/planning/idea-review.md"], skillsUsed: [{ skill: "idea-review", evidence: "e" }] },
+    });
+    const log = `${root}/.agents/events.jsonl`;
+    const last = JSON.parse(readFileSync(log, "utf8").trim().split("\n").at(-1)!);
+    writeFileSync(log, readFileSync(log, "utf8") + JSON.stringify({ ...last, id: `${last.id}x`, type: "phase_approved", actor: { kind: "human", tool: "omni-desktop" }, payload: { phase: "idea-review" } }) + "\n");
+    const detail = await loadProjectDetail(fakeInvoke([]), root);
+    if (!detail.ok) throw new Error(detail.error);
+    expect(detail.integrity?.alerts.join(" ")).toMatch(/not signed by the app; it does not count/);
+    expect(detail.integrity?.alerts.join(" ")).toMatch(/history was changed/);
+    expect(detail.review?.phase).toBe("idea-review");
+    expect(detail.history.find((h) => h.phase === "idea-review")?.status).toBe("awaiting_review");
+  });
+
+  it("has no integrity warning for a project written only through the app and its tools", async () => {
+    const detail = await loadProjectDetail(fakeInvoke([]), await project("lyra", "idea-review"));
+    if (!detail.ok) throw new Error(detail.error);
+    expect(detail.integrity).toBeUndefined();
   });
 
   it("has no gate review when no phase is waiting for the person", async () => {

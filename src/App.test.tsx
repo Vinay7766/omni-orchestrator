@@ -29,6 +29,7 @@ function mockBackend(overrides: Record<string, (args?: unknown) => Promise<unkno
     get_byok_config: () => Promise.resolve({ config: {}, keyStorage: { available: true } }),
     get_app_settings: () => Promise.resolve(SETTINGS),
     find_projects: () => Promise.resolve({ roots: [], errors: [] }),
+    trust_status: () => Promise.resolve({ keyId: "omni-desktop-test", trustFile: "unchanged", problem: null }),
     ...overrides,
   };
   mockedInvoke.mockImplementation((cmd: string, args?: unknown) =>
@@ -750,5 +751,28 @@ describe("OmniOrchestrator App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByText("Saved description")).toBeDefined();
     expect(screen.queryByText("Unsaved description")).toBeNull();
+  });
+});
+
+describe("App: the signing key's check (C17 monitoring)", () => {
+  it("warns when the trusted keys were changed by something else, and says it was put back", async () => {
+    mockBackend({ trust_status: () => Promise.resolve({ keyId: "omni-desktop-1", trustFile: "restored", problem: null }) });
+    await renderApp();
+    const alert = await screen.findByRole("alert", { name: "Decision signing" });
+    expect(alert.textContent).toMatch(/changed by another program/);
+  });
+
+  it("says when decisions cannot be signed on this computer", async () => {
+    mockBackend({ trust_status: () => Promise.resolve({ keyId: null, trustFile: null, problem: "no system credential store is available" }) });
+    await renderApp();
+    const alert = await screen.findByRole("alert", { name: "Decision signing" });
+    expect(alert.textContent).toMatch(/cannot be signed.*no system credential store/s);
+  });
+
+  it("shows nothing when the key and the trust file are as the app left them", async () => {
+    mockBackend();
+    await renderApp();
+    await waitFor(() => expect(mockedInvoke.mock.calls.some(([cmd]) => cmd === "trust_status")).toBe(true));
+    expect(screen.queryByRole("alert", { name: "Decision signing" })).toBeNull();
   });
 });
