@@ -21,7 +21,7 @@ describe("red team: build pipeline (T5.4)", () => {
     expect(unpinned).toEqual([]);
   });
 
-  it.fails("RT-16b (T5.4): every workflow states least-privilege token permissions", () => {
+  it("RT-16b (T5.4): every workflow states least-privilege token permissions", () => {
     expect(workflows.filter((f) => !/^permissions:/m.test(read(f)))).toEqual([]);
   });
 });

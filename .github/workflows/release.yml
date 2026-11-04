@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Least privilege (RT-16b, T5.4): nothing by default; the release job below asks for the
+# one permission it needs (contents: write, to create the draft release).
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Build Multi-OS Tauri Desktop Installers (${{ matrix.platform }})
