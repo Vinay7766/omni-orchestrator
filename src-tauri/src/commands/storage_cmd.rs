@@ -58,6 +58,30 @@ pub fn save_session_state(session: ProjectSession) -> Result<(), String> {
     storage.save_session_state(&session)
 }
 
+/// Writes an exported document to the path the person chose in the save dialog, adding ".md"
+/// when they typed no extension (retest bug 4). Returns where it was written.
+pub fn write_export(path: &std::path::Path, content: &str) -> Result<std::path::PathBuf, String> {
+    let path = if path.extension().is_none() { path.with_extension("md") } else { path.to_path_buf() };
+    std::fs::write(&path, content).map_err(|e| format!("Could not write {}: {}", path.display(), e))?;
+    Ok(path)
+}
+
+/// Saves a Markdown export through the system's save dialog, opened here in Rust, so the web view
+/// never chooses a path to write (retest bug 4). Returns the path written, or None when cancelled.
+#[tauri::command]
+pub async fn export_markdown(app: tauri::AppHandle, file_name: String, content: String) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    // Only a file name is offered to the dialog: never a folder from the web view.
+    let name: String = file_name.chars().filter(|c| !matches!(c, '/' | '\\' | ':')).take(120).collect();
+    let picked = tauri::async_runtime::spawn_blocking(move || app.dialog().file().set_file_name(name).add_filter("Markdown", &["md"]).blocking_save_file())
+        .await
+        .map_err(|e| e.to_string())?;
+    let Some(picked) = picked else { return Ok(None) };
+    let path = picked.into_path().map_err(|e| e.to_string())?;
+    let written = tauri::async_runtime::spawn_blocking(move || write_export(&path, &content)).await.map_err(|e| e.to_string())??;
+    Ok(Some(written.to_string_lossy().into_owned()))
+}
+
 /// The person's unsaved drafts (issue B), read on start and saved as they type.
 #[tauri::command]
 pub async fn load_ui_state() -> Result<Option<String>, String> {

@@ -86,3 +86,19 @@ fn ui_state_refuses_text_that_is_not_json_or_too_large_and_keeps_the_last_good_o
     assert_eq!(storage.load_ui_state().unwrap().as_deref(), Some(r#"{"ok":true}"#));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+// Retest bug 4 (2026-11-04): the teardown is saved where the person chose in the save dialog.
+
+#[test]
+fn an_export_is_written_where_the_person_chose_with_md_added_when_missing() {
+    use tauri_app_lib::commands::storage_cmd::write_export;
+    let dir = ui_dir("export");
+    std::fs::create_dir_all(&dir).unwrap();
+    let chosen = dir.join("made-up-co-teardown");
+    let written = write_export(&chosen, "# Report").unwrap();
+    assert_eq!(written, dir.join("made-up-co-teardown.md"));
+    assert_eq!(std::fs::read_to_string(&written).unwrap(), "# Report");
+    let kept = write_export(&dir.join("named.markdown"), "x").unwrap();
+    assert_eq!(kept, dir.join("named.markdown"), "an extension the person typed is kept");
+    let _ = std::fs::remove_dir_all(dir);
+}

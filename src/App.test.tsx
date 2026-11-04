@@ -576,6 +576,22 @@ describe("OmniOrchestrator App", () => {
     expect(screen.queryByRole("button", { name: /Open Teardown Report/i })).toBeNull();
   });
 
+  it("brings back the pitch conversation and its report after the app was closed (retest bug 4)", async () => {
+    const teardown = { targetName: "Made-up Co", markdownReport: "# Report", coldOutreachSequence: "Hello", strategicGrowthLevers: [], authorAttributions: [], source: "offline" };
+    mockBackend({
+      load_ui_state: () =>
+        Promise.resolve(JSON.stringify({
+          pitchMessages: [{ id: "1", sender: "assistant", content: "Executive Teardown Complete: Made-up Co", timestamp: "10:00", track: "track-b" }],
+          pitchTeardown: teardown,
+        })),
+    });
+    await renderApp();
+    await openArea("Pitch mode");
+    expect(await screen.findByText(/Executive Teardown Complete: Made-up Co/)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /Open Teardown Report/i }));
+    expect(screen.getByText(/Executive Teardown: Made-up Co/)).toBeDefined();
+  });
+
   it("keeps each area's conversation when switching areas", async () => {
     mockBackend({
       execute_strategic_teardown: () => Promise.reject("provider down"),

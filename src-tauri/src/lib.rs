@@ -30,6 +30,7 @@ pub fn run() {
             delete_custom_skill,
             get_session_state,
             load_ui_state,
+            export_markdown,
             save_ui_state,
             save_session_state,
             get_default_project_path,

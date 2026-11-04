@@ -69,13 +69,14 @@ export function App() {
   const [computer, setComputer] = useState<ComputerCheck | null>(null);
   const [guidance, setGuidance] = useState<"guided" | "dismissed" | null>(() => readGuidance());
   // Pitch mode's conversation (the idea area is a form, not a chat, since E5).
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Kept on disk, so the pitch conversation and its report survive closing the app (retest bug 4).
+  const [messages, setMessages] = usePersistedState<ChatMessage[]>("pitchMessages", []);
   const [loadingTrack, setLoadingTrack] = useState<TrackType | null>(null);
   const [byokConfig, setByokConfig] = useState<BYOKConfig>({});
   const [keyStorage, setKeyStorage] = useState<KeyStorageStatus | undefined>(undefined);
   const [byokLoadError, setByokLoadError] = useState<string | undefined>(undefined);
 
-  const [currentTeardown, setCurrentTeardown] = useState<TeardownResponse | null>(null);
+  const [currentTeardown, setCurrentTeardown] = usePersistedState<TeardownResponse | null>("pitchTeardown", null);
   // The report is kept when its viewer closes, so "Open Teardown Report" can show it again (issue D).
   const [teardownOpen, setTeardownOpen] = useState(false);
 
@@ -364,6 +365,7 @@ export function App() {
               <TeardownViewer
                 teardown={currentTeardown}
                 onClose={() => setTeardownOpen(false)}
+                onExport={(fileName, content) => invoke<string | null>("export_markdown", { fileName, content })}
               />
             </ErrorBoundary>
           </div>

@@ -5,11 +5,17 @@ import { Copy, Check, Download, X, FileText, Send, Sparkles, Edit3, Eye } from "
 interface TeardownViewerProps {
   teardown: TeardownResponse;
   onClose?: () => void;
+  /**
+   * Saves through the system's save dialog (retest bug 4): resolves with the path chosen, or null
+   * when the person cancels. Without it, the file is downloaded by the browser instead.
+   */
+  onExport?: (fileName: string, content: string) => Promise<string | null>;
 }
 
 export const TeardownViewer: React.FC<TeardownViewerProps> = ({
   teardown,
   onClose,
+  onExport,
 }) => {
   const [activeTab, setActiveTab] = useState<"report" | "outreach">("report");
   const [isEditing, setIsEditing] = useState(false);
@@ -28,18 +34,24 @@ export const TeardownViewer: React.FC<TeardownViewerProps> = ({
   };
 
   const [exported, setExported] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const handleDownloadMarkdown = () => {
-    const blob = new Blob(
-      [
-        reportContent +
-          "\n\n---\n\n## Executive Cold Outreach\n\n" +
-          outreachContent,
-      ],
-      { type: "text/markdown;charset=utf-8;" }
-    );
-    const url = URL.createObjectURL(blob);
+  const handleDownloadMarkdown = async () => {
+    const content = reportContent + "\n\n---\n\n## Executive Cold Outreach\n\n" + outreachContent;
     const name = `${teardown.targetName.toLowerCase()}-strategic-teardown.md`;
+    if (onExport) {
+      setExportError(null);
+      try {
+        const saved = await onExport(name, content);
+        setExported(saved ? `Saved to ${saved}` : "Not saved: the save dialog was closed.");
+      } catch (e) {
+        setExported(null);
+        setExportError(`Not saved: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      return;
+    }
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = name;
@@ -77,7 +89,7 @@ export const TeardownViewer: React.FC<TeardownViewerProps> = ({
           </button>
 
           <button
-            onClick={handleDownloadMarkdown}
+            onClick={() => void handleDownloadMarkdown()}
             className="px-3 py-1.5 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 rounded-lg transition-colors flex items-center gap-1.5"
             aria-label="Download Markdown"
           >
@@ -85,8 +97,13 @@ export const TeardownViewer: React.FC<TeardownViewerProps> = ({
             <span>Export Markdown</span>
           </button>
           {exported && (
-            <span role="status" className="text-xs text-emerald-400">
+            <span role="status" className="text-xs text-emerald-400 break-all">
               {exported}
+            </span>
+          )}
+          {exportError && (
+            <span role="alert" className="text-xs text-red-400 break-words">
+              {exportError}
             </span>
           )}
 

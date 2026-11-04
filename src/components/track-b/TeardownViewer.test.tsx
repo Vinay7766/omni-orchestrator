@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { TeardownViewer } from "./TeardownViewer";
 import type { TeardownResponse } from "../../lib/types";
 
@@ -56,5 +56,33 @@ describe("TeardownViewer Component", () => {
     vi.runAllTimers();
     expect(revoke).toHaveBeenCalledWith("blob:made-up");
     vi.useRealTimers();
+  });
+
+  // Retest bug 4 (2026-11-04): the person chooses where the file goes, in the system's save dialog.
+  it("saves through the system's save dialog and says where", async () => {
+    const onExport = vi.fn().mockResolvedValue("D:/Docs/made-up-co-strategic-teardown.md");
+    render(<TeardownViewer teardown={mockTeardown} onExport={onExport} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Download Markdown" }));
+    });
+    expect(onExport.mock.calls[0][0]).toMatch(/strategic-teardown\.md$/);
+    expect(onExport.mock.calls[0][1]).toContain(mockTeardown.markdownReport);
+    expect(screen.getByRole("status").textContent).toContain("D:/Docs/made-up-co-strategic-teardown.md");
+  });
+
+  it("says nothing was saved when the dialog is cancelled, and shows a real error", async () => {
+    const cancel = vi.fn().mockResolvedValue(null);
+    const { unmount } = render(<TeardownViewer teardown={mockTeardown} onExport={cancel} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Download Markdown" }));
+    });
+    expect(screen.getByRole("status").textContent).toMatch(/not saved/i);
+    unmount();
+    const fail = vi.fn().mockRejectedValue("Could not write D:/Docs/x.md: access denied");
+    render(<TeardownViewer teardown={mockTeardown} onExport={fail} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Download Markdown" }));
+    });
+    expect(screen.getByRole("alert").textContent).toMatch(/access denied/);
   });
 });
