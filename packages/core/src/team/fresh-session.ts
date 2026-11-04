@@ -10,7 +10,7 @@ import { FLOWS } from "../generated/contract.js";
 import type { State } from "../generated/types.js";
 import { MEMORY_DIR } from "../constants.js";
 import { nextPhase } from "../engine/phases.js";
-import { NO_AI_ATTRIBUTION_RULE } from "./handoff.js";
+import { NO_AI_ATTRIBUTION_RULE, PROGRESS_RULES } from "./handoff.js";
 
 /** Where the prompt is saved, inside .agents/. */
 export const FRESH_SESSION_FILE = "handoff/next-session.md";
@@ -56,6 +56,7 @@ export function buildFreshSession({ projectName, flow, state, flows = FLOWS }: F
     "2. Before doing anything else, state in three short lines, from memory alone: the project's goal, the current phase, and the next step.",
     "3. Then work on that phase only. The person approves every phase: do not approve, skip or reorder phases yourself.",
     `4. ${NO_AI_ATTRIBUTION_RULE}`,
+    ...(phase === "build" ? ["", ...PROGRESS_RULES] : []),
     "",
   ].join("\n");
   return { phase, prompt };

@@ -125,4 +125,21 @@ describe("buildHandoff (core)", () => {
   it("the steps for a tool without MCP say where to record that a task is done (issue C)", () => {
     expect(startSteps(2, "Made-up CLI").join(" ")).toContain(".agents/task-updates.jsonl");
   });
+
+  // Retest bug 2 (2026-11-04): VS Code got only a pointer to AGENTS.md in its own instruction file,
+  // and the start prompt said nothing about finishing tasks.
+  it("gives each tool's own instruction file the progress rules, not only a pointer (retest bug 2)", () => {
+    const { toolBlock } = buildHandoff({ projectName: "Notes", state: state(tasks), summary: null });
+    expect(toolBlock).toContain("AGENTS.md");
+    expect(toolBlock).toMatch(/complete_task/);
+    expect(toolBlock).toContain(".agents/task-updates.jsonl");
+    expect(toolBlock).toContain(NO_AI_ATTRIBUTION_RULE);
+  });
+
+  it("the prompt to type tells the AI to mark each task done and hand in the build (retest bug 2)", () => {
+    const mcp = startSteps(3, "Made-up Editor").join(" ");
+    expect(mcp).toMatch(/complete_task/);
+    expect(mcp).toMatch(/submit_phase/);
+    expect(startSteps(2, "Made-up CLI").join(" ")).toMatch(/"action": "complete"|complete/);
+  });
 });

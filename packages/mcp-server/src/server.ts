@@ -63,7 +63,8 @@ export function createServer(deps: ContextDeps): McpServer {
       description:
         "Call this first. Returns the project's summary, current phase and its status, tasks in progress and the next task, " +
         "recent decisions, lessons every tool must apply, and the current phase's skills (descriptions; full text comes " +
-        "from get_phase_skills). Reads only; changes nothing.",
+        "from get_phase_skills). Reads only; changes nothing. After you finish a task, call complete_task before anything " +
+        "else; when every task is done, call submit_phase for build.",
       inputSchema: {
         projectPath: projectPathInput,
       },
@@ -112,7 +113,8 @@ export function createServer(deps: ContextDeps): McpServer {
     {
       title: "Submit the phase for review",
       description:
-        "Hand the current phase in for the user's review. Include the documents you produced, every skill you used with " +
+        "Hand the current phase in for the user's review; for the build phase, call it when every task is done " +
+        "(each finished with complete_task). Include the documents you produced, every skill you used with " +
         "evidence, the files you updated in the project memory (memoryUpdate), and for planning phases the confirmed " +
         "Understanding check. For the " + STACK_ADR_PHASES.join(", ") + " phase, also the stack decision record (stackAdr) " +
         "written with the stack-selection skill. Afterwards show the user the documents and the returned reviewQuestion. Only the user can " +
@@ -255,6 +257,8 @@ export function createServer(deps: ContextDeps): McpServer {
     {
       title: "Complete a task",
       description:
+        "Call this as soon as a task's work is finished and tested: it is the only way a task becomes done, and the person " +
+        "sees it as not done until you do. Then take the next task. " +
         "Complete an in-progress task with: a summary; every skill used with evidence (each declared skill needs some); the " +
         "test command you actually ran with its exit code and the last lines of output (recorded as reported by you; a " +
         "failing run keeps the task in progress); the files and commits you touched; and the memory files you updated. " +

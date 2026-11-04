@@ -62,6 +62,10 @@ pub struct HandoffRequest {
     pub project_path: String,
     pub tool_id: String,
     pub agents_block: String,
+    /// What goes into the tool's own instruction files (built by core: pointer, progress rules,
+    /// no AI attribution; retest bug 2). Without it the short POINTER is written.
+    #[serde(default)]
+    pub tool_block: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -258,6 +262,10 @@ pub fn hand_off(
             return Err("The AGENTS.md text may not contain OmniOrchestrator's block markers.".into());
         }
     }
+    let tool_block = request.tool_block.as_deref().map(str::trim).filter(|b| !b.is_empty()).unwrap_or(POINTER);
+    if tool_block.len() > MAX_AGENTS_BLOCK || tool_block.contains("omni:begin") || tool_block.contains("omni:end") {
+        return Err(format!("The text for the tool's own instruction files must be under {} characters and carry no block markers.", MAX_AGENTS_BLOCK));
+    }
     let adapter = adapter_for(&tool.id, context.adapters);
     let mut targets = vec![".gitignore".to_string()];
     if level >= 2 {
@@ -274,7 +282,7 @@ pub fn hand_off(
     if level >= 2 {
         files.extend(write_block(&project, "AGENTS.md", block, MANAGED_BEGIN, MANAGED_END)?);
         for rel in adapter.map(|a| a.instruction_files.as_slice()).unwrap_or_default() {
-            files.extend(write_block(&project, rel, POINTER, MANAGED_BEGIN, MANAGED_END)?);
+            files.extend(write_block(&project, rel, tool_block, MANAGED_BEGIN, MANAGED_END)?);
         }
     }
     let (mut mcp, mut mcp_problem) = (None, None);

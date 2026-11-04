@@ -39,8 +39,24 @@ export interface HandoffInput {
 export interface Handoff {
   nextTask: HandoffTask | null;
   agentsBlock: string;
+  /**
+   * What goes into each tool's own instruction file (retest bug 2): a tool such as an editor's AI
+   * may read only that file, so it carries the progress rules too, not just a pointer to AGENTS.md.
+   */
+  toolBlock: string;
   package: string;
 }
+
+/**
+ * How a tool records progress (issue C, retest bug 2): every text the app writes for AI tools
+ * carries it (AGENTS.md, each tool's own instruction file, the fresh-session prompt).
+ */
+export const PROGRESS_RULES: readonly string[] = [
+  "Recording progress (required):",
+  "- With the OmniOrchestrator MCP server: as soon as a task is finished and tested, call `complete_task` (the test command you ran and its real output, the skills used with evidence, the memory files you updated) before starting the next; it is the only way a task becomes done. When every task is done, call `submit_phase` for \"build\".",
+  `- Without it: add one JSON line per step to \`${MEMORY_DIR}/task-updates.jsonl\` (create it if missing), with "tool" (your name) and "task". Steps: {"action": "trivial", "reason": "..."} or {"action": "design", "note": {...}}, then {"action": "start"}, then {"action": "complete", "summary": "...", "tests": {"command": "...", "exitCode": 0, "outputTail": "..."}, "skillsUsed": [{"skill": "...", "evidence": "..."}], "refs": {"files": ["..."]}, "memoryUpdate": {"files": ["${MEMORY_DIR}/summary.md"]}}. When every task is done: {"action": "submit_phase", "phase": "build", "documents": ["..."], "skillsUsed": [...], "memoryUpdate": {"files": ["..."]}}. The app applies the lines and shows any it refused, with the reason.`,
+  `- Never edit \`${MEMORY_DIR}/state.json\` or \`${MEMORY_DIR}/events.jsonl\` by hand.`,
+];
 
 function oneLine(text: string): string {
   const flat = text.replace(/\s+/g, " ").trim();
@@ -72,7 +88,7 @@ export function startSteps(level: 1 | 2 | 3, toolName: string, model?: string): 
       `Open the project folder in ${tool} (it may already be open).`,
       `Open ${tool}'s AI chat or agent panel. If ${tool} asks to allow an MCP server whose name starts with "omni-orchestrator", allow it; if it does not list one, restart ${tool}.`,
       pick,
-      `Type: "Call get_context from omni-orchestrator, then start my next task." The AI loads the project memory and its task.`,
+      `Type: "Call get_context from omni-orchestrator and do my next task. As soon as it is finished and tested, call complete_task with the test output, then take the next one. When every task is done, call submit_phase for build." The AI loads the project memory and its task.`,
       "When it says the task is done, come back here: the task list and the phase history update by themselves.",
     ];
   }
@@ -81,7 +97,7 @@ export function startSteps(level: 1 | 2 | 3, toolName: string, model?: string): 
       `Open the project folder in ${tool} (it may already be open).`,
       `Open ${tool}'s AI chat or agent panel.`,
       pick,
-      `Type: "Read AGENTS.md and start the next task given to ${tool}." The AI reads the project memory from the files.`,
+      `Type: "Read AGENTS.md and do the next task given to ${tool}. When it is finished and tested, add the complete line to ${MEMORY_DIR}/task-updates.jsonl as AGENTS.md says, then take the next one." The AI reads the project memory from the files.`,
       `When it finishes a task, make sure it adds the "complete" line to ${MEMORY_DIR}/task-updates.jsonl as AGENTS.md says; this page then shows the task as done (or why not).`,
     ];
   }
@@ -114,15 +130,6 @@ export function buildHandoff({ projectName, state, summary, team = [], toolId }:
     `- ${NO_AI_ATTRIBUTION_RULE}`,
   ];
 
-  // Owner's v0.1 issue C: tools finished tasks without marking them done. How to record progress,
-  // for tools with the MCP server and without it (the file the app applies, issue B).
-  const progressRules = [
-    "Recording progress (required):",
-    "- With the OmniOrchestrator MCP server: when a task is done, call `complete_task` (the test command you ran and its real output, the skills used with evidence, the memory files you updated) before starting the next. When every task is done, call `submit_phase` for \"build\".",
-    `- Without it: add one JSON line per step to \`${MEMORY_DIR}/task-updates.jsonl\` (create it if missing), with "tool" (your name) and "task". Steps: {"action": "trivial", "reason": "..."} or {"action": "design", "note": {...}}, then {"action": "start"}, then {"action": "complete", "summary": "...", "tests": {"command": "...", "exitCode": 0, "outputTail": "..."}, "skillsUsed": [{"skill": "...", "evidence": "..."}], "refs": {"files": ["..."]}, "memoryUpdate": {"files": ["${MEMORY_DIR}/summary.md"]}}. When every task is done: {"action": "submit_phase", "phase": "build", "documents": ["..."], "skillsUsed": [...], "memoryUpdate": {"files": ["..."]}}. The app applies the lines and shows any it refused, with the reason.`,
-    `- Never edit \`${MEMORY_DIR}/state.json\` or \`${MEMORY_DIR}/events.jsonl\` by hand.`,
-  ];
-
   const agentsBlock = [
     `## OmniOrchestrator project: ${name}`,
     "",
@@ -141,7 +148,15 @@ export function buildHandoff({ projectName, state, summary, team = [], toolId }:
     "Rules:",
     ...rules,
     "",
-    ...progressRules,
+    ...PROGRESS_RULES,
+  ].join("\n");
+
+  const toolBlock = [
+    "This project is prepared by OmniOrchestrator. Read AGENTS.md first: it says where the project memory is and which task is next.",
+    "",
+    ...PROGRESS_RULES,
+    "",
+    NO_AI_ATTRIBUTION_RULE,
   ].join("\n");
 
   const pkg = [
@@ -164,5 +179,5 @@ export function buildHandoff({ projectName, state, summary, team = [], toolId }:
     "",
   ].join("\n");
 
-  return { nextTask, agentsBlock, package: pkg };
+  return { nextTask, agentsBlock, toolBlock, package: pkg };
 }

@@ -59,6 +59,7 @@ fn request(dir: &Path, tool_id: &str) -> HandoffRequest {
         project_path: dir.to_string_lossy().into_owned(),
         tool_id: tool_id.into(),
         agents_block: "## OmniOrchestrator project: P\n\nNext task: T-1: Do it".into(),
+        tool_block: None,
     }
 }
 
@@ -355,5 +356,31 @@ fn the_handoff_says_a_running_tool_is_already_open_instead_of_opening_another() 
     let result = hand_off(&request(&dir, "orbit"), &context(&tools, &[], &dir), busy).unwrap();
     assert!(result.launched, "it is open");
     assert!(result.message.contains("already open"), "{}", result.message);
+    let _ = fs::remove_dir_all(dir);
+}
+
+// --- Retest bug 2 (2026-11-04): a tool's own instruction file carried only a pointer ---
+
+#[test]
+fn the_tools_own_instruction_files_get_the_progress_rules_the_app_sends() {
+    let dir = project("tool-block", &[("nebula", 2, false)]);
+    let tools = [tool("nebula", Some(3), false)];
+    let adapters = nebula_adapter();
+    let mut req = request(&dir, "nebula");
+    req.tool_block = Some("Read AGENTS.md first.\n\nRecording progress (required): call complete_task when a task is done.".into());
+    hand_off(&req, &context(&tools, &adapters, &dir), no_spawn).unwrap();
+    let rules = fs::read_to_string(dir.join(".nebula").join("rules.md")).unwrap();
+    assert!(rules.contains("call complete_task when a task is done"), "{rules}");
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn a_tool_block_with_our_markers_is_refused() {
+    let dir = project("tool-block-markers", &[("nebula", 2, false)]);
+    let tools = [tool("nebula", Some(3), false)];
+    let adapters = nebula_adapter();
+    let mut req = request(&dir, "nebula");
+    req.tool_block = Some("x omni:end y".into());
+    assert!(hand_off(&req, &context(&tools, &adapters, &dir), no_spawn).is_err());
     let _ = fs::remove_dir_all(dir);
 }

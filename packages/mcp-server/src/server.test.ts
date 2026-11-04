@@ -71,6 +71,24 @@ afterEach(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+describe("tool descriptions say when to call them (retest bug 2)", () => {
+  it("complete_task says it is the only way a task becomes done and to call it as soon as the work is finished", async () => {
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const server = createServer({ fs: createNodeFs(), skills: { list: async () => ({ ok: true, entries: [] }), readContent: async () => null }, startDir: tmpdir() });
+    await server.connect(serverSide);
+    const client = new Client({ name: "made-up-client", version: "0.0.1" });
+    await client.connect(clientSide);
+    const { tools } = await client.listTools();
+    const describe_ = (name: string) => tools.find((t) => t.name === name)?.description ?? "";
+    expect(describe_("complete_task")).toMatch(/only way/i);
+    expect(describe_("complete_task")).toMatch(/as soon as/i);
+    expect(describe_("get_context")).toMatch(/complete_task/);
+    expect(describe_("submit_phase")).toMatch(/every task is done/i);
+    await client.close();
+    await closeServer(server);
+  });
+});
+
 describe("MCP server", () => {
   it("offers its tools, with no way for an agent to approve or request changes (GATE-2)", async () => {
     await connect(root);

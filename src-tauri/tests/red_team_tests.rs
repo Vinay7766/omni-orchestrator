@@ -99,7 +99,7 @@ fn hand_off_path(project_path: &str, spawned: &RefCell<Vec<String>>) -> Result<(
     let tools = editor();
     let home = std::env::temp_dir();
     let context = HandoffContext { tools: &tools, adapters: &[], home: &home, server: Err("not used".into()) };
-    let request = HandoffRequest { project_path: project_path.into(), tool_id: "nebula".into(), agents_block: "x".into() };
+    let request = HandoffRequest { project_path: project_path.into(), tool_id: "nebula".into(), agents_block: "x".into(), tool_block: None };
     hand_off(&request, &context, |_, project| {
         spawned.borrow_mut().push(project.to_string());
         Ok(())

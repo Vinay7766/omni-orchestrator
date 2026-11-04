@@ -87,6 +87,15 @@ describe("team (app)", () => {
     expect(sent.agentsBlock).toContain("T-1: Shopping list data model");
   });
 
+  it("sends the progress rules for the tool's own instruction files, not only a pointer (retest bug 2)", async () => {
+    await project(true);
+    await saveTeamSelection(invoke, root, [editor]);
+    await handOffTool(invoke, root, "example-editor");
+    const sent = calls.find((c) => c.command === "hand_off_tool")!.args.request as { toolBlock?: string };
+    expect(sent.toolBlock).toMatch(/complete_task/);
+    expect(sent.toolBlock).toContain(".agents/task-updates.jsonl");
+  });
+
   it("returns the step-by-step guide for the tool, naming the model its next task asks for (D)", async () => {
     await project(true);
     const store = await open();

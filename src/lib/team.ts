@@ -117,7 +117,7 @@ export async function handOffTool(invoke: Invoke, rootIn: string, toolId: string
     const steps = startSteps(member.capability as 1 | 2 | 3, member.name, model);
     if (member.capability === 1) await store.writeFile(HANDOFF_FILE, handoff.package);
     const result = (await invoke("hand_off_tool", {
-      request: { projectPath: root, toolId, agentsBlock: handoff.agentsBlock },
+      request: { projectPath: root, toolId, agentsBlock: handoff.agentsBlock, toolBlock: handoff.toolBlock },
     })) as HandoffResult;
 
     let buildStarted = false;

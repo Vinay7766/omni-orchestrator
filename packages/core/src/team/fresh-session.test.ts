@@ -67,4 +67,10 @@ describe("buildFreshSession", () => {
     // Same sentence as LAUNCH_TEXT in src-tauri/src/commands/fresh_session.rs.
     expect(FRESH_SESSION_LAUNCH_TEXT).toBe("Read .agents/handoff/next-session.md and follow it.");
   });
+
+  it("tells a build session to mark each task done when it finishes it (retest bug 2)", () => {
+    const { prompt } = buildFreshSession({ projectName: "Orbit planner", flow: "build", state: state({ currentPhase: "build", phases: { "idea-review": { status: "approved" }, research: { status: "approved" }, prd: { status: "approved" }, architecture: { status: "approved" }, build: { status: "in_progress" } } }) });
+    expect(prompt).toMatch(/complete_task/);
+    expect(prompt).toContain(".agents/task-updates.jsonl");
+  });
 });
