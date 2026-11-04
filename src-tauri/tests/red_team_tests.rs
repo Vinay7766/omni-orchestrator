@@ -137,3 +137,37 @@ fn rt11_t6_2_control_relative_parent_traversal_is_refused() {
     assert!(hand_off_path("../../outside", &spawned).is_err());
     assert!(spawned.borrow().is_empty());
 }
+
+// --- Second pass (2026-11-04; docs/security/red-team-2026-11-04.md) ---
+
+/// RT-18 (new boundary: the MCP server installed in the app's folder, retest bug 2). A program
+/// running as the person replaces the installed server; the next handoff or MCP setup must put
+/// the app's own copy back. (Between those moments a replaced file would run: same-user malware,
+/// T3.6.)
+#[test]
+fn rt18_a_replaced_installed_mcp_server_is_restored_at_the_next_install() {
+    use tauri_app_lib::commands::mcp_setup::install_bundled_server;
+    let dir = std::env::temp_dir().join(format!("omni-rt18-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let (server, _) = install_bundled_server(&dir, "console.log('genuine')", &[]).unwrap().unwrap();
+    std::fs::write(&server, "console.log('replaced by another program')").unwrap();
+    install_bundled_server(&dir, "console.log('genuine')", &[]).unwrap();
+    assert_eq!(std::fs::read_to_string(&server).unwrap(), "console.log('genuine')");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// RT-20 (T3.1 extended, new boundary: the drafts file, issue B). A key the person pastes into the
+/// idea conversation is written to ui-state.json in plain text.
+#[test]
+#[ignore = "RT-20: open finding, drafts are stored unredacted (fix in the blue-team pass)"]
+fn rt20_a_key_typed_into_a_draft_is_not_stored_in_plain_text() {
+    use tauri_app_lib::storage::store::StorageManager;
+    let dir = std::env::temp_dir().join(format!("omni-rt20-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let key = ["sk", "-proj-", "aB3dE5gH7jK9mN1pQ2rS4tU6vW8xY0zAbCdEfGh"].concat();
+    let storage = StorageManager::new(dir.clone());
+    storage.save_ui_state(&format!(r#"{{"ideaDraft":{{"idea":"my key is {key}"}}}}"#)).unwrap();
+    let on_disk = std::fs::read_to_string(dir.join("ui-state.json")).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(!on_disk.contains(&key), "the key is on disk in ui-state.json");
+}

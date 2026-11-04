@@ -93,6 +93,8 @@ transcripts, provider responses, project memory written by an earlier agent.
 | T1.6 | Provider responses contain instructions or markup | Responses are shown as text; React escapes text by default; no `dangerouslySetInnerHTML` in `src/` or `packages/` | in place for rendering (see T4) | Feed a response with HTML and script tags into the UI; assert it renders as text |
 | T1.7 | AI tool transcripts carry injected instructions into handoffs | Not built yet (no transcript or handoff code exists) | open: no task yet; the rule for the feature is to treat transcripts as untrusted data (NFR-2) | Add with the feature |
 
+| T1.8 | A local program writes `.agents/task-updates.jsonl` (issue B) to approve, skip or act as a person | Lines are applied only through the task and phase engines as an agent; there is no approve, skip or undo action; refused lines are recorded with the reason (`packages/core/src/team/task-updates.ts`) | in place (RT-12, RT-13) | `packages/core/src/team/red-team.test.ts` |
+
 ### T2. Forged or edited human approvals
 
 | ID | Threat | Current control | Status | Red-team test idea |
@@ -146,6 +148,10 @@ transcripts, provider responses, project memory written by an earlier agent.
 | T6.4 | Corrupting another tool's MCP config | Only our own entry is added or updated; JSON-with-comments and non-JSON files are left unchanged with a message (`mcp_setup.rs`) | partly: symlinked configs are followed on purpose and a `.omni-backup` is written beside the real target, so a repository that ships a symlinked project-level config makes the app rewrite a file outside the project | Existing `mcp_setup` tests; add a project whose config is a link to a file outside it |
 | T6.5 | Overwriting the user's text in instruction files | Only the managed block is changed (`adapters.ts`, `handoff.rs`); `hand_off_tool` refuses a target file, or a folder on the way to it, that is a link (E6) | in place for instruction files and .gitignore; the level-3 project MCP config still follows links (T6.4) | Existing tests; add one with a forged end marker and one with a linked instruction file |
 
+| T6.6 | Another program replaces the MCP server the app installs in its data folder (retest bug 2) | Every handoff and MCP setup rewrites it from the copy embedded in the app (`mcp_setup.rs`, `install_bundled_server`) | partly: a replaced file runs until the next install (same-user malware, T3.6) (RT-18) | `src-tauri/tests/red_team_tests.rs` |
+| T6.7 | The web view writes a file outside the folder the person chose through the export (retest bug 4) | The save dialog opens in Rust; only a file name comes from the web view, path characters removed; no file-writing permission in the web view | in place by reading (RT-19; the dialog cannot be opened in a test) | n/a |
+| T6.8 | Keys typed into a conversation are kept in plain text in the app's drafts file `ui-state.json` | None | open (RT-20) | `src-tauri/tests/red_team_tests.rs` (ignored until fixed) |
+
 ### T7. Project data leaving the machine
 
 | ID | Threat | Current control | Status | Red-team test idea |
@@ -153,6 +159,13 @@ transcripts, provider responses, project memory written by an earlier agent.
 | T7.1 | Project text (ideas, plans, code context) is sent to an AI provider by the app (teardowns, planning) or read by a cloud AI agent through the MCP server | Sending happens only to the provider the person configured and only when they run the feature; nothing is sent in the background (NFR-1) | **proposed accepted risk**: using a cloud AI provider means sharing the text sent to it; the person chooses the provider (a local model keeps it on the machine) | Run the app with network access logged; assert no request leaves except to the configured provider during a feature the person started |
 
 ## Latest red-team results
+
+Second pass on 2026-11-04 (`docs/security/red-team-2026-11-04.md`): 13 abuse cases; controls held
+for the task-update file (T1.8) and the installed MCP server (T6.6); open: RT-1..3 (C17), RT-14 and
+RT-15 (T1.5), RT-16 and RT-16b (T5.4), RT-17 (T4.3), RT-20 (T6.8). Run in the building session:
+fresh eyes not met.
+
+### First pass
 
 Dry run on 2026-11-02 (`docs/security/red-team-2026-11-02.md`), 11 abuse
 cases from 10 rows, written as tests:
