@@ -163,7 +163,8 @@ export class MemoryStore {
 
     try {
       return await this.withLock(async () => {
-        const state = (await this.readStoredState()) ?? (await this.rebuildState());
+        // Rules are checked against the log, never the snapshot (RT-3, T2.5).
+        const state = await this.rebuildState();
         if (guard) {
           const problems = guard(state, (await this.readEvents()).events);
           if (problems.length > 0) return { ok: false as const, issues: problems };
@@ -272,9 +273,13 @@ export class MemoryStore {
     return this.path(name);
   }
 
-  /** The current state: the stored snapshot, or a rebuild if it is missing or invalid. */
+  /**
+   * The current state, rebuilt from the event log. state.json is a snapshot written for people
+   * and other readers; it is never read back, because anything that can write the folder can
+   * edit it (RT-3, T2.5): an edited snapshot must not open a gate.
+   */
   async readState(): Promise<State> {
-    return (await this.readStoredState()) ?? (await this.rebuildState());
+    return this.rebuildState();
   }
 
   /** Recomputes the state from the event log (does not write it). */

@@ -106,7 +106,7 @@ describe("red team: forged human approvals (T2)", () => {
 
   // RT-3 (T2.5): the agent does not touch the log at all; it edits the state.json snapshot,
   // which phase gates read whenever it is valid.
-  it.fails("RT-3 (T2.5): a state.json edited to mark a phase approved does not open the next gate", async () => {
+  it("RT-3 (T2.5): a state.json edited to mark a phase approved does not open the next gate", async () => {
     const snapshot = JSON.parse(readFileSync(statePath(), "utf8"));
     snapshot.phases["idea-review"] = { ...snapshot.phases["idea-review"], status: "approved", decidedAt: new Date().toISOString() };
     writeFileSync(statePath(), JSON.stringify(snapshot, null, 2) + "\n");
